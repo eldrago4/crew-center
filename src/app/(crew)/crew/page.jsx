@@ -73,8 +73,7 @@ export default function CrewLoginPage() {
       setValid(true)
     } else {
       toaster.create({
-        title: 'Callsign Not Found',
-        description: 'The entered callsign does not exist in our records',
+        title: 'Kindly apply first.',
         type: 'error',
         duration: 3000,
       })
