@@ -1,4 +1,4 @@
-'use client'; 
+'use client';
 
 import {
   Box,
@@ -6,17 +6,17 @@ import {
   Text,
   ButtonGroup,
   IconButton,
-  Pagination, 
+  Pagination,
 } from '@chakra-ui/react';
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu';
-import { useState, useEffect } from 'react'; 
-import PirepCard from './PirepCard'; 
+import { useState, useEffect } from 'react';
+import PirepCard from './PirepCard';
 
 const PirepListWithPagination = ({ initialPireps, initialTotalPireps, userId }) => {
-  const [pireps, setPireps] = useState(initialPireps);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPireps, setTotalPireps] = useState(initialTotalPireps);
-  const pageSize = 8; 
+  const [ pireps, setPireps ] = useState(initialPireps);
+  const [ currentPage, setCurrentPage ] = useState(1);
+  const [ totalPireps, setTotalPireps ] = useState(initialTotalPireps);
+  const pageSize = 8;
 
   useEffect(() => {
     const fetchPireps = async () => {
@@ -25,9 +25,7 @@ const PirepListWithPagination = ({ initialPireps, initialTotalPireps, userId }) 
       }
 
       try {
-        const baseUrl = process.env.NODE_ENV === 'development'
-          ? 'http://localhost:3000'
-          : process.env.NEXTAUTH_URL || 'https://your-domain.com'; // Replace with your actual domain
+        const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000'; // Replace with your actual domain
 
         const response = await fetch(`${baseUrl}/api/users/pireps?id=${userId}&page=${currentPage}&pageSize=${pageSize}`, {
           cache: 'no-store' // Ensure fresh data
@@ -48,7 +46,7 @@ const PirepListWithPagination = ({ initialPireps, initialTotalPireps, userId }) 
     };
 
     fetchPireps();
-  }, [currentPage, userId, initialPireps, totalPireps]); // Dependencies for useEffect
+  }, [ currentPage, userId, initialPireps, totalPireps ]); // Dependencies for useEffect
 
   const handlePageChange = (details) => {
     setCurrentPage(details.page);

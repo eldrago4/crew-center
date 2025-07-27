@@ -24,9 +24,7 @@ export default async function LogbookPage() {
   const initialPageSize = 8; // Consistent page size for initial fetch
 
   try {
-    const baseUrl = process.env.NODE_ENV === 'development'
-      ? 'http://localhost:3000'
-      : process.env.NEXTAUTH_URL || 'https://your-domain.com'; // Replace with your actual domain
+    const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000'; // Replace with your actual domain
 
     // Fetch only the first page of PIREPs on the server
     const response = await fetch(`${baseUrl}/api/users/pireps?id=${session.user.callsign}&page=1&pageSize=${initialPageSize}`, {

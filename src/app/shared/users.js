@@ -5,15 +5,15 @@ const redis = Redis.fromEnv();
 // Efficient async getter for dummyData
 export async function getDummyData() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/users/login`);
+    const res = await fetch(`${process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000'}/api/users/login`);
     if (res.ok) {
       const json = await res.json();
       // Ensure json.data is an array and convert discordId to string
       if (Array.isArray(json.data)) {
-        return json.data.map(u => ({ 
-          callsign: u.callsign, 
+        return json.data.map(u => ({
+          callsign: u.callsign,
           // Convert discordId to string, handling potential null/undefined
-          discordId: u.discordId != null ? String(u.discordId) : null 
+          discordId: u.discordId != null ? String(u.discordId) : null
         }));
       } else {
         console.warn('API response "data" is not an array in getDummyData:', json);

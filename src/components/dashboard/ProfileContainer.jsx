@@ -6,9 +6,7 @@ import { Grid } from '@chakra-ui/react'
 
 async function getUserData(callsign) {
   try {
-    const baseUrl = process.env.NODE_ENV === 'development'
-      ? 'http://localhost:3000'
-      : process.env.NEXTAUTH_URL || 'https://your-domain.com'
+    const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000'
 
     const response = await fetch(`${baseUrl}/api/users/userdash?id=${callsign}`, {
       cache: 'no-store'
@@ -28,9 +26,7 @@ async function getUserData(callsign) {
 
 async function getNotams() {
   try {
-    const baseUrl = process.env.NODE_ENV === 'development'
-      ? 'http://localhost:3000'
-      : process.env.NEXTAUTH_URL || 'https://your-domain.com'
+    const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000';
 
     const response = await fetch(`${baseUrl}/api/notams`, {
       cache: 'no-store'

@@ -11,7 +11,8 @@ import PirepsTabs from '@/components/admin/PirepsTabs'
 
 async function getAllPireps() {
     try {
-        const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/users/pireps?all=true`, {
+        const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+        const response = await fetch(`${baseUrl}/api/users/pireps?all=true`, {
             cache: 'no-store'
         })
 

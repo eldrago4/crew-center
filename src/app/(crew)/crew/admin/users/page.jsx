@@ -46,7 +46,7 @@ export default function UsersPage() {
 
     const handleRevokeAccess = async (userId) => {
         try {
-            const res = await fetch(`/api/users?id=${userId}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000'}/api/users?id=${userId}`, {
                 method: 'DELETE'
             })
             if (!res.ok) {
