@@ -16,7 +16,7 @@ import { signIn } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import CallsignInput from '@/components/CallsignInput'
-import { dummyData } from '@/app/shared/users'
+import { getDummyData } from '@/app/shared/users'
 import Cookies from 'js-cookie'
 import { FaDiscord } from "react-icons/fa"
 import NextImage from "next/image"
@@ -56,7 +56,7 @@ export default function CrewLoginPage() {
     return input.trim().toUpperCase().match(/^[0-9]{3}$/)
   }
 
-  const handleValidation = () => {
+  const handleValidation = async () => {
     if (!validateCallsignFormat(callsign)) {
       toaster.create({
         title: 'Invalid Callsign Format',
@@ -67,9 +67,10 @@ export default function CrewLoginPage() {
       return
     }
 
+    const dummyData = await getDummyData();
     const matchedCallsign = dummyData.find(
       (entry) => entry.callsign === `INVA${callsign.trim().toUpperCase()}`
-    )
+    );
 
     if (matchedCallsign) {
       setValid(true)
@@ -140,7 +141,7 @@ export default function CrewLoginPage() {
               <Alert.Indicator position="relative" top="2" />
               <Alert.Content>
                 <Alert.Title fontSize="0.8rem" >We couldn't log you in</Alert.Title>
-                <Alert.Description fontSize="0.6rem">                  
+                <Alert.Description fontSize="0.6rem">
                   {errorMsg}
                 </Alert.Description>
               </Alert.Content>

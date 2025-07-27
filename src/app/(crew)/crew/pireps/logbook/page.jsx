@@ -48,14 +48,18 @@ export default async function LogbookPage() {
   return (
     <>
       <Box
-        position="fixed"
+        position="relative"
         top="0"
         left="0"
         height="100vh"
         width="13rem"
         zIndex={1}
       >
-        {session.user?.permissions?.length > 0 && (<SidebarComponent isAdmin={true} />)}
+        {session.user.permissions?.length > 0 ? (
+          <SidebarComponent isAdmin={true} />
+        ) : (
+          <SidebarComponent isAdmin={false} />
+        )}
       </Box>
       <Container maxW="container.xl" p="4" marginLeft="13rem" marginTop="20">
         <Box>
@@ -73,176 +77,3 @@ export default async function LogbookPage() {
     </>
   );
 }
-
-
-// [
-//     {
-//       "pirepId": 1,
-//       "flightNumber": "AI101",
-//       "date": "2025-06-07 19:03:44.092078",
-//       "flightTime": "16:30:00",
-//       "departureIcao": "VIDP",
-//       "arrivalIcao": "KJFK",
-//       "operator": "Indian Virtual",
-//       "aircraft": "Airbus A359",
-//       "multiplier": "1.5",
-//       "comments": "Comments test",
-//       "userId": "INVA011",
-//       "valid": true,
-//       "updatedAt": "2025-07-20 14:41:24"
-//     },{
-//       "pirepId": 1,
-//       "flightNumber": "AI101",
-//       "date": "2025-06-07 19:03:44.092078",
-//       "flightTime": "16:30:00",
-//       "departureIcao": "VIDP",
-//       "arrivalIcao": "KJFK",
-//       "operator": "Indian Virtual",
-//       "aircraft": "Airbus A359",
-//       "multiplier": "1.5",
-//       "comments": "Comments test",
-//       "userId": "INVA011",
-//       "valid": true,
-//       "updatedAt": "2025-07-20 14:41:24"
-//     },{
-//       "pirepId": 1,
-//       "flightNumber": "AI101",
-//       "date": "2025-06-07 19:03:44.092078",
-//       "flightTime": "16:30:00",
-//       "departureIcao": "VIDP",
-//       "arrivalIcao": "KJFK",
-//       "operator": "Indian Virtual",
-//       "aircraft": "Airbus A359",
-//       "multiplier": "1.5",
-//       "comments": "Comments test",
-//       "userId": "INVA011",
-//       "valid": true,
-//       "updatedAt": "2025-07-20 14:41:24"
-//     },{
-//       "pirepId": 1,
-//       "flightNumber": "AI101",
-//       "date": "2025-06-07 19:03:44.092078",
-//       "flightTime": "16:30:00",
-//       "departureIcao": "VIDP",
-//       "arrivalIcao": "KJFK",
-//       "operator": "Indian Virtual",
-//       "aircraft": "Airbus A359",
-//       "multiplier": "1.5",
-//       "comments": "Comments test",
-//       "userId": "INVA011",
-//       "valid": true,
-//       "updatedAt": "2025-07-20 14:41:24"
-//     },{
-//       "pirepId": 1,
-//       "flightNumber": "AI101",
-//       "date": "2025-06-07 19:03:44.092078",
-//       "flightTime": "16:30:00",
-//       "departureIcao": "VIDP",
-//       "arrivalIcao": "KJFK",
-//       "operator": "Indian Virtual",
-//       "aircraft": "Airbus A359",
-//       "multiplier": "1.5",
-//       "comments": "Comments test",
-//       "userId": "INVA011",
-//       "valid": true,
-//       "updatedAt": "2025-07-20 14:41:24"
-//     },{
-//       "pirepId": 1,
-//       "flightNumber": "AI101",
-//       "date": "2025-06-07 19:03:44.092078",
-//       "flightTime": "16:30:00",
-//       "departureIcao": "VIDP",
-//       "arrivalIcao": "KJFK",
-//       "operator": "Indian Virtual",
-//       "aircraft": "Airbus A359",
-//       "multiplier": "1.5",
-//       "comments": "Comments test",
-//       "userId": "INVA011",
-//       "valid": true,
-//       "updatedAt": "2025-07-20 14:41:24"
-//     },{
-//       "pirepId": 1,
-//       "flightNumber": "AI101",
-//       "date": "2025-06-07 19:03:44.092078",
-//       "flightTime": "16:30:00",
-//       "departureIcao": "VIDP",
-//       "arrivalIcao": "KJFK",
-//       "operator": "Indian Virtual",
-//       "aircraft": "Airbus A359",
-//       "multiplier": "1.5",
-//       "comments": "Comments test",
-//       "userId": "INVA011",
-//       "valid": true,
-//       "updatedAt": "2025-07-20 14:41:24"
-//     },{
-//       "pirepId": 1,
-//       "flightNumber": "AI101",
-//       "date": "2025-06-07 19:03:44.092078",
-//       "flightTime": "16:30:00",
-//       "departureIcao": "VIDP",
-//       "arrivalIcao": "KJFK",
-//       "operator": "Indian Virtual",
-//       "aircraft": "Airbus A359",
-//       "multiplier": "1.5",
-//       "comments": "Comments test",
-//       "userId": "INVA011",
-//       "valid": true,
-//       "updatedAt": "2025-07-20 14:41:24"
-//     },{
-//       "pirepId": 1,
-//       "flightNumber": "AI101",
-//       "date": "2025-06-07 19:03:44.092078",
-//       "flightTime": "16:30:00",
-//       "departureIcao": "VIDP",
-//       "arrivalIcao": "KJFK",
-//       "operator": "Indian Virtual",
-//       "aircraft": "Airbus A359",
-//       "multiplier": "1.5",
-//       "comments": "Comments test",
-//       "userId": "INVA011",
-//       "valid": true,
-//       "updatedAt": "2025-07-20 14:41:24"
-//     },{
-//       "pirepId": 1,
-//       "flightNumber": "AI101",
-//       "date": "2025-06-07 19:03:44.092078",
-//       "flightTime": "16:30:00",
-//       "departureIcao": "VIDP",
-//       "arrivalIcao": "KJFK",
-//       "operator": "Indian Virtual",
-//       "aircraft": "Airbus A359",
-//       "multiplier": "1.5",
-//       "comments": "Comments test",
-//       "userId": "INVA011",
-//       "valid": true,
-//       "updatedAt": "2025-07-20 14:41:24"
-//     },{
-//       "pirepId": 1,
-//       "flightNumber": "AI101",
-//       "date": "2025-06-07 19:03:44.092078",
-//       "flightTime": "16:30:00",
-//       "departureIcao": "VIDP",
-//       "arrivalIcao": "KJFK",
-//       "operator": "Indian Virtual",
-//       "aircraft": "Airbus A359",
-//       "multiplier": "1.5",
-//       "comments": "Comments test",
-//       "userId": "INVA011",
-//       "valid": true,
-//       "updatedAt": "2025-07-20 14:41:24"
-//     },{
-//       "pirepId": 1,
-//       "flightNumber": "AI101",
-//       "date": "2025-06-07 19:03:44.092078",
-//       "flightTime": "16:30:00",
-//       "departureIcao": "VIDP",
-//       "arrivalIcao": "KJFK",
-//       "operator": "Indian Virtual",
-//       "aircraft": "Airbus A359",
-//       "multiplier": "1.5",
-//       "comments": "Comments test",
-//       "userId": "INVA011",
-//       "valid": true,
-//       "updatedAt": "2025-07-20 14:41:24"
-//     }
-//   ]

@@ -1,21 +1,13 @@
-import { pgTable, text, time, index, foreignKey, integer, timestamp, numeric, jsonb, char, varchar, bigint, interval, boolean, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, index, foreignKey, integer, text, timestamp, time, numeric, boolean, jsonb, char, varchar, bigint, interval, pgEnum, date } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const rankenum = pgEnum("rankenum", ['Yuvraj', 'Rajkumar', 'Rajvanshi', 'Rajdhiraj', 'Maharaja', 'Samrat', 'Chhatrapati'])
 
 
-export const routes = pgTable("routes", {
-	flightNumber: text().primaryKey().notNull(),
-	departureIcao: text().notNull(),
-	arrivalIcao: text().notNull(),
-	flightTime: time(),
-	aircraft: text().notNull(),
-});
-
 export const pireps = pgTable("pireps", {
 	pirepId: integer().primaryKey().generatedAlwaysAsIdentity({ name: "pireps_pirep_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
 	flightNumber: text().notNull(),
-	date: timestamp({ mode: 'string' }).notNull(),
+	date: date().notNull(),
 	flightTime: time().notNull(),
 	departureIcao: text().notNull(),
 	arrivalIcao: text().notNull(),
@@ -26,41 +18,43 @@ export const pireps = pgTable("pireps", {
 	userId: text().notNull(),
 	valid: boolean(),
 	updatedAt: timestamp({ mode: 'string' }),
+	adminComments: text(),
 }, (table) => [
 	index("index_user").using("hash", table.userId.asc().nullsLast().op("text_ops")),
 	foreignKey({
-		columns: [table.flightNumber],
-		foreignColumns: [routes.flightNumber],
-		name: "flight_number"
-	}),
-	foreignKey({
-		columns: [table.userId],
-		foreignColumns: [users.id],
-		name: "user_id"
-	}).onUpdate("cascade").onDelete("cascade"),
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "user_id"
+		}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
-export const events = pgTable("events", {
-	eventId: integer().primaryKey().generatedAlwaysAsIdentity({ name: "events_eventId_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647 }),
-	time: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
-	flightTime: time().notNull(),
+export const routes = pgTable("routes", {
+	flightNumber: text().primaryKey().notNull(),
 	departureIcao: text().notNull(),
 	arrivalIcao: text().notNull(),
+	flightTime: time(),
 	aircraft: text().notNull(),
-	multiplier: numeric().notNull(),
-	interestedUsers: jsonb(),
 });
 
 export const users = pgTable("users", {
 	id: char({ length: 7 }).primaryKey().notNull(),
 	ifcName: varchar({ length: 20 }).notNull(),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	discordId: bigint({ mode: "number" }),
-	flightTime: interval().default('00:00:00'),
+	discordId: bigint({ mode: "bigint" }),
 	careerMode: boolean().default(false),
 	lastActive: timestamp({ mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
-	rank: rankenum().default('Yuvraj'),
 	updatedAt: timestamp({ mode: 'string' }),
+	flightTime: interval({ precision: 0 }),
+	rank: rankenum().generatedAlwaysAs(sql`
+CASE
+	WHEN ("flightTime" >= '2000:00:00'::interval) THEN 'Chhatrapati'::rankenum
+	WHEN ("flightTime" >= '1500:00:00'::interval) THEN 'Samrat'::rankenum
+	WHEN ("flightTime" >= '900:00:00'::interval) THEN 'Maharaja'::rankenum
+	WHEN ("flightTime" >= '450:00:00'::interval) THEN 'Rajdhiraj'::rankenum
+	WHEN ("flightTime" >= '160:00:00'::interval) THEN 'Rajvanshi'::rankenum
+	WHEN ("flightTime" >= '80:00:00'::interval) THEN 'Rajkumar'::rankenum
+	ELSE 'Yuvraj'::rankenum
+END`),
 }, (table) => [
 	index("index_name").using("btree", table.ifcName.asc().nullsLast().op("text_ops")),
 ]);

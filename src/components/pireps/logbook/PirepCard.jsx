@@ -52,7 +52,7 @@ const PirepCard = ({ pirep }) => {
 
           {pirep.comments && (
             <Text fontSize="sm" color="fg.muted" pt="2" w="full" borderTopWidth="1px" borderColor="border">
-              "{pirep.comments}"
+              "{pirep.adminComments}"
             </Text>
           )}
         </VStack>
@@ -74,12 +74,12 @@ const PirepCard = ({ pirep }) => {
           </VStack>
           <Badge
             size="lg"
-            colorPalette={pirep.valid ? "green" : "yellow"}
+            colorPalette={pirep.valid === null ? 'yellow' : (pirep.valid === false ? 'red' : 'green')}
             variant="solid"
             alignSelf="stretch"
             textAlign="center"
           >
-            {pirep.valid ? 'Valid' : 'Pending'}
+            {pirep.valid === null ? 'Pending' : (pirep.valid === false ? 'Rejected' : 'Accepted')}
           </Badge>
         </VStack>
       </HStack>

@@ -11,39 +11,43 @@ import { useState } from 'react';
 import RoleSelectorSegmentGroup from '@/components/RoleSelectorSegmentGroup';
 
 const SidebarComponent = ({ isAdmin = false }) => {
-  const [currentValue, setCurrentValue] = useState("pilot");
+  const [ currentValue, setCurrentValue ] = useState("pilot");
 
+  // Updated BUTTON_SECTIONS to include href for each item
   const BUTTON_SECTIONS = {
-    dashboard: [ "Profile" ],
+    dashboard: [ { label: "Profile", href: "/crew/dashboard" } ],
     pireps: [
-      "Logbook",
-      "File"
+      { label: "Logbook", href: "/crew/pireps/logbook" },
+      { label: "File", href: "/crew/pireps/file" }
     ],
-    plan: [ "Routes",
-      "Simbrief" ],
-    community: [ "Events",
-      "Routes of the Week",
-      "Leaderboard",
-      "Live Map" ],
+    plan: [
+      { label: "Routes", href: "/crew/routes" },
+      { label: "Simbrief", href: "/crew/plan/simbrief" }
+    ],
+    community: [
+      { label: "Events", href: "/crew/community/events" },
+      { label: "Routes of the Week", href: "/crew/community/rotw" },
+      { label: "Leaderboard", href: "/crew/community/leaderboard" },
+      { label: "Live Map", href: "/crew/community/live-map" }
+    ],
     resources: [
-      "Flying Manual",
-      "Simbrief" ],
+      { label: "Flying Manual", href: "/crew/resources/flying-manual" },
+      { label: "Simbrief", href: "/crew/resources/simbrief" }
+    ],
   };
 
   const adminButtons = [
-    { label: "Route Database" },
-    { label: "Fleet Database" },
-    { label: "Recruits" },
-    { label: "User Console", href: "/test/users", asChild: true },
-    { label: "ROTW & Events" },
-    { label: "Pireps" },
-    { label: "Statistics" },
+    { label: "Route Database", href: "/crew/admin/routes" }, // Added href
+    { label: "Fleet Database", href: "/crew/admin/fleet" }, // Added href
+    { label: "Recruits", href: "/crew/admin/recruits" }, // Added href
+    { label: "User Console", href: "/crew/admin/users", asChild: true }, // Changed to /admin/users for consistency
+    { label: "ROTW & Events", href: "/crew/admin/rotw" }, // Added href
+    { label: "Pireps", href: "/crew/admin/pireps" }, // Added href
+    { label: "Statistics", href: "/crew/admin/statistics" }, // Added href
   ];
 
-  const sectionButtons = {};
-  for (const [section, labels] of Object.entries(BUTTON_SECTIONS)) {
-    sectionButtons[section] = labels.map(label => ({ label }));
-  }
+  // sectionButtons now directly references BUTTON_SECTIONS as it contains the full objects
+  const sectionButtons = BUTTON_SECTIONS;
 
   const sectionHeaderProps = {
     fontWeight: "light",
@@ -72,7 +76,8 @@ const SidebarComponent = ({ isAdmin = false }) => {
   const renderButtons = (buttons) => (
     <>
       {buttons.map(({ label, href, asChild }, idx) => {
-        if (asChild) {
+        // If href is provided, render as a link, otherwise as a regular button
+        if (href) {
           return (
             <Button key={idx} {...buttonProps} asChild>
               <a href={href}>{label}</a>
@@ -88,8 +93,6 @@ const SidebarComponent = ({ isAdmin = false }) => {
     </>
   );
 
-
-
   return (
     <Box
       bg="white"
@@ -97,14 +100,14 @@ const SidebarComponent = ({ isAdmin = false }) => {
       py={30}
       borderRadius="md"
       width="100%"
-      height="calc(100vh - 60px)"
+      height="100vh"
       borderRightWidth={1}
       marginTop="60px"
     >
       <VStack width="100%">
         {currentValue !== "admin" && (
           <>
-            {Object.entries(sectionButtons).map(([section, buttons]) => (
+            {Object.entries(sectionButtons).map(([ section, buttons ]) => (
               <div key={section} style={{ width: '100%' }}>
                 <Text {...sectionHeaderProps}>{section.toUpperCase()}</Text>
                 <ButtonGroup orientation="vertical" spacing={4} width="100%">

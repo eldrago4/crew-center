@@ -16,8 +16,7 @@ export default function RootLayout({ children }) {
         marginBottom={10}
       >
         <DashNav />
-      </Box>
-       {children}
+      </Box> {children}
       
         
 

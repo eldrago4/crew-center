@@ -1,4 +1,4 @@
-'use client'; // This directive makes PirepListWithPagination a Client Component
+'use client'; 
 
 import {
   Box,
@@ -6,23 +6,21 @@ import {
   Text,
   ButtonGroup,
   IconButton,
-  Pagination, // Import Pagination components
+  Pagination, 
 } from '@chakra-ui/react';
-import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'; // Import pagination icons
-import { useState, useEffect } from 'react'; // Import useState and useEffect
-import PirepCard from './PirepCard'; // Import the PirepCard component
+import { LuChevronLeft, LuChevronRight } from 'react-icons/lu';
+import { useState, useEffect } from 'react'; 
+import PirepCard from './PirepCard'; 
 
 const PirepListWithPagination = ({ initialPireps, initialTotalPireps, userId }) => {
   const [pireps, setPireps] = useState(initialPireps);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPireps, setTotalPireps] = useState(initialTotalPireps);
-  const pageSize = 8; // Max 8 PIREPs per page
+  const pageSize = 8; 
 
-  // Effect to fetch PIREPs whenever currentPage changes (after initial load)
   useEffect(() => {
     const fetchPireps = async () => {
       if (currentPage === 1 && pireps.length > 0 && totalPireps > 0 && initialPireps.length > 0) {
-        // If it's the first page and we already have initial data, don't refetch
         return;
       }
 

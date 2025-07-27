@@ -5,7 +5,7 @@ import { eq, sql } from 'drizzle-orm'
 
 // Efficient cache check using MAX(updated_at) - minimal compute
 async function getDataVersion(userId) {
-  const [userVersion, pirepVersion] = await Promise.all([
+  const [ userVersion, pirepVersion ] = await Promise.all([
     db
       .select({ maxUpdated: sql`MAX(${users.updatedAt})`.as('maxUpdated') })
       .from(users)
@@ -16,9 +16,9 @@ async function getDataVersion(userId) {
       .where(eq(pireps.userId, userId))
   ])
 
-  const userTimestamp = userVersion[0]?.maxUpdated ? new Date(userVersion[0].maxUpdated).getTime() : 0
-  const pirepTimestamp = pirepVersion[0]?.maxUpdated ? new Date(pirepVersion[0].maxUpdated).getTime() : 0
-  
+  const userTimestamp = userVersion[ 0 ]?.maxUpdated ? new Date(userVersion[ 0 ].maxUpdated).getTime() : 0
+  const pirepTimestamp = pirepVersion[ 0 ]?.maxUpdated ? new Date(pirepVersion[ 0 ].maxUpdated).getTime() : 0
+
   return Math.max(userTimestamp, pirepTimestamp)
 }
 
@@ -42,7 +42,7 @@ export async function GET(request) {
 
     // If no updates, return 304 Not Modified
     if (!forceRefresh && lastKnownVersion === currentVersion && lastKnownVersion > 0) {
-      return new NextResponse(null, { 
+      return new NextResponse(null, {
         status: 304,
         headers: {
           'Cache-Control': 'public, max-age=30, stale-while-revalidate=60',
@@ -94,7 +94,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       data: {
-        ...userDetails[0],
+        ...userDetails[ 0 ],
         pireps: pirepDetails
       },
       version: currentVersion
@@ -130,7 +130,7 @@ export async function POST(request) {
     if (lastKnownVersion === currentVersion) {
       return NextResponse.json(
         { hasUpdates: false },
-        { 
+        {
           status: 200,
           headers: {
             'Cache-Control': 'public, max-age=30, stale-while-revalidate=60'
@@ -167,7 +167,7 @@ export async function POST(request) {
           comments: pireps.comments,
           updatedAt: pireps.updatedAt
         })
-        .from(pireps)
+        .from(pireeps)
         .where(eq(pireps.userId, userId))
         .orderBy(sql`${pireps.updatedAt} DESC`)
         .limit(5)
@@ -183,7 +183,7 @@ export async function POST(request) {
     return NextResponse.json({
       hasUpdates: true,
       data: {
-        ...userDetails[0],
+        ...userDetails[ 0 ],
         pireps: pirepDetails
       },
       version: currentVersion
