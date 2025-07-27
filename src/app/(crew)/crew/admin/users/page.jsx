@@ -46,7 +46,7 @@ export default function UsersPage() {
 
     const handleRevokeAccess = async (userId) => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000'}/api/users?id=${userId}`, {
+            const res = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/users?id=${userId}`, {
                 method: 'DELETE'
             })
             if (!res.ok) {
@@ -69,7 +69,7 @@ export default function UsersPage() {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const res = await fetch('/api/users')
+                const res = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/users`)
                 if (!res.ok) throw new Error('Failed to fetch users')
                 const json = await res.json()
                 const data = json.data || []

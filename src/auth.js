@@ -70,16 +70,13 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
     async session({ session, token }) {
       if (token?.callsign) {
         session.user.callsign = token.callsign;
-        // Explicitly set session.user.redirectToIfcName based on token.redirectToIfcName
-        // This ensures it's correctly set to true or false.
+
         if (typeof token?.redirectToIfcName === 'boolean') {
           session.user.redirectToIfcName = token.redirectToIfcName;
         } else {
-          // Default to false if the token property is not explicitly a boolean
           session.user.redirectToIfcName = false;
         }
 
-        // Ensure discordId is always set if available in token
         if (token.discordId) {
           session.user.discordId = token.discordId;
         }

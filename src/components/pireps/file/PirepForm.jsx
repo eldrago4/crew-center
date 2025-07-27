@@ -103,7 +103,6 @@ export default function PirepForm({ userId }) {
                 };
             }
             
-            // --- This part remains the same ---
             const response = await fetch('/api/users/pireps', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

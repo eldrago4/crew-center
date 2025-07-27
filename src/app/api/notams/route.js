@@ -14,7 +14,7 @@ export async function GET() {
         return Response.json({
             data: allNotams,
             count: notamCount,
-            cached: notamCount > 0 // Simple cache indicator based on count
+            cached: notamCount > 0 
         });
     } catch (error) {
         console.error('Error fetching NOTAMs:', error);
