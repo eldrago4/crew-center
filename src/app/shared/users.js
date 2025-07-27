@@ -5,7 +5,7 @@ const redis = Redis.fromEnv();
 // Efficient async getter for dummyData
 export async function getDummyData() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000'}/api/users/login`);
+    const res = await fetch(`${process.env.NEXT_PUBLIC_VERCEL_URL || 'http://localhost:3000'}/api/users/login`);
     if (res.ok) {
       const json = await res.json();
       // Ensure json.data is an array and convert discordId to string
