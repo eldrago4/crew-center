@@ -5,7 +5,17 @@ const redis = Redis.fromEnv();
 // Efficient async getter for dummyData
 export async function getDummyData() {
   try {
-    const res = await fetch('/api/users/login');
+    let baseUrl;
+
+    if (process.env.VERCEL_ENV === 'production') {
+      baseUrl = `https://${process.env.VERCEL_URL}`;
+    } else if (process.env.VERCEL_BRANCH_URL) {
+      baseUrl = `https://${process.env.VERCEL_BRANCH_URL}`;
+    } else {
+      baseUrl = 'http://localhost:3000';
+    }
+
+    const res = await fetch(`${baseUrl}/api/users/login`);
     if (res.ok) {
       const json = await res.json();
       // Ensure json.data is an array and convert discordId to string
