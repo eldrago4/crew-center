@@ -3,63 +3,75 @@ import BasicInfo from './BasicInfo'
 import PirepsTable from './PirepsTable'
 import Notams from './Notams'
 import { Grid } from '@chakra-ui/react'
+import db from '@/db/client'
+import { users, pireps, notams } from '@/db/schema'
+import { eq, sql } from 'drizzle-orm'
 
 async function getUserData(callsign) {
   try {
-    let baseUrl;
-    if (typeof window === 'undefined') {
-      if (process.env.NEXT_PUBLIC_VERCEL_URL) {
-        baseUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
-      } else if (process.env.VERCEL_URL) {
-        baseUrl = `https://${process.env.VERCEL_URL}`;
-      } else {
-        baseUrl = 'http://localhost:3000';
-      }
-    } else {
-      baseUrl = '';
-    }
-    const response = await fetch(`${baseUrl}/api/users/userdash?id=${callsign}`, {
-      cache: 'no-store'
-    })
-    if (!response.ok) {
-      throw new Error('Failed to fetch user data')
+    // User details
+    const userDetails = await db
+      .select({
+        id: users.id,
+        ifcName: users.ifcName,
+        flightTime: users.flightTime,
+        careerMode: users.careerMode,
+        rank: users.rank,
+        updatedAt: users.updatedAt
+      })
+      .from(users)
+      .where(eq(users.id, callsign))
+      .limit(1);
+
+    // PIREPs (latest 5)
+    const pirepDetails = await db
+      .select({
+        pirepId: pireps.pirepId,
+        flightNumber: pireps.flightNumber,
+        date: pireps.date,
+        flightTime: pireps.flightTime,
+        departureIcao: pireps.departureIcao,
+        arrivalIcao: pireps.arrivalIcao,
+        aircraft: pireps.aircraft,
+        multiplier: pireps.multiplier,
+        approved: pireps.valid,
+        comments: pireps.comments,
+        updatedAt: pireps.updatedAt
+      })
+      .from(pireps)
+      .where(eq(pireps.userId, callsign))
+      .orderBy(sql`${pireps.updatedAt} DESC`)
+      .limit(5);
+
+    if (!userDetails || userDetails.length === 0) {
+      return null;
     }
 
-    const data = await response.json()
-    return data.data
+    return {
+      ...userDetails[ 0 ],
+      pireps: pirepDetails
+    };
   } catch (error) {
-    console.error('Error fetching user data:', error)
-    return null
+    console.error('Error fetching user data:', error);
+    return null;
   }
 }
 
 async function getNotams() {
   try {
-    let baseUrl;
-    if (typeof window === 'undefined') {
-      if (process.env.NEXT_PUBLIC_VERCEL_URL) {
-        baseUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
-      } else if (process.env.VERCEL_URL) {
-        baseUrl = `https://${process.env.VERCEL_URL}`;
-      } else {
-        baseUrl = 'http://localhost:3000';
-      }
-    } else {
-      baseUrl = '';
-    }
-    const response = await fetch(`${baseUrl}/api/notams`, {
-      cache: 'no-store'
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch NOTAMs')
-    }
-
-    const data = await response.json()
-    return data
+    // Get count of NOTAMs
+    const countResult = await db.select({ count: sql`count(*)` }).from(notams);
+    const notamCount = countResult[ 0 ]?.count || 0;
+    // Fetch all NOTAMs ordered by issued date (newest first)
+    const allNotams = await db.select().from(notams).orderBy(notams.issued);
+    return {
+      data: allNotams,
+      count: notamCount,
+      cached: notamCount > 0
+    };
   } catch (error) {
-    console.error('Error fetching NOTAMs:', error)
-    return { data: [], count: 0, cached: false }
+    console.error('Error fetching NOTAMs:', error);
+    return { data: [], count: 0, cached: false };
   }
 }
 
