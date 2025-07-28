@@ -151,7 +151,7 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
         });
         
         try {
-            const response = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/users/pireps`, {
+            const response = await fetch('/api/users/pireps', {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

@@ -12,7 +12,7 @@ import PirepsTabs from '@/components/admin/PirepsTabs'
 async function getAllPireps() {
     try {
         const baseUrl = process.env.VERCEL_URL || 'http://localhost:3000';
-        const response = await fetch(`${baseUrl}/api/users/pireps?all=true`, {
+        const response = await fetch('/api/users/pireps?all=true', {
             cache: 'no-store'
         })
 

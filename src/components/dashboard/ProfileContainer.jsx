@@ -8,7 +8,7 @@ async function getUserData(callsign) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000'
 
-    const response = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/users/userdash?id=${callsign}`, {
+    const response = await fetch('/api/users/userdash?id=${callsign}', {
       cache: 'no-store'
     })
 
@@ -28,7 +28,7 @@ async function getNotams() {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000';
 
-    const response = await fetch(`${baseUrl}/api/notams`, {
+    const response = await fetch('/api/notams', {
       cache: 'no-store'
     })
 

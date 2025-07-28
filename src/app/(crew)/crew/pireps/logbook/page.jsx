@@ -27,7 +27,7 @@ export default async function LogbookPage() {
     const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000'; // Replace with your actual domain
 
     // Fetch only the first page of PIREPs on the server
-    const response = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/users/pireps?id=${session.user.callsign}&page=1&pageSize=${initialPageSize}`, {
+    const response = await fetch('/api/users/pireps?id=${session.user.callsign}&page=1&pageSize=${initialPageSize}', {
       cache: 'no-store' // Ensure fresh data
     });
 

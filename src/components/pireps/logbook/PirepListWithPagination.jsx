@@ -27,7 +27,7 @@ const PirepListWithPagination = ({ initialPireps, initialTotalPireps, userId }) 
       try {
         const baseUrl = process.env.VERCEL_URL || 'http://localhost:3000'; // Replace with your actual domain
 
-        const response = await fetch(`${baseUrl}/api/users/pireps?id=${userId}&page=${currentPage}&pageSize=${pageSize}`, {
+        const response = await fetch('/api/users/pireps?id=${userId}&page=${currentPage}&pageSize=${pageSize}', {
           cache: 'no-store' // Ensure fresh data
         });
 

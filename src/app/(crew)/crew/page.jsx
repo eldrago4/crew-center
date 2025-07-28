@@ -16,7 +16,7 @@ import { signIn } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import CallsignInput from '@/components/CallsignInput'
-import { getDummyData } from '@/app/shared/users'
+// import { getDummyData } from '@/app/shared/users'
 import Cookies from 'js-cookie'
 import { FaDiscord } from "react-icons/fa"
 import NextImage from "next/image"
@@ -64,23 +64,34 @@ export default function CrewLoginPage() {
         type: 'error',
         duration: 3000,
       })
-      return
+      return;
     }
 
-    const dummyData = await getDummyData();
-    const matchedCallsign = dummyData.find(
-      (entry) => entry.callsign === `INVA${callsign.trim().toUpperCase()}`
-    );
-
-    if (matchedCallsign) {
-      setValid(true)
-    } else {
+    const fullCallsign = `INVA${callsign.trim().toUpperCase()}`;
+    try {
+      const res = await fetch('/api/validate-callsign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callsign: fullCallsign })
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setValid(true);
+      } else {
+        toaster.create({
+          title: 'Callsign Not Found',
+          description: 'The entered callsign does not exist in our records.',
+          type: 'error',
+          duration: 3000,
+        });
+      }
+    } catch (e) {
       toaster.create({
-        title: 'Callsign Not Found',
-        description: 'The entered callsign does not exist in our records.',
+        title: 'Validation Error',
+        description: 'Could not validate callsign. Please try again.',
         type: 'error',
         duration: 3000,
-      })
+      });
     }
   }
 

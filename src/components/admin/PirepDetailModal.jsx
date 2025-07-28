@@ -35,7 +35,7 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
     const fetchPirepDetails = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/users/pireps/${pirepId}`);
+            const response = await fetch('/api/users/pireps/${pirepId}');
             if (!response.ok) throw new Error('Failed to fetch PIREP details');
             const data = await response.json();
             setPirep(data.data);
