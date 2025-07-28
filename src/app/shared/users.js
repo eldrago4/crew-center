@@ -15,7 +15,7 @@ export async function getDummyData() {
       baseUrl = 'http://localhost:3000';
     }
 
-    const res = await fetch(`${baseUrl}/api/users/login`);
+    const res = await fetch('/api/users/login');
     if (res.ok) {
       const json = await res.json();
       // Ensure json.data is an array and convert discordId to string
