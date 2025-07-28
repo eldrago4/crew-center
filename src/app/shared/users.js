@@ -4,9 +4,19 @@ const redis = Redis.fromEnv();
 
 export async function getDummyData() {
   try {
-    let apiPath = '/api/users/login';
-    if (typeof window === 'undefined' && process.env.NODE_ENV === 'development') {
-      apiPath = 'http://localhost:3000/api/users/login';
+    let apiPath;
+    if (typeof window === 'undefined') {
+      // On the server, need absolute URL
+      if (process.env.VERCEL_URL) {
+        apiPath = `https://${process.env.VERCEL_URL}/api/users/login`;
+      } else if (process.env.NEXT_PUBLIC_BASE_URL) {
+        apiPath = `${process.env.NEXT_PUBLIC_BASE_URL}/api/users/login`;
+      } else {
+        apiPath = 'http://localhost:3000/api/users/login';
+      }
+    } else {
+      // On the client, relative path is fine
+      apiPath = '/api/users/login';
     }
     const res = await fetch(apiPath, {
       headers: {
