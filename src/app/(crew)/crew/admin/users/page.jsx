@@ -69,7 +69,7 @@ export default function UsersPage() {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const res = await fetch(`${process.env.VERCEL_URL}/api/users`)
+                const res = await fetch('/api/users')
                 if (!res.ok) throw new Error('Failed to fetch users')
                 const json = await res.json()
                 const data = json.data || []
