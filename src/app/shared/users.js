@@ -2,27 +2,23 @@ import { Redis } from '@upstash/redis';
 
 const redis = Redis.fromEnv();
 
-// Efficient async getter for dummyData
 export async function getDummyData() {
   try {
-    let baseUrl;
-
-    if (process.env.VERCEL_ENV === 'production') {
-      baseUrl = `https://${process.env.VERCEL_URL}`;
-    } else if (process.env.VERCEL_BRANCH_URL) {
-      baseUrl = `https://${process.env.VERCEL_BRANCH_URL}`;
-    } else {
-      baseUrl = 'http://localhost:3000';
+    let apiPath = '/api/users/login';
+    if (typeof window === 'undefined' && process.env.NODE_ENV === 'development') {
+      apiPath = 'http://localhost:3000/api/users/login';
     }
-
-    const res = await fetch('/api/users/login');
+    const res = await fetch(apiPath, {
+      headers: {
+        ...(typeof window === 'undefined' ? { Cookie: process.env.COOKIE || '' } : {})
+      },
+      cache: 'no-store',
+    });
     if (res.ok) {
       const json = await res.json();
-      // Ensure json.data is an array and convert discordId to string
       if (Array.isArray(json.data)) {
         return json.data.map(u => ({
           callsign: u.callsign,
-          // Convert discordId to string, handling potential null/undefined
           discordId: u.discordId != null ? String(u.discordId) : null
         }));
       } else {
@@ -31,9 +27,6 @@ export async function getDummyData() {
       }
     } else {
       console.error(`API request to /api/users/login failed: ${res.status} - ${res.statusText}`);
-      // Optionally log response body for more details:
-      // const errorBody = await res.text();
-      // console.error('Error response body:', errorBody);
     }
   } catch (e) {
     console.error('Error fetching users from DB in getDummyData:', e);
