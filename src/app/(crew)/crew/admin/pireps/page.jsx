@@ -29,8 +29,8 @@ export default async function AdminPirepsPage() {
           <SidebarComponent isAdmin={false} />
         )}
       </Box>
-            <Box ml="13rem" flex="1">
-                <Box mt="20" minH="100vh" p={6}>
+            <Box ml="4" flex="1">
+                <Box mt="10" minH="100vh" p={6}>
                     <Container maxW="100%" py="8">
                         <VStack spacing={6} align="stretch">
                             <Heading size="xl" color="fg">

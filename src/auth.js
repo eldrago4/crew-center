@@ -18,35 +18,36 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   callbacks: {
     async signIn({ user, account, profile, ...rest }) {
       const dummyData = await getDummyData();
-      let callsign
+      let callsign;
       if (!callsign) {
         try {
-          const c = await nextCookies()
-          callsign = c.get('pending-callsign')?.value
+          const c = await nextCookies();
+          callsign = c.get('pending-callsign')?.value;
         } catch (e) {
           if (rest?.request?.headers?.cookie) {
-            const cookies = parse(rest.request.headers.cookie)
-            callsign = cookies[ 'pending-callsign' ]
+            const cookies = parse(rest.request.headers.cookie);
+            callsign = cookies[ 'pending-callsign' ];
           }
         }
       }
 
-      if (!callsign) return false
+      if (!callsign) return false;
 
       const entry = dummyData.find(e => e.callsign === callsign);
       if (!entry) return false;
 
+      // Always set redirectToIfcName based on DB value for discordId
+      user.callsign = callsign;
+      user.discordId = account.providerAccountId;
+      user.redirectToIfcName = (entry.discordId === null || entry.discordId === undefined);
+
+      // Only allow sign in if discordId in DB is null or matches the current Discord account
       if (entry.discordId === null || entry.discordId === undefined) {
-        user.callsign = callsign;
-        user.redirectToIfcName = true;
-        user.discordId = account.providerAccountId;
         return true;
       }
-
       if (String(entry.discordId) !== String(account.providerAccountId)) {
         return false;
       }
-      user.callsign = callsign;
       return true;
     },
 
@@ -67,11 +68,16 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
     async session({ session, token }) {
       if (token?.callsign) {
         session.user.callsign = token.callsign;
-        if (typeof token?.redirectToIfcName === 'boolean') {
-          session.user.redirectToIfcName = token.redirectToIfcName;
-        } else {
-          session.user.redirectToIfcName = false;
+
+        let dbDiscordId = null;
+        try {
+          const dummyData = await getDummyData();
+          const entry = dummyData.find(e => e.callsign === token.callsign);
+          dbDiscordId = entry ? entry.discordId : null;
+        } catch (e) {
+          console.error('[AUTH SESSION] Error fetching user from getDummyData:', e);
         }
+        session.user.redirectToIfcName = (dbDiscordId === null || dbDiscordId === undefined);
 
         if (token.discordId) {
           session.user.discordId = token.discordId;

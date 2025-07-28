@@ -8,12 +8,19 @@ import { Box, Flex } from "@chakra-ui/react";
 export default async function RootLayout({ children }) {
   const session = await auth();
 
+
   if (!session) {
     redirect('/crew');
   }
 
-  // Redirect to IFC Name page if needed
-
+  // Only redirect if auth logic says so
+  if (session.user.redirectToIfcName) {
+    const params = new URLSearchParams({
+      callsign: session.user.callsign,
+      discordId: session.user.discordId || ''
+    }).toString();
+    redirect(`/ifc-name?${params}`);
+  }
 
   return (
     <Flex>
@@ -46,9 +53,9 @@ export default async function RootLayout({ children }) {
       </Box>
 
       {/* Main content area */}
-      <Box 
-        marginLeft="13rem" 
-        marginTop="60px" 
+      <Box
+        marginLeft="13rem"
+        marginTop="60px"
         flex="1"
       >
         {children}
