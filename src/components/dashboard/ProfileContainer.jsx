@@ -6,12 +6,21 @@ import { Grid } from '@chakra-ui/react'
 
 async function getUserData(callsign) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000'
-
-    const response = await fetch('/api/users/userdash?id=${callsign}', {
+    let baseUrl;
+    if (typeof window === 'undefined') {
+      if (process.env.NEXT_PUBLIC_VERCEL_URL) {
+        baseUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
+      } else if (process.env.VERCEL_URL) {
+        baseUrl = `https://${process.env.VERCEL_URL}`;
+      } else {
+        baseUrl = 'http://localhost:3000';
+      }
+    } else {
+      baseUrl = '';
+    }
+    const response = await fetch(`${baseUrl}/api/users/userdash?id=${callsign}`, {
       cache: 'no-store'
     })
-
     if (!response.ok) {
       throw new Error('Failed to fetch user data')
     }
@@ -26,9 +35,19 @@ async function getUserData(callsign) {
 
 async function getNotams() {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000';
-
-    const response = await fetch(`https://${process.env.VERCEL_URL}/api/notams`, {
+    let baseUrl;
+    if (typeof window === 'undefined') {
+      if (process.env.NEXT_PUBLIC_VERCEL_URL) {
+        baseUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
+      } else if (process.env.VERCEL_URL) {
+        baseUrl = `https://${process.env.VERCEL_URL}`;
+      } else {
+        baseUrl = 'http://localhost:3000';
+      }
+    } else {
+      baseUrl = '';
+    }
+    const response = await fetch(`${baseUrl}/api/notams`, {
       cache: 'no-store'
     })
 
