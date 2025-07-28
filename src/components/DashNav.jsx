@@ -23,7 +23,7 @@ const SlashSeparator = () => (
     </svg>
 );
 
-export default function DashNav() {
+export default function DashNav({ callsign }) {
     return (
         <Box
             position="fixed"
@@ -51,7 +51,7 @@ export default function DashNav() {
                 <SlashSeparator />
                 <Text fontSize="md" fontWeight="medium">INVA</Text>
                 <SlashSeparator />
-                <Text fontSize="md" fontWeight="medium">INVA011</Text>
+                <Text fontSize="md" fontWeight="medium">{callsign}</Text>
             </HStack>
         </Box>
     );

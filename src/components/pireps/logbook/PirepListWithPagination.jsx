@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import {
@@ -9,6 +7,13 @@ import {
   ButtonGroup,
   IconButton,
   Pagination,
+  Skeleton,
+  SkeletonCircle,
+  SkeletonText,
+  HStack,
+  Stack,
+  Card,
+  Separator
 } from '@chakra-ui/react';
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu';
 import { useState, useEffect } from 'react';
@@ -18,14 +23,19 @@ const PirepListWithPagination = ({ initialPireps, initialTotalPireps, userId }) 
   const [ pireps, setPireps ] = useState(initialPireps);
   const [ currentPage, setCurrentPage ] = useState(1);
   const [ totalPireps, setTotalPireps ] = useState(initialTotalPireps);
+  const [ loading, setLoading ] = useState(initialPireps.length === 0); // Initialize loading based on initialPireps
   const pageSize = 8;
 
   useEffect(() => {
     const fetchPireps = async () => {
-      if (currentPage === 1 && pireps.length > 0 && totalPireps > 0 && initialPireps.length > 0) {
+      if (currentPage === 1 && initialPireps.length > 0) {
+        setPireps(initialPireps);
+        setTotalPireps(initialTotalPireps);
+        setLoading(false); 
         return;
       }
 
+      setLoading(true);
       try {
         const response = await fetch(`/api/users/pireps?id=${userId}&page=${currentPage}&pageSize=${pageSize}`, {
           cache: 'no-store'
@@ -42,15 +52,78 @@ const PirepListWithPagination = ({ initialPireps, initialTotalPireps, userId }) 
         console.error("Error fetching PIREPs:", error);
         setPireps([]);
         setTotalPireps(0);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchPireps();
-  }, [ currentPage, userId, initialPireps, totalPireps ]);
+  }, [ currentPage, userId, initialPireps, initialTotalPireps ]); // Add initialPireps and initialTotalPireps to dependencies
 
   const handlePageChange = (details) => {
     setCurrentPage(details.page);
   };
+
+  if (loading) {
+    return (
+      <VStack spacing="4" align="start" width="full">
+        {Array.from({ length: pageSize }).map((_, index) => (
+          <Card.Root
+            key={index}
+            direction="row"
+            overflow="hidden"
+            variant="outline"
+            width="full"
+            maxW="3xl"
+            p="0"
+          >
+            <HStack spacing="0" align="stretch" width="full">
+              <VStack align="start" spacing="4" flex="1" p="4">
+                <HStack w="full" justify="space-between">
+                  <VStack align="start" spacing="1">
+                    <Skeleton height="14px" width="50px" />
+                    <Skeleton height="24px" width="100px" />
+                  </VStack>
+                  <VStack align="end" spacing="1">
+                    <Skeleton height="14px" width="50px" />
+                    <Skeleton height="24px" width="100px" />
+                  </VStack>
+                </HStack>
+
+                <HStack w="full" justify="space-between" align="center">
+                  <VStack align="start" spacing="1">
+                    <Skeleton height="14px" width="40px" />
+                    <Skeleton height="36px" width="80px" />
+                  </VStack>
+                  <SkeletonCircle size="8" />
+                  <VStack align="end" spacing="1">
+                    <Skeleton height="14px" width="40px" />
+                    <Skeleton height="36px" width="80px" />
+                  </VStack>
+                </HStack>
+
+                <Skeleton height="20px" width="full" mt="2" />
+              </VStack>
+
+              <Skeleton width="1px" height="full" />
+
+              <VStack w="140px" justify="space-between" p="4" bg="gray.100">
+                <VStack spacing="1">
+                  <Skeleton height="14px" width="70px" />
+                  <Skeleton height="24px" width="60px" />
+                </VStack>
+                <VStack spacing="1">
+                  <Skeleton height="14px" width="70px" />
+                  <Skeleton height="24px" width="40px" />
+                </VStack>
+                <Skeleton height="30px" width="100px" borderRadius="md" />
+              </VStack>
+            </HStack>
+          </Card.Root>
+        ))}
+      </VStack>
+    );
+  }
 
   return (
     <>

@@ -1,3 +1,4 @@
+
 'use client'
 import { useState, useEffect } from 'react'
 import {
@@ -26,10 +27,13 @@ import {
     FiChevronLeft,
     FiChevronRight,
 } from 'react-icons/fi'
+
 import SidebarComponent from '@/components/SideBar'
 import DashNav from '@/components/DashNav'
+import { useSession } from 'next-auth/react';
 
-export default function UsersPage() {
+function AdminUsersPage() {
+    const { data: session, status } = useSession();
     const [ users, setUsers ] = useState([])
     const [ filteredUsers, setFilteredUsers ] = useState([])
     const [ loading, setLoading ] = useState(true)
@@ -46,7 +50,7 @@ export default function UsersPage() {
 
     const handleRevokeAccess = async (userId) => {
         try {
-            const res = await fetch('/api/users?id=${userId}', {
+            const res = await fetch(`/api/users?id=${userId}`, {
                 method: 'DELETE'
             })
             if (!res.ok) {
@@ -125,6 +129,13 @@ export default function UsersPage() {
         })
     }
 
+    if (status === 'loading') {
+        return <div>Loading session...</div>;
+    }
+    if (!session) {
+        return <div>Session not found. Please log in.</div>;
+    }
+
     return (
         <Flex>
             <Box
@@ -157,8 +168,6 @@ export default function UsersPage() {
                 <Stack spacing={6}>
                     <Heading size="lg">Pilot Management Console</Heading>
                     <InputGroup maxW="md" startElement={<FiSearch color="fg-subtle" />}>
-
-
                         <Input
                             placeholder="Search users..."
                             value={searchTerm}
@@ -308,6 +317,9 @@ export default function UsersPage() {
                         </Stack>
                     </Pagination.Root>
                 </Stack>
-            </Box></Flex>
-    )
+            </Box>
+        </Flex>
+    );
 }
+
+export default AdminUsersPage;
