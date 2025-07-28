@@ -13,13 +13,7 @@ export default async function RootLayout({ children }) {
   }
 
   // Redirect to IFC Name page if needed
-  if (session.user.redirectToIfcName) {
-    const params = new URLSearchParams({
-      callsign: session.user.callsign,
-      discordId: session.user.discordId
-    }).toString();
-    redirect(`/ifc-name?${params}`);
-  }
+
 
   return (
     <Flex>

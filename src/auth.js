@@ -53,12 +53,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
     async jwt({ token, user }) {
       if (user?.callsign) token.callsign = user.callsign;
-      // Propagate redirectToIfcName from user to token, ensuring boolean type
       if (typeof user?.redirectToIfcName === 'boolean') {
         token.redirectToIfcName = user.redirectToIfcName;
       } else {
-        // If user.redirectToIfcName is not explicitly a boolean, ensure it's removed from token
-        // or set to a default if it should always be present. 'delete' is safer here.
         delete token.redirectToIfcName;
       }
 
@@ -70,7 +67,6 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
     async session({ session, token }) {
       if (token?.callsign) {
         session.user.callsign = token.callsign;
-
         if (typeof token?.redirectToIfcName === 'boolean') {
           session.user.redirectToIfcName = token.redirectToIfcName;
         } else {
