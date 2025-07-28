@@ -28,7 +28,7 @@ async function getNotams() {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || 'http://localhost:3000';
 
-    const response = await fetch('/api/notams', {
+    const response = await fetch(`https://${process.env.VERCEL_URL}/api/notams`, {
       cache: 'no-store'
     })
 
@@ -47,7 +47,7 @@ async function getNotams() {
 export default async function ProfileContainer({ user }) {
   if (!user) return null
 
-  const [userData, notamsData] = await Promise.all([
+  const [ userData, notamsData ] = await Promise.all([
     getUserData(user.callsign),
     getNotams()
   ])
