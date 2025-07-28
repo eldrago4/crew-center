@@ -1,47 +1,25 @@
+
+import db from '@/db/client';
+import { users } from '@/db/schema';
 import { Redis } from '@upstash/redis';
 
 const redis = Redis.fromEnv();
 
 export async function getDummyData() {
   try {
-    let apiPath;
-    if (typeof window === 'undefined') {
-      // On the server, need absolute URL
-      if (process.env.VERCEL_URL) {
-        apiPath = `https://${process.env.VERCEL_URL}/api/users/login`;
-      } else if (process.env.NEXT_PUBLIC_BASE_URL) {
-        apiPath = `${process.env.NEXT_PUBLIC_BASE_URL}/api/users/login`;
-      } else {
-        apiPath = 'http://localhost:3000/api/users/login';
-      }
-    } else {
-      // On the client, relative path is fine
-      apiPath = '/api/users/login';
+
+    if (typeof window !== 'undefined') {
+      throw new Error('function should only be called on the server');
     }
-    const res = await fetch(apiPath, {
-      headers: {
-        ...(typeof window === 'undefined' ? { Cookie: process.env.COOKIE || '' } : {})
-      },
-      cache: 'no-store',
-    });
-    if (res.ok) {
-      const json = await res.json();
-      if (Array.isArray(json.data)) {
-        return json.data.map(u => ({
-          callsign: u.callsign,
-          discordId: u.discordId != null ? String(u.discordId) : null
-        }));
-      } else {
-        console.warn('API response "data" is not an array in getDummyData:', json);
-        return [];
-      }
-    } else {
-      console.error(`API request to /api/users/login failed: ${res.status} - ${res.statusText}`);
-    }
+    const data = await db.select({ callsign: users.id, discordId: users.discordId }).from(users);
+    return (data || []).map(u => ({
+      callsign: u.callsign,
+      discordId: u.discordId != null ? String(u.discordId) : null
+    }));
   } catch (e) {
     console.error('Error fetching users from DB in getDummyData:', e);
+    return [];
   }
-  return [];
 }
 
 let cachedStaff = null;
