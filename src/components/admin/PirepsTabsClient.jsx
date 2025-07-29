@@ -21,7 +21,7 @@ export default function PirepsTabsClient() {
         setLoading(true);
         setError(null);
         try {
-            const url = '/api/users/pireps?valid=${valid}';
+            const url = `/api/users/pireps?valid=${valid}`;
             const res = await fetch(url, { cache: "no-store" });
             if (!res.ok) throw new Error("Failed to fetch PIREPs");
             const data = await res.json();
