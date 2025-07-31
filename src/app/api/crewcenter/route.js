@@ -8,9 +8,9 @@ import { NextResponse } from 'next/server';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const module = searchParams.get('module');
+    const moduleName = searchParams.get('module');
 
-    if (!module) {
+    if (!moduleName) {
       return new Response(
         JSON.stringify({ error: 'Module parameter is required' }),
         {
@@ -23,11 +23,11 @@ export async function GET(request) {
     const result = await db
       .select()
       .from(crewcenter)
-      .where(eq(crewcenter.module, module));
+      .where(eq(crewcenter.module, moduleName));
 
     if (result.length === 0) {
       return new Response(
-        JSON.stringify({ error: `Module '${module}' not found` }),
+        JSON.stringify({ error: `Module '${moduleName}' not found` }),
         {
           status: 404,
           headers: { 'Content-Type': 'application/json' },
