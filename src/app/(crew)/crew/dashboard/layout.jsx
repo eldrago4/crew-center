@@ -46,8 +46,11 @@ export default async function RootLayout({ children }) {
         zIndex={1}
       >
         {session.user.permissions?.length > 0 ? (
-          <SidebarComponent isAdmin={true} />
-        ) : (
+          () => {
+            const isCEO = session.user.permissions.includes("ceo");
+            return <SidebarComponent isAdmin={true} ceo={isCEO} />;
+          }
+        )() : (
           <SidebarComponent isAdmin={false} />
         )}
       </Box>

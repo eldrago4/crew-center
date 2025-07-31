@@ -63,7 +63,7 @@ export default function PirepsTable({ pireps }) {
                             </Table.Header>
                             <Table.Body>
                                 {pireps.map((pirep) => (
-                                    <Table.Row key={pirep.id}>
+                                    <Table.Row key={pirep.pirepId}>
                                         <Table.Cell fontWeight="medium">{pirep.flightNumber}</Table.Cell>
                                         <Table.Cell>{pirep.departureIcao}</Table.Cell>
                                         <Table.Cell>{pirep.arrivalIcao}</Table.Cell>

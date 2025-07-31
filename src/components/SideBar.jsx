@@ -13,7 +13,6 @@ import RoleSelectorSegmentGroup from '@/components/RoleSelectorSegmentGroup';
 const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false}) => {
   const [ currentValue, setCurrentValue ] = useState("pilot");
 
-  // Updated BUTTON_SECTIONS to include disabled prop for careerMode
   const BUTTON_SECTIONS = {
     dashboard: [ { label: "Profile", href: "/crew/dashboard" } ],
     pireps: [
@@ -62,9 +61,10 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false}) =
     width: "100%",
     margin: "-5px",
     justifyContent: "flex-start",
+    transition: "all 0.2s ease-in-out",
     _hover: {
-      bg: 'blue.200',
-      fontWeight: 'bold'
+      bg: 'blue.50',
+      color: 'blue.600',
     }
   };
 

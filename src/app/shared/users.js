@@ -1,4 +1,3 @@
-
 import db from '@/db/client';
 import { users } from '@/db/schema';
 import { Redis } from '@upstash/redis';
@@ -7,7 +6,6 @@ const redis = Redis.fromEnv();
 
 export async function getDummyData() {
   try {
-
     if (typeof window !== 'undefined') {
       throw new Error('function should only be called on the server');
     }
@@ -35,5 +33,23 @@ export async function getStaff() {
   } catch (error) {
     console.error('Error fetching staff from Redis:', error);
     return null;
+  }
+}
+
+
+export async function updateStaff(jsonData) {
+  try {
+    if (typeof window !== 'undefined') {
+      throw new Error('updateStaff function should only be called on the server');
+    }
+
+    await redis.json.set('staff', '$', jsonData);
+
+    cachedStaff = null; 
+
+    return { success: true, message: 'Staff data updated successfully.' };
+  } catch (error) {
+    console.error('Error updating staff data in Redis:', error);
+    return { success: false, message: 'Failed to update staff data.', error: error.message };
   }
 }
