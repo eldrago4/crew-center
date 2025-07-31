@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
     Button,
@@ -11,77 +11,75 @@ import {
     Stack,
     Tabs,
     Textarea,
-} from '@chakra-ui/react'
-import { useState } from 'react'
+} from '@chakra-ui/react';
+import { useState } from 'react';
 
-// Mock data for select inputs
-const aircraftOptions = [ "Airbus A320", "Boeing 737", "ATR 72-600", "Bombardier Q400" ];
-const operatorOptions = [ "Indian Virtual", "IndiGo Virtual", "Vistara Virtual" ];
+// The component receives pre-fetched data and the userId as props from its parent Server Component.
+export function PirepForm({ userId, initialAircraft, initialOperators, initialMultipliers, initialIfatcMultipliers }) {
+    // Get today's date in YYYY-MM-DD format for default input values.
+    const today = new Date().toISOString().split('T')[0];
 
-const multiplierOptions = [
-    { value: "1.0", label: "1.0 - Standard Flight", description: "Standard flight with no special events or circumstances." },
-    { value: "1.5", label: "1.5 - Inaugural Event", description: "First flight of a new route, aircraft type, or airline service." },
-    { value: "2.0", label: "2.0 - Special Event", description: "Flight supporting special events like holidays, seasonal services, or promotional flights." },
-    { value: "2.5", label: "2.5 - Major Event", description: "Flight during major aviation events, airshows, or significant operational milestones." },
-    { value: "3.0", label: "3.0 - Anniversary Event", description: "Flight celebrating important anniversaries, company milestones, or historic aviation events." }
-];
+    // --- Data from Props ---
+    // Derive options from props, with empty arrays as a fallback to prevent errors.
+    const aircraftOptions = initialAircraft || [];
+    const operatorOptions = initialOperators || [];
+    const multiplierOptions = initialMultipliers || [{ label: 'Regular Flight', value: '1.0', description: '' }];
+    const ifatcMultiplierOptions = initialIfatcMultipliers || [];
 
-export default function PirepForm({ userId }) {
-    const today = new Date().toISOString().split('T')[ 0 ];
+    // --- State for Flight form fields ---
+    const [flightDate, setFlightDate] = useState(today);
+    const [flightNumber, setFlightNumber] = useState('');
+    const [departureIcao, setDepartureIcao] = useState('');
+    const [arrivalIcao, setArrivalIcao] = useState('');
+    const [aircraft, setAircraft] = useState(aircraftOptions[0] || 'None available');
+    const [operator, setOperator] = useState(operatorOptions[0] || 'None available');
+    const [flightTime, setFlightTime] = useState({ hh: '', mm: '' });
+    const [selectedMultiplier, setSelectedMultiplier] = useState(multiplierOptions[0]?.value?.toString() || '1.0');
+    // MODIFIED: Initialize comments with the description of the default multiplier.
+    const [comments, setComments] = useState(multiplierOptions[0]?.description || '');
 
-    // --- NEW: State for ALL Flight form fields ---
-    const [ flightDate, setFlightDate ] = useState(today);
-    const [ flightNumber, setFlightNumber ] = useState('');
-    const [ departureIcao, setDepartureIcao ] = useState('');
-    const [ arrivalIcao, setArrivalIcao ] = useState('');
-    const [ aircraft, setAircraft ] = useState(aircraftOptions[ 0 ]);
-    const [ operator, setOperator ] = useState(operatorOptions[ 0 ]);
-    const [ flightTime, setFlightTime ] = useState({ hh: '', mm: '' });
-    const [ selectedMultiplier, setSelectedMultiplier ] = useState('1.0');
-    const [ comments, setComments ] = useState('Standard flight with no special events or circumstances.');
-
-    // --- NEW: State for ALL IFATC form fields ---
-    const [ ifatcDate, setIfatcDate ] = useState(today);
-    const [ airportIcao, setAirportIcao ] = useState('');
-    const [ ifatcTime, setIfatcTime ] = useState({ open: '', close: '' });
-    const [ selectedIfatcMultiplier, setSelectedIfatcMultiplier ] = useState('1.0');
-    const [ ifatcComments, setIfatcComments ] = useState('Standard flight with no special events or circumstances.');
+    // --- State for IFATC form fields ---
+    const [ifatcDate, setIfatcDate] = useState(today);
+    const [airportIcao, setAirportIcao] = useState('');
+    const [ifatcTime, setIfatcTime] = useState({ open: '', close: '' });
+    const [selectedIfatcMultiplier, setSelectedIfatcMultiplier] = useState('0');
+    // MODIFIED: Initialize IFATC comments with the description of the default multiplier.
+    const [ifatcComments, setIfatcComments] = useState(ifatcMultiplierOptions[0]?.description || '');
 
 
+    // Handles form submission for both Flight and IFATC PIREPs.
     const handleSubmit = async (type) => {
         try {
             let formData = {};
 
             if (type === 'flight') {
-                // --- MODIFIED: Read from state, not the DOM ---
                 formData = {
-                    flightNumber: flightNumber,
+                    flightNumber,
                     date: flightDate,
                     flightTime: `${flightTime.hh.padStart(2, '0')}:${flightTime.mm.padStart(2, '0')}:00`,
-                    departureIcao: departureIcao,
-                    arrivalIcao: arrivalIcao,
-                    aircraft: aircraft,
-                    operator: operator,
+                    departureIcao,
+                    arrivalIcao,
+                    aircraft,
+                    operator,
                     multiplier: selectedMultiplier,
-                    comments: comments,
-                    userId: userId
+                    comments,
+                    userId
                 };
             } else if (type === 'ifatc') {
-                // --- MODIFIED: Read from state, not the DOM ---
                 const openTimeStr = ifatcTime.open;
                 const closeTimeStr = ifatcTime.close;
-                
-                // Simple validation
+
                 if (!airportIcao || !openTimeStr || !closeTimeStr) {
                     alert("Please fill in Airport, Open Time, and Close Time.");
                     return;
                 }
 
+                // Calculate total session time for IFATC
                 const openDate = new Date(`1970-01-01T${openTimeStr}:00`);
                 const closeDate = new Date(`1970-01-01T${closeTimeStr}:00`);
 
                 let timeDifference = closeDate.getTime() - openDate.getTime();
-                if (timeDifference < 0) {
+                if (timeDifference < 0) { // Handles sessions that cross midnight
                     timeDifference += 24 * 60 * 60 * 1000;
                 }
 
@@ -97,12 +95,13 @@ export default function PirepForm({ userId }) {
                     arrivalIcao: airportIcao,
                     aircraft: '',
                     operator: 'Indian Virtual',
-                    multiplier: selectedIfatcMultiplier,
+                    multiplier: ifatcMultiplierOptions[selectedIfatcMultiplier]?.value || '1.0',
                     comments: ifatcComments,
-                    userId: userId
+                    userId
                 };
             }
-            
+
+            // Post the prepared data to the API endpoint.
             const response = await fetch('/api/users/pireps', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -115,10 +114,10 @@ export default function PirepForm({ userId }) {
                 const error = await response.json();
                 alert(`Error: ${error.error || 'Failed to submit PIREP'}`);
             }
-            } catch (err) {
-                console.error('An error occurred during PIREP submission:', err);
-                alert('An unexpected error occurred. Please try again.');
-            }
+        } catch (err) {
+            console.error('An error occurred during PIREP submission:', err);
+            alert('An unexpected error occurred. Please try again.');
+        }
     };
 
     return (
@@ -134,32 +133,28 @@ export default function PirepForm({ userId }) {
                         <Fieldset.Legend>Flight Details</Fieldset.Legend>
                         <Fieldset.Content as={Stack} spacing={5}>
                             <SimpleGrid columns={{ base: 1, md: 2 }} gap={8}>
+                                {/* Fields for Flight Details... */}
                                 <Field.Root>
                                     <Field.Label>Arrival Date</Field.Label>
-                                    {/* --- MODIFIED: Controlled component --- */}
                                     <Input type="date" value={flightDate} onChange={(e) => setFlightDate(e.target.value)} />
                                 </Field.Root>
                                 <Field.Root>
                                     <Field.Label>Flight Number</Field.Label>
-                                    {/* --- MODIFIED: Controlled component --- */}
                                     <Input placeholder="IV1234" value={flightNumber} onChange={(e) => setFlightNumber(e.target.value)} />
                                 </Field.Root>
                                 <Field.Root>
                                     <Field.Label>Departure (ICAO)</Field.Label>
-                                    {/* --- MODIFIED: Controlled component --- */}
                                     <Input placeholder="e.g., VOMM" value={departureIcao} onChange={(e) => setDepartureIcao(e.target.value)} />
                                 </Field.Root>
                                 <Field.Root>
                                     <Field.Label>Arrival (ICAO)</Field.Label>
-                                    {/* --- MODIFIED: Controlled component --- */}
                                     <Input placeholder="e.g., VECC" value={arrivalIcao} onChange={(e) => setArrivalIcao(e.target.value)} />
                                 </Field.Root>
                                 <Field.Root>
                                     <Field.Label>Aircraft</Field.Label>
                                     <NativeSelect.Root>
-                                        {/* --- MODIFIED: Controlled component --- */}
                                         <NativeSelect.Field value={aircraft} onChange={(e) => setAircraft(e.target.value)}>
-                                            {aircraftOptions.map((ac) => <option key={ac} value={ac}>{ac}</option>)}
+                                            {aircraftOptions.map((ac, index) => <option key={`${ac}-${index}`} value={ac}>{ac}</option>)}
                                         </NativeSelect.Field>
                                         <NativeSelect.Indicator />
                                     </NativeSelect.Root>
@@ -167,9 +162,8 @@ export default function PirepForm({ userId }) {
                                 <Field.Root>
                                     <Field.Label>Operator</Field.Label>
                                     <NativeSelect.Root>
-                                        {/* --- MODIFIED: Controlled component --- */}
                                         <NativeSelect.Field value={operator} onChange={(e) => setOperator(e.target.value)}>
-                                            {operatorOptions.map((op) => <option key={op} value={op}>{op}</option>)}
+                                            {operatorOptions.map((op, index) => <option key={`${op}-${index}`} value={op}>{op}</option>)}
                                         </NativeSelect.Field>
                                         <NativeSelect.Indicator />
                                     </NativeSelect.Root>
@@ -189,21 +183,26 @@ export default function PirepForm({ userId }) {
                                             onChange={(e) => {
                                                 const value = e.target.value;
                                                 setSelectedMultiplier(value);
-                                                const selected = multiplierOptions.find(opt => opt.value === value);
-                                                if (selected) setComments(selected.description);
+                                                // MODIFIED: Find the full multiplier object to get its description.
+                                                // We compare values as strings because e.target.value is always a string.
+                                                const selected = multiplierOptions.find(opt => opt.value.toString() === value);
+                                                // If a matching object is found, update the comments state.
+                                                if (selected) {
+                                                    setComments(selected.description);
+                                                }
                                             }}
                                         >
-                                            {multiplierOptions.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
+                                            {multiplierOptions.map((opt, index) => (<option key={`${opt.value}-${index}`} value={opt.value}>{opt.label}</option>))}
                                         </NativeSelect.Field>
                                         <NativeSelect.Indicator />
                                     </NativeSelect.Root>
                                 </Field.Root>
                             </SimpleGrid>
                             <Field.Root>
-                                <Field.Label>Comments</Field.Label>
+                                <Field.Label>Pilot Remarks</Field.Label>
                                 <Textarea placeholder="Add any comments about your flight..." value={comments} onChange={(e) => setComments(e.target.value)} />
                             </Field.Root>
-                            <Button alignSelf="flex-start" colorScheme="blue" onClick={() => handleSubmit('flight')}>Submit Flight PIREP</Button>
+                            <Button alignSelf="flex-start" onClick={() => handleSubmit('flight')}>Submit Flight PIREP</Button>
                         </Fieldset.Content>
                     </Fieldset.Root>
                 </form>
@@ -215,22 +214,21 @@ export default function PirepForm({ userId }) {
                         <Fieldset.Legend>IFATC Session Details</Fieldset.Legend>
                         <Fieldset.Content as={Stack} spacing={10}>
                             <SimpleGrid columns={{ base: 1, md: 2 }} gap={12}>
+                                {/* Fields for IFATC Details... */}
                                 <Field.Root>
                                     <Field.Label>Date</Field.Label>
-                                    {/* --- MODIFIED: Controlled component --- */}
                                     <Input type="date" value={ifatcDate} onChange={(e) => setIfatcDate(e.target.value)} />
                                 </Field.Root>
                                 <Field.Root>
                                     <Field.Label>Airport (ICAO)</Field.Label>
-                                    {/* --- MODIFIED: Controlled component --- */}
                                     <Input placeholder="e.g., VIDP" value={airportIcao} onChange={(e) => setAirportIcao(e.target.value)} />
                                 </Field.Root>
                                 <Field.Root>
-                                    <Field.Label>Open Time (UTC)</Field.Label>
+                                    <Field.Label>Open Time (Local)</Field.Label>
                                     <Input type="time" w="120px" value={ifatcTime.open} onChange={(e) => setIfatcTime({ ...ifatcTime, open: e.target.value })} />
                                 </Field.Root>
                                 <Field.Root>
-                                    <Field.Label>Close Time (UTC)</Field.Label>
+                                    <Field.Label>Close Time (Local)</Field.Label>
                                     <Input type="time" w="120px" value={ifatcTime.close} onChange={(e) => setIfatcTime({ ...ifatcTime, close: e.target.value })} />
                                 </Field.Root>
                                 <Field.Root>
@@ -241,21 +239,25 @@ export default function PirepForm({ userId }) {
                                             onChange={(e) => {
                                                 const value = e.target.value;
                                                 setSelectedIfatcMultiplier(value);
-                                                const selected = multiplierOptions.find(opt => opt.value === value);
-                                                if (selected) setIfatcComments(selected.description);
+                                                // MODIFIED: Find the full multiplier object to get its description.
+                                                const selected = ifatcMultiplierOptions[value];
+                                                // If a matching object is found, update the comments state.
+                                                if (selected) {
+                                                    setIfatcComments(selected.description);
+                                                }
                                             }}
                                         >
-                                            {multiplierOptions.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
+                                            {ifatcMultiplierOptions.map((opt, index) => (<option key={`${opt.value}-${index}`} value={index}>{opt.label}</option>))}
                                         </NativeSelect.Field>
                                         <NativeSelect.Indicator />
                                     </NativeSelect.Root>
                                 </Field.Root>
                             </SimpleGrid>
                             <Field.Root>
-                                <Field.Label>Comments</Field.Label>
+                                <Field.Label>ATC Remarks</Field.Label>
                                 <Textarea placeholder="Add any comments about your session..." value={ifatcComments} onChange={(e) => setIfatcComments(e.target.value)} />
                             </Field.Root>
-                            <Button alignSelf="flex-start" colorScheme="blue" onClick={() => handleSubmit('ifatc')}>Submit IFATC PIREP</Button>
+                            <Button alignSelf="flex-start" onClick={() => handleSubmit('ifatc')}>Submit IFATC PIREP</Button>
                         </Fieldset.Content>
                     </Fieldset.Root>
                 </form>

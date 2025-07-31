@@ -64,3 +64,9 @@ export const notams = pgTable("notams", {
 	desc: text().notNull(),
 	expiresOn: timestamp({ mode: 'string' }),
 });
+
+
+export const crewcenter = pgTable("crewcenter", {
+	module: text().primaryKey().notNull(),
+	value: jsonb(),
+});

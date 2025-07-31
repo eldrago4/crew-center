@@ -1,11 +1,8 @@
 import { auth } from '@/auth'
-import {
-    Box,
-} from '@chakra-ui/react'
-import SidebarComponent from '@/components/SideBar'
+import { Box } from '@chakra-ui/react'
 import { redirect } from 'next/navigation'
-import PirepForm from '@/components/pireps/file/PirepForm'
-
+import { PirepForm } from '@/components/pireps/file/PirepForm'
+import { fetchFleetModule } from '@/app/(crew)/crew/pireps/file/fleetModule.js'
 
 export default async function FilePirepPage() {
     const session = await auth()
@@ -14,12 +11,34 @@ export default async function FilePirepPage() {
         redirect('/crew')
     }
 
+    let fleetData, operatorsData, multipliersData, ifatcMultipliersData;
+
+    try {
+        [fleetData, operatorsData, multipliersData, ifatcMultipliersData] = await Promise.all([
+            fetchFleetModule('fleet'),
+            fetchFleetModule('operators'),
+            fetchFleetModule('multipliers'),
+            fetchFleetModule('ifatcMultipliers')
+        ]);
+    } catch (error) {
+        console.error("Failed to fetch PIREP form data:", error);
+        fleetData = [];
+        operatorsData = [];
+        multipliersData = [];
+        ifatcMultipliersData = [];
+    }
+
     return (
         <>
-
             <Box p={4} ml="10" flex="1">
                 <Box mt="20" minH="100vh" bgColor="blackAlpha.200" rounded="md" p={6}>
-                    <PirepForm userId={session.user.callsign} />
+                    <PirepForm
+                        userId={session.user.callsign}
+                        initialAircraft={fleetData}
+                        initialOperators={operatorsData}
+                        initialMultipliers={multipliersData}
+                        initialIfatcMultipliers={ifatcMultipliersData}
+                    />
                 </Box>
             </Box>
         </>
