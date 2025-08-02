@@ -23,11 +23,9 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
   const [isMobileNavVisible, setIsMobileNavVisible] = useState(true);
   const lastScrollY = useRef(0);
 
-  // --- Scroll handler to show/hide mobile nav ---
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      // Hide only if scrolling down and past the header
       if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
         setIsMobileNavVisible(false);
       } else {
@@ -40,8 +38,6 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-
-  // --- Data with Icons ---
   const BUTTON_SECTIONS = {
     dashboard: [{ label: "Profile", href: "/crew/dashboard", icon: FiUser }],
     pireps: [
@@ -76,39 +72,33 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     ...(ceo ? [{ label: "Server Config", href: "/crew/admin/server-config", icon: FiServer }] : []),
   ];
 
-  // --- Style Props ---
   const sectionHeaderProps = {
     fontWeight: "light",
     fontSize: "2xs",
     color: "gray.500",
     textTransform: "uppercase",
-    width: "100%",
-    mt: 0.5,
-    mb: 0,
+    width: "100%"
   };
 
   const desktopButtonProps = {
     variant: "ghost",
-    size: "sm",
+    size: "xs",
     width: "100%",
+    margin: "-5px",
     justifyContent: "flex-start",
     transition: "all 0.2s ease-in-out",
     _hover: {
       bg: 'blue.50',
       color: 'blue.600',
-    },
+    }
   };
 
-  // --- Event Handlers ---
   const handleValueChange = (value) => {
     setCurrentValue(value);
   };
 
-  // --- Render Functions ---
-
-  // Renders buttons for the original desktop sidebar
   const renderDesktopButtons = (buttons) => (
-    <ButtonGroup orientation="vertical" spacing={0} width="80%">
+    <ButtonGroup orientation="vertical" spacing={4} width="100%">
       {buttons.map(({ label, href, disabled }, idx) => (
         <Button
           key={idx}
@@ -123,18 +113,17 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     </ButtonGroup>
   );
 
-  // Renders the new "square chunk" buttons for the mobile bar
   const renderMobileButtons = (buttons) => (
     <Flex
       as="nav"
       overflowX="auto"
-      // Hide scrollbar for a cleaner look on supported browsers
       css={{
-        '&::-webkit-scrollbar': {
-          display: 'none',
-        },
+        '&::-webkit-scrollbar': { height: '6px' },
+        '&::-webkit-scrollbar-track': { background: 'transparent' },
+        '&::-webkit-scrollbar-thumb': { background: '#CBD5E0', borderRadius: '3px' },
+        '&::-webkit-scrollbar-thumb:hover': { background: '#A0AEC0' },
         'scrollbarWidth': 'thin',
-        'scrollbarColor': '#A0AEC0 transparent'
+        'scrollbarColor': '#A0AEC0 transparent',
       }}
     >
       <HStack spacing={3}>
@@ -143,7 +132,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
             return (
               <Box key="segment-control" p={2} bg="transparent" borderRadius="md">
                 <RoleSelectorSegmentGroup
-                  mobileOrientation={true}
+                  orientation="vertical"
                   onChange={handleValueChange}
                   defaultValue={currentValue}
                 />
@@ -185,7 +174,6 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     </Flex>
   );
 
-  // Determine which set of buttons to show in the mobile view
   const baseMobileButtons = currentValue === 'admin'
     ? adminButtons
     : Object.values(BUTTON_SECTIONS).flat();
@@ -194,15 +182,13 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     ? [...baseMobileButtons, { isSegmentControl: true }]
     : baseMobileButtons;
 
-  // --- Component Return ---
   return (
     <>
-      {/* ===== DESKTOP SIDEBAR ===== */}
       <Box
         display={{ base: 'none', md: 'block' }}
         bg="white"
-        px={4}
-        py={4}
+        px={5}
+        py={30}
         w="250px"
         h="100vh"
         borderRightWidth="1px"
@@ -211,29 +197,31 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
         top="60px"
         left={0}
       >
-        <VStack width="100%" align="flex-start" spaceY={-2.5}>
+        <VStack width="100%">
+          {currentValue !== "admin" && (
+            <>
+              {Object.entries(BUTTON_SECTIONS).map(([section, buttons]) => (
+                <div key={section} style={{ width: '100%' }}>
+                  <Text {...sectionHeaderProps}>{section.toUpperCase()}</Text>
+                  {renderDesktopButtons(buttons)}
+                </div>
+              ))}
+            </>
+          )}
+
           {isAdmin && (
             <RoleSelectorSegmentGroup onChange={handleValueChange} defaultValue={currentValue} />
           )}
-          {currentValue !== "admin" ? (
-            <>
-              {Object.entries(BUTTON_SECTIONS).map(([section, buttons]) => (
-                <Box key={section} w="100%">
-                  <Text {...sectionHeaderProps}>{section}</Text>
-                  {renderDesktopButtons(buttons)}
-                </Box>
-              ))}
-            </>
-          ) : (
-            <Box w="100%">
+
+          {currentValue === "admin" && (
+            <div style={{ width: '100%' }}>
               <Text {...sectionHeaderProps}>ADMIN TOOLS</Text>
               {renderDesktopButtons(adminButtons)}
-            </Box>
+            </div>
           )}
         </VStack>
       </Box>
 
-      {/* ===== MOBILE TOP BAR ===== */}
       <Box
         display={{ base: 'block', md: 'none' }}
         position="fixed"
@@ -244,6 +232,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
         borderBottomWidth="1px"
         borderColor="gray.200"
         px={3}
+        pt={2}
         zIndex="docked"
         transform={isMobileNavVisible ? 'translateY(0)' : 'translateY(-100%)'}
         transition="transform 0.3s ease-in-out"
