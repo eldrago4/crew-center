@@ -1,13 +1,9 @@
 import { auth } from '@/auth'
-import DashNav from "@/components/DashNav";
-import SidebarComponent from "@/components/SideBar";
 import { redirect } from 'next/navigation'
-import { Box, Flex } from "@chakra-ui/react";
-
+import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
 
 export default async function RootLayout({ children }) {
   const session = await auth();
-
 
   if (!session) {
     redirect('/crew');
@@ -22,47 +18,16 @@ export default async function RootLayout({ children }) {
     redirect(`/ifc-name?${params}`);
   }
 
+  const isCEO = session.user.permissions?.includes("ceo") || false;
+  const isAdmin = session.user.permissions?.length > 0 || false;
+
   return (
-    <Flex>
-      {/* DashNav - positioned above sidebar with higher z-index */}
-      <Box
-        position="fixed"
-        top="0"
-        left="0"
-        width="100vw"
-        zIndex={10}
-        marginBottom={10}
-      >
-        <DashNav callsign={session.user.callsign} />
-      </Box>
-
-      {/* Sidebar */}
-      <Box
-        position="fixed"
-        top="0"
-        left="0"
-        height="100vh"
-        width="13rem"
-        zIndex={1}
-      >
-        {session.user.permissions?.length > 0 ? (
-          () => {
-            const isCEO = session.user.permissions.includes("ceo");
-            return <SidebarComponent isAdmin={true} ceo={isCEO} />;
-          }
-        )() : (
-          <SidebarComponent isAdmin={false} />
-        )}
-      </Box>
-
-      {/* Main content area */}
-      <Box
-        marginLeft="13rem"
-        marginTop="60px"
-        flex="1"
-      >
-        {children}
-      </Box>
-    </Flex>
+    <ResponsiveCrewLayout 
+      callsign={session.user.callsign}
+      isAdmin={isAdmin}
+      ceo={isCEO}
+    >
+      {children}
+    </ResponsiveCrewLayout>
   );
 }

@@ -1,9 +1,10 @@
 import { auth } from '@/auth';
-import { Box, Heading, Container, VStack } from '@chakra-ui/react';
-import SidebarComponent from '@/components/SideBar';
+import { Heading, Container, VStack } from '@chakra-ui/react';
 import { redirect } from 'next/navigation';
+import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
 
 import PirepsTabsClient from '@/components/admin/PirepsTabsClient';
+
 function PirepsTabsWrapper() {
     return <PirepsTabsClient />;
 }
@@ -13,34 +14,19 @@ export default async function AdminPirepsPage() {
     if (!session) {
         redirect('/crew');
     }
+    
     return (
-        <>
-            <Box
-        position="relative"
-        top="0"
-        left="0"
-        height="100vh"
-        width="13rem"
-        zIndex={1}
-      >
-        {session.user.permissions?.length > 0 ? (
-          <SidebarComponent isAdmin={true} />
-        ) : (
-          <SidebarComponent isAdmin={false} />
-        )}
-      </Box>
-            <Box ml="4" flex="1">
-                <Box mt="10" minH="100vh" p={6}>
-                    <Container maxW="100%" py="8">
-                        <VStack spacing={6} align="stretch">
-                            <Heading size="xl" color="fg">
-                                Admin PIREP Review
-                            </Heading>
-                            <PirepsTabsWrapper />
-                        </VStack>
-                    </Container>
-                </Box>
+        <ResponsiveCrewLayout isAdmin={true} callsign={session.user.callsign}>
+            <Box p={{ base: 4, md: 6 }} minH="100vh">
+                <Container maxW="100%" py={{ base: 4, md: 8 }}>
+                    <VStack spacing={6} align="stretch">
+                        <Heading size="xl" color="fg">
+                            Admin PIREP Review
+                        </Heading>
+                        <PirepsTabsWrapper />
+                    </VStack>
+                </Container>
             </Box>
-        </>
+        </ResponsiveCrewLayout>
     );
 }

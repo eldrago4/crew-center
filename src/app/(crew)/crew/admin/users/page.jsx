@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import {
     Box,
-    Flex,
     Heading,
     Input,
     InputGroup,
@@ -12,7 +11,6 @@ import {
     IconButton,
     Menu,
     Text,
-    HStack,
     Button
 } from '@chakra-ui/react'
 
@@ -28,9 +26,8 @@ import {
     FiChevronRight,
 } from 'react-icons/fi'
 
-import SidebarComponent from '@/components/SideBar'
-import DashNav from '@/components/DashNav'
 import { useSession } from 'next-auth/react';
+import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
 
 function AdminUsersPage() {
     const { data: session, status } = useSession();
@@ -137,34 +134,8 @@ function AdminUsersPage() {
     }
 
     return (
-        <Flex>
-            <Box
-                position="relative"
-                top="0"
-                left="0"
-                height="100vh"
-                width="13rem"
-                zIndex={1}
-            >
-                {session.user.permissions?.length > 0 ? (
-                    <SidebarComponent isAdmin={true} />
-                ) : (
-                    <SidebarComponent isAdmin={false} />
-                )}
-            </Box>
-
-            {/* DashNav - positioned above sidebar with higher z-index */}
-            <Box
-                position="fixed"
-                top="0"
-                left="0"
-                width="100vw"
-                zIndex={10}
-                marginBottom={15}
-            >
-                <DashNav />
-            </Box>
-            <Box p={6} marginTop="60px" flex="1">
+        <ResponsiveCrewLayout isAdmin={true} callsign={session.user.callsign}>
+            <Box p={{ base: 4, md: 6 }} minH="100vh">
                 <Stack spacing={6}>
                     <Heading size="lg">Pilot Management Console</Heading>
                     <InputGroup maxW="md" startElement={<FiSearch color="fg-subtle" />}>
@@ -318,7 +289,7 @@ function AdminUsersPage() {
                     </Pagination.Root>
                 </Stack>
             </Box>
-        </Flex>
+        </ResponsiveCrewLayout>
     );
 }
 

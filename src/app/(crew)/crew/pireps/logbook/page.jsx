@@ -22,7 +22,7 @@ export default async function LogbookPage() {
   return (
     <>
 
-      <Container maxW="container.xl" p="4" marginLeft="10" marginTop="10">
+      <Container maxW="container.xl" p="4" marginTop="10">
         <Box>
           <Heading as="h1" size="xl" mb="6">
             Logbook

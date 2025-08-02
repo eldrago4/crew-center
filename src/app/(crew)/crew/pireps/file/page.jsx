@@ -30,8 +30,8 @@ export default async function FilePirepPage() {
 
     return (
         <>
-            <Box p={4} ml="10" flex="1">
-                <Box mt="20" minH="100vh" bgColor="blackAlpha.200" rounded="md" p={6}>
+            <Box p={{ base: 4, md: 4 }} flex="1">
+                <Box minH="100vh" bgColor="blackAlpha.200" rounded="md" p={6}>
                     <PirepForm
                         userId={session.user.callsign}
                         initialAircraft={fleetData}

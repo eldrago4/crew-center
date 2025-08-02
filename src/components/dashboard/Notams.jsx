@@ -14,7 +14,7 @@ export default function Notams({ notams = [] }) {
 
   return (
 <Table.ScrollArea maxH="320px" overflowX="hidden" rounded="md">
-  <Table.Root mt="8" mr="5" borderWidth="1px">
+  <Table.Root mt="8" borderWidth="1px">
     <Table.Header>
       <Table.Row>
         <Table.ColumnHeader colSpan={3} textAlign="center">NOTAMS</Table.ColumnHeader>

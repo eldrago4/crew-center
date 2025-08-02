@@ -37,7 +37,7 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
   }
 
   return (
-    <Container maxW="100%" py="8" pl="4">
+    <Container maxW="100%" py="8" px="4">
       <Box
         bg="whiteAlpha.200"
         backdropFilter="auto"
@@ -47,8 +47,7 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
         rounded="xl"
         p="8"
         shadow="sm"
-        maxW="350px"
-        ml="0"
+        w="100%"
       >
         <Stack spacing="8">
           {/* User Profile Header */}
