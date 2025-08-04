@@ -23,11 +23,11 @@ import CountUp from 'react-countup';
 
 const stats = [
     { count: 2400, label: 'Global Routes', icon: <FaGlobe size="3rem" />, colorPalette: 'blue', gradient: 'linear-gradient(to right, #3182CE, #4299E1)' },
-    { count: 130, label: 'Active Pilots', icon: <FaUsers size="3rem" />, colorPalette: 'green', gradient: 'linear-gradient(to right, #38A169, #48BB78)' },
-    { count: 200, label: 'Discord Members', icon: <FaDiscord size="3rem" />, colorPalette: 'purple', gradient: 'linear-gradient(to right, #805AD5, #9F7AEA)' },
-    { count: 7000, label: 'PIREPs Filed', icon: <FaClipboardList size="3rem" />, colorPalette: 'orange', gradient: 'linear-gradient(to right, #DD6B20, #ED8936)' },
-    { count: 300, label: 'Weekly PIREPs', icon: <FaCalendarWeek size="3rem" />, colorPalette: 'yellow', gradient: 'linear-gradient(to right, #D69E2E, #F6E05E)' },
-    { count: 6600, label: 'Hours Flown', icon: <FaClock size="3rem" />, colorPalette: 'indigo', gradient: 'linear-gradient(to right, #5A67D8, #7F9CF5)' },
+    { count: 160, label: 'Active Pilots', icon: <FaUsers size="3rem" />, colorPalette: 'green', gradient: 'linear-gradient(to right, #38A169, #48BB78)' },
+    { count: 147, label: 'Discord Members', icon: <FaDiscord size="3rem" />, colorPalette: 'purple', gradient: 'linear-gradient(to right, #805AD5, #9F7AEA)' },
+    { count: 8436, label: 'PIREPs Filed', icon: <FaClipboardList size="3rem" />, colorPalette: 'orange', gradient: 'linear-gradient(to right, #DD6B20, #ED8936)' },
+    { count: 318, label: 'Weekly PIREPs', icon: <FaCalendarWeek size="3rem" />, colorPalette: 'yellow', gradient: 'linear-gradient(to right, #D69E2E, #F6E05E)' },
+    { count: 80075, label: 'Hours Flown', icon: <FaClock size="3rem" />, colorPalette: 'indigo', gradient: 'linear-gradient(to right, #5A67D8, #7F9CF5)' },
 ];
 
 const helloLanguages = [
@@ -123,6 +123,7 @@ export default function TestPage() {
 
                             <Heading
                                 as="h1"
+                                mb="7"
                                 fontSize={{ base: "5xl", md: "7xl" }}
                                 fontWeight="extrabold"
                                 lineHeight="1.1"
