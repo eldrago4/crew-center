@@ -23,8 +23,8 @@ import CountUp from 'react-countup';
 
 const stats = [
     { count: 2400, label: 'Global Routes', icon: <FaGlobe size="3rem" />, colorPalette: 'blue', gradient: 'linear-gradient(to right, #3182CE, #4299E1)' },
-    { count: 160, label: 'Active Pilots', icon: <FaUsers size="3rem" />, colorPalette: 'green', gradient: 'linear-gradient(to right, #38A169, #48BB78)' },
-    { count: 147, label: 'Discord Members', icon: <FaDiscord size="3rem" />, colorPalette: 'purple', gradient: 'linear-gradient(to right, #805AD5, #9F7AEA)' },
+    { count: 147, label: 'Active Pilots', icon: <FaUsers size="3rem" />, colorPalette: 'green', gradient: 'linear-gradient(to right, #38A169, #48BB78)' },
+    { count: 160, label: 'Discord Members', icon: <FaDiscord size="3rem" />, colorPalette: 'purple', gradient: 'linear-gradient(to right, #805AD5, #9F7AEA)' },
     { count: 8436, label: 'PIREPs Filed', icon: <FaClipboardList size="3rem" />, colorPalette: 'orange', gradient: 'linear-gradient(to right, #DD6B20, #ED8936)' },
     { count: 318, label: 'Weekly PIREPs', icon: <FaCalendarWeek size="3rem" />, colorPalette: 'yellow', gradient: 'linear-gradient(to right, #D69E2E, #F6E05E)' },
     { count: 80075, label: 'Hours Flown', icon: <FaClock size="3rem" />, colorPalette: 'indigo', gradient: 'linear-gradient(to right, #5A67D8, #7F9CF5)' },
@@ -99,6 +99,7 @@ export default function TestPage() {
                             bg="whiteAlpha.600"
                             backdropFilter="blur(24px)"
                             p={{ base: 8, lg: 16 }}
+                            pb={{ base: 3, lg: 12 }}
                             rounded="3xl"
                             shadow="2xl"
                             border="1px solid"
@@ -126,6 +127,7 @@ export default function TestPage() {
                                 mb="7"
                                 fontSize={{ base: "5xl", md: "7xl" }}
                                 fontWeight="extrabold"
+                                fontFamily="Inter"
                                 lineHeight="1.1"
                                 position="relative"
                                 bgGradient="linear-gradient(180deg,rgba(28, 28, 28, 1) 34%, rgba(25, 67, 99, 1) 82%, rgba(25, 74, 112, 1) 100%, rgba(43, 58, 74, 1) 100%)"
@@ -159,14 +161,14 @@ export default function TestPage() {
                             </Heading>
 
                             <Text maxW="4xl" mx="auto" fontSize={{ base: 'xs', lg: 'md' }} textAlign="center" lineHeight="relaxed" color="gray.700" fontWeight="medium" fontFamily="'Inter', sans-serif">
-                                Experience the grandeur of Indian aviation heritage in the virtual skies. Where ancient wisdom meets modern technology, and every flight carries the spirit of <Text as="span" fontWeight="bold" color="#ff6b35">भारत</Text> across the world.
+                                Timeless culture. Boundless skies.{/* <Text as="span" fontWeight="bold" color="#ff6b35">भारत</Text>  */}
                             </Text>
 
                             <Flex direction={{ base: 'column', sm: 'row' }} gap={4} justify="center">
-                                <Button as={Link} size={{ sm: '2xs', md: 'lg' }} href="/apply" bgGradient="to-r" gradientFrom="#ff6b35" gradientTo="#f7931e" color="white" px={8} py={4} h="auto" rounded="2xl" fontWeight="bold" _hover={{ shadow: '2xl', transform: 'scale(1.05)', textDecoration: 'none' }} transition="all 0.3s" rightIcon={<Text as="span" transition="transform 0.3s" _groupHover={{ transform: 'translateX(4px)' }}><FaArrowRight /></Text>} role="group">
+                                <Button as={Link} size={{ base: '2xs', md: 'lg' }} href="/apply" bgGradient="to-r" gradientFrom="#ff6b35" gradientTo="#f7931e" color="white" px={8} py={4} h="auto" rounded="2xl" fontWeight="bold" _hover={{ shadow: '2xl', transform: 'scale(1.05)', textDecoration: 'none' }} transition="all 0.3s" rightIcon={<Text as="span" transition="transform 0.3s" _groupHover={{ transform: 'translateX(4px)' }}><FaArrowRight /></Text>} role="group">
                                     <Text mr={2}><FaUserGroup /></Text> Join Our Crew
                                 </Button>
-                                <Button as={Link} size={{ sm: '2xs', md: 'lg' }} href="/operations/routes" bg="whiteAlpha.900" color="gray.800" px={8} py={4} h="auto" rounded="2xl" fontWeight="bold" _hover={{ bg: 'white', shadow: 'xl', transform: 'scale(1.05)', textDecoration: 'none' }} transition="all 0.3s" border="1px solid" borderColor="gray.200" rightIcon={<Text as="span" transition="transform 0.3s" _groupHover={{ transform: 'translateX(4px)' }}><FaArrowRight /></Text>} role="group">
+                                <Button as={Link} size={{ base: '2xs', md: 'lg' }} href="/operations/routes" bg="whiteAlpha.900" color="gray.800" px={8} py={4} h="auto" rounded="2xl" fontWeight="bold" _hover={{ bg: 'white', shadow: 'xl', transform: 'scale(1.05)', textDecoration: 'none' }} transition="all 0.3s" border="1px solid" borderColor="gray.200" rightIcon={<Text as="span" transition="transform 0.3s" _groupHover={{ transform: 'translateX(4px)' }}><FaArrowRight /></Text>} role="group">
                                     <Text mr={2}><FaGlobe /></Text> Explore Routes
                                 </Button>
                             </Flex>
@@ -177,15 +179,28 @@ export default function TestPage() {
                         <Box position="absolute" inset={0} sx={{ bg: 'linear-gradient(to bottom right, rgba(255, 247, 237, 0.8), rgba(255, 255, 255, 0.9), rgba(240, 255, 244, 0.8))' }} backdropFilter="blur(4px)" />
                         <VStack position="relative" zIndex={1} maxW="7xl" mx="auto" spacing={{ base: 16, lg: 20 }}>
                             <Box textAlign="center">
-                                <HStack display="inline-flex" bg="whiteAlpha.800" backdropFilter="blur(4px)" px={6} py={3} rounded="full" shadow="lg" mb={6}>
-                                    <Box color="#ff6b35"><FaChartBar size="1.5rem" /></Box>
-                                    <Text color="#ff6b35" fontWeight="semibold" fontSize="lg">Our Achievements</Text>
+                                <HStack
+                                    display="inline-flex"
+                                    bg="whiteAlpha.800"
+                                    backdropFilter="blur(4px)"
+                                    px={4} // Reduced from 6
+                                    py={2} // Reduced from 3
+                                    rounded="full"
+                                    shadow="md" // Reduced from "lg" for a subtler effect
+                                    mb={6}
+                                >
+                                    <Box color="#ff6b35">
+                                        <FaChartBar size="1rem" /> {/* Reduced from 1.5rem */}
+                                    </Box>
+                                    <Text color="#ff6b35" fontWeight="semibold" fontSize="md"> {/* Reduced from "lg" */}
+                                        Our Achievements
+                                    </Text>
                                 </HStack>
                                 <Heading as="h2" fontSize={{ base: '4xl', lg: '6xl' }} fontWeight="black" letterSpacing="tight" mb={4} fontFamily="'Playfair Display', serif" sx={{ background: 'linear-gradient(to right, #ff6b35, #f7931e, #138808)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                     Excellence in Numbers
                                 </Heading>
                                 <Text color="gray.600" fontSize={{ base: 'lg', lg: 'xl' }} maxW="2xl" mx="auto" lineHeight="relaxed" fontFamily="'Inter', sans-serif">
-                                    Where legacy meets precision — every statistic tells the story of our royal journey through the virtual skies.
+                                    Where legacy meets precision — every statistic tells the story of our journey through the virtual skies.
                                 </Text>
                             </Box>
                             <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} spacing={10} w="full">
@@ -225,8 +240,8 @@ export default function TestPage() {
                             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={8} maxW="4xl" mx="auto" w="full">
                                 <VStack maxW="90%" maxH="90%" bg="whiteAlpha.600" backdropFilter="blur(4px)" p={6} rounded="2xl" shadow="lg" border="1px solid" borderColor="whiteAlpha.700">
                                     <Text fontSize="3xl">🏆</Text>
-                                    <Heading size="md" color="#ff6b35">Royal Status</Heading>
-                                    <Text color="gray.600">Premium Virtual Airline</Text>
+                                    <Heading size="md" color="#ff6b35">Inclusive Community</Heading>
+                                    <Text color="gray.600">Pilots from over 20 countries</Text>
                                 </VStack>
                                 <VStack maxW="90%" maxH="90%" bg="whiteAlpha.600" backdropFilter="blur(4px)" p={6} rounded="2xl" shadow="lg" border="1px solid" borderColor="whiteAlpha.700">
                                     <Text fontSize="3xl">🇮🇳</Text>
@@ -245,9 +260,9 @@ export default function TestPage() {
                     <Box as="section" py={24} px={{ base: 4, lg: 8 }} w="full">
                         <VStack maxW="6xl" mx="auto" spacing={12}>
                             <Box textAlign="center">
-                                <HStack display="inline-flex" bg="whiteAlpha.800" backdropFilter="blur(4px)" px={6} py={3} rounded="full" shadow="lg" mb={6}>
-                                    <Text fontSize="2xl">🎬</Text>
-                                    <Text color="#ff6b35" fontWeight="semibold" fontSize="lg">Experience Our Journey</Text>
+                                <HStack display="inline-flex" bg="whiteAlpha.800" backdropFilter="blur(4px)" px={4} py={2} rounded="full" shadow="md" mb={6}>
+                                    <Text fontSize="lg">🎬</Text>
+                                    <Text color="#ff6b35" fontWeight="semibold" fontSize="md">Experience Our Journey</Text>
                                 </HStack>
                                 <Heading as="h2" fontSize={{ base: '4xl', lg: '5xl' }} fontWeight="black" letterSpacing="tight" mb={4} fontFamily="'Playfair Display', serif" sx={{ background: 'linear-gradient(to right, #ff6b35, #f7931e, #138808)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                     Virtual Skies Await
@@ -258,7 +273,7 @@ export default function TestPage() {
                                 <AspectRatio ratio={16 / 9} w="full" rounded="3xl" overflow="hidden" shadow="2xl" border="4px solid" borderColor="whiteAlpha.700" backdropFilter="blur(4px)">
                                     <iframe
                                         src="https://www.youtube.com/embed/qw1alO6nNmk?si=fcGJ8hyY9Z8_ZKYd&controls=1&modestbranding=1&rel=0"
-                                        title="Indian Virtual Airlines - Experience the Royal Journey"
+                                        title="Indian Virtual Airlines - From the heart of भारत to the world"
                                         frameBorder="0"
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                         referrerPolicy="strict-origin-when-cross-origin"
@@ -282,11 +297,11 @@ export default function TestPage() {
                                                 </Box>
                                                 <Box>
                                                     <Heading size="lg" fontFamily="'Playfair Display', serif">Indian Virtual</Heading>
-                                                    <Text color="orange.300" fontWeight="medium">Royal Aviation Excellence</Text>
+                                                    <Text color="orange.300" fontWeight="medium">India's spirit, now boarding.</Text>
                                                 </Box>
                                             </HStack>
-                                            <Text color="gray.300" lineHeight="relaxed" maxW="md">
-                                                Experience the grandeur of Indian aviation heritage in the virtual skies. Where ancient wisdom meets modern technology, connecting the world with royal elegance.
+                                            <Text color="gray.300" textAlign="justify" lineHeight="relaxed" maxW="md">
+                                                Indian Virtual is your gateway to connecting India with the world like no other. We offer virtual pilots the unique opportunity to explore the diverse landscapes of the Indian subcontinent, from bustling cities to remote, unexplored regions.
                                             </Text>
                                             <HStack>
                                                 <Text color="orange.300" fontWeight="semibold"> 🇮🇳 Proudly Indian</Text>
