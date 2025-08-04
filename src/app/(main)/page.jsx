@@ -203,12 +203,17 @@ export default function TestPage() {
                                     Where legacy meets precision — every statistic tells the story of our journey through the virtual skies.
                                 </Text>
                             </Box>
-                            <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} spacing={10} w="full">
+                            <SimpleGrid 
+                                columns={{ base: 1, sm: 2, lg: 3 }} 
+                                w="full"
+                                justifyItems="center"
+                            >
                                 {stats.map((stat, idx) => (
                                     <Card.Root
                                         key={idx}
-                                        size="xs"
-                                        maxW="4/5"
+                                        size="lg"
+                                        maxW={{ base: "xs", sm: "full"}}
+                                        px={{ base: "8", sm: "10", md: "10", lg:"16" }}
                                         maxH="90%"
                                         backdropFilter="blur(4px)"
                                         rounded="2xl"
@@ -225,7 +230,7 @@ export default function TestPage() {
                                     >
                                         <Card.Body>
                                             <VStack spacing={3} p={3}>
-                                                <Box color={`${stat.colorPalette}.500`} transition="transform 0.3s" _groupHover={{ transform: 'scale(1.05)' }}>{React.cloneElement(stat.icon, { size: "2.5rem" })}</Box>
+                                                <Box color={`${stat.colorPalette}.500`} mb={3} transition="transform 0.3s" _groupHover={{ transform: 'scale(1.05)' }}>{React.cloneElement(stat.icon, { size: "2.5rem" })}</Box>
                                                 <Card.Title as="h3" fontSize={{ base: '4xl', lg: '5xl' }} fontWeight="black" sx={{ background: stat.gradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                                     <CountUp end={stat.count} duration={2.5} separator="," delay={idx * 0.2} />
                                                     <Text as="span" fontSize="2xl">+</Text>
@@ -237,7 +242,7 @@ export default function TestPage() {
                                     </Card.Root>
                                 ))}
                             </SimpleGrid>
-                            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={8} maxW="4xl" mx="auto" w="full">
+                            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={8} maxW="4xl" mx="auto" w="full" justifyItems="center">
                                 <VStack maxW="90%" maxH="90%" bg="whiteAlpha.600" backdropFilter="blur(4px)" p={6} rounded="2xl" shadow="lg" border="1px solid" borderColor="whiteAlpha.700">
                                     <Text fontSize="3xl">🏆</Text>
                                     <Heading size="md" color="#ff6b35">Inclusive Community</Heading>

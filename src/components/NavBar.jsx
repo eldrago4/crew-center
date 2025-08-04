@@ -356,7 +356,7 @@ export default function Navbar() {
             <Box display="flex" alignItems="center" justifyContent="center">
               <Image asChild>
                 <NextImage
-                  src="/invaLogo.svg"
+                  src="/invaLogo1.svg"
                   alt="Home"
                   style={{ width: "auto", height: "69px" }}
                   width={0}
