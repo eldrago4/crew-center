@@ -68,7 +68,6 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
     async session({ session, token }) {
       if (token?.callsign) {
         session.user.callsign = token.callsign;
-
         let dbDiscordId = null;
         try {
           const dummyData = await getDummyData();
@@ -94,6 +93,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           console.error('Error fetching staff permissions:', error);
           session.user.permissions = [];
         }
+        
+        // Add rank property, defaulting to null
+        session.user.rank = null;
       }
       return session;
     }

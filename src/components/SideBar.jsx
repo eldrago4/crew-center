@@ -19,8 +19,8 @@ import {
 import RoleSelectorSegmentGroup from '@/components/RoleSelectorSegmentGroup';
 
 const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) => {
-  const [currentValue, setCurrentValue] = useState("pilot");
-  const [isMobileNavVisible, setIsMobileNavVisible] = useState(true);
+  const [ currentValue, setCurrentValue ] = useState("pilot");
+  const [ isMobileNavVisible, setIsMobileNavVisible ] = useState(true);
   const lastScrollY = useRef(0);
 
   useEffect(() => {
@@ -39,7 +39,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
   }, []);
 
   const BUTTON_SECTIONS = {
-    dashboard: [{ label: "Profile", href: "/crew/dashboard", icon: FiUser }],
+    dashboard: [ { label: "Profile", href: "/crew/dashboard", icon: FiUser } ],
     pireps: [
       { label: "Logbook", href: "/crew/pireps/logbook", icon: FiBookOpen },
       { label: "File", href: "/crew/pireps/file", icon: FiFilePlus }
@@ -69,7 +69,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     { label: "ROTW & Events", href: "/crew/admin/rotw", icon: FiEdit },
     { label: "Pireps", href: "/crew/admin/pireps", icon: FiCheckSquare },
     { label: "Statistics", href: "/crew/admin/statistics", icon: FiBarChart2 },
-    ...(ceo ? [{ label: "Server Config", href: "/crew/admin/server-config", icon: FiServer }] : []),
+    ...(ceo ? [ { label: "Server Config", href: "/crew/admin/server-config", icon: FiServer } ] : []),
   ];
 
   const sectionHeaderProps = {
@@ -84,7 +84,6 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     variant: "ghost",
     size: "xs",
     width: "100%",
-    margin: "-5px",
     justifyContent: "flex-start",
     transition: "all 0.2s ease-in-out",
     _hover: {
@@ -105,7 +104,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
           {...desktopButtonProps}
           as={href && !disabled ? "a" : "button"}
           href={href}
-          isDisabled={disabled}
+          disabled={disabled}
         >
           {label}
         </Button>
@@ -179,7 +178,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     : Object.values(BUTTON_SECTIONS).flat();
 
   const mobileButtonsToShow = isAdmin
-    ? [...baseMobileButtons, { isSegmentControl: true }]
+    ? [ ...baseMobileButtons, { isSegmentControl: true } ]
     : baseMobileButtons;
 
   return (
@@ -200,7 +199,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
         <VStack width="100%">
           {currentValue !== "admin" && (
             <>
-              {Object.entries(BUTTON_SECTIONS).map(([section, buttons]) => (
+              {Object.entries(BUTTON_SECTIONS).map(([ section, buttons ]) => (
                 <div key={section} style={{ width: '100%' }}>
                   <Text {...sectionHeaderProps}>{section.toUpperCase()}</Text>
                   {renderDesktopButtons(buttons)}

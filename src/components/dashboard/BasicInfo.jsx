@@ -1,4 +1,8 @@
+"use client";
+
 import { Container, Box, Flex, Text, Heading, Stack, Progress, Avatar } from '@chakra-ui/react'
+import { updateUserRank } from '@/app/actions'
+import { useEffect } from 'react'
 
 export default function BasicInfo({ ifcName, image, flightTime, rank }) {
   // Parse flight time to hours
@@ -7,7 +11,20 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
     const [hours, minutes] = timeStr.split(':').map(Number)
     return hours + (minutes / 60)
   }
-
+  
+  // Update session rank when component mounts
+  useEffect(() => {
+    const updateRank = async () => {
+      try {
+        await updateUserRank(rank)
+      } catch (error) {
+        console.error('Error updating user rank:', error)
+      }
+    }
+    
+    updateRank()
+  }, [rank])
+  
   // Rank progression data
   const rankData = [
     { name: 'Yuvraj', hours: 0 },

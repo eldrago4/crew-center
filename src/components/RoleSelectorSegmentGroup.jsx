@@ -20,7 +20,7 @@ export default function RoleSelectorSegmentGroup({ onChange, defaultValue = 'pil
       defaultValue={defaultValue}
       size="sm"
       onValueChange={handleValueChange}
-      style={{ marginTop: 16, marginBottom: 24 }}
+      style={{ marginBottom: 24 }}
       {... mobileOrientation ? { orientation: "vertical" } : {}}
     >
       <SegmentGroup.Indicator />

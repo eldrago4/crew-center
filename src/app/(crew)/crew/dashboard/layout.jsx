@@ -9,7 +9,6 @@ export default async function RootLayout({ children }) {
     redirect('/crew');
   }
 
-  // Only redirect if auth logic says so
   if (session.user.redirectToIfcName) {
     const params = new URLSearchParams({
       callsign: session.user.callsign,
@@ -17,7 +16,7 @@ export default async function RootLayout({ children }) {
     }).toString();
     redirect(`/ifc-name?${params}`);
   }
-
+  const career = session.user.rank !== 'Yuvraj' && session.user.rank !== 'Rajkumar' && session.user.rank !== null;
   const isCEO = session.user.permissions?.includes("ceo") || false;
   const isAdmin = session.user.permissions?.length > 0 || false;
 
@@ -26,6 +25,7 @@ export default async function RootLayout({ children }) {
       callsign={session.user.callsign}
       isAdmin={isAdmin}
       ceo={isCEO}
+      careerMode={career}
     >
       {children}
     </ResponsiveCrewLayout>
