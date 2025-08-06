@@ -1,8 +1,6 @@
 
 import { Box, Heading, Container, VStack } from '@chakra-ui/react';
 
-import { redirect } from 'next/navigation';
-
 import DatabaseViewer from '@/components/admin/DatabaseViewer';
 import { fetchFleetModule } from '../../pireps/file/fleetModule';
 

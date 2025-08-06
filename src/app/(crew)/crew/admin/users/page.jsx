@@ -28,7 +28,6 @@ import {
 
 
 function AdminUsersPage() {
-    const { data: session, status } = useSession();
     const [ users, setUsers ] = useState([])
     const [ filteredUsers, setFilteredUsers ] = useState([])
     const [ loading, setLoading ] = useState(true)
