@@ -1,0 +1,11 @@
+{
+  "name": "Next.js Development",
+  "forwardPorts": [3000],
+  "postCreateCommand": "npm install",
+  "remoteEnv": {
+    "NEXTAUTH_URL": "ideal-space-guide-q4wj5pqrw99394qp.github.dev",
+    "NEXTAUTH_SECRET": "${NEXTAUTH_SECRET}",
+    "DISCORD_CLIENT_ID": "${DISCORD_CLIENT_ID}",
+    "DISCORD_CLIENT_SECRET": "${DISCORD_CLIENT_SECRET}"
+  }
+}
