@@ -6,7 +6,6 @@ import {
     VStack
 } from '@chakra-ui/react'
 import { redirect } from 'next/navigation'
-import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
 import PirepsTabs from '@/components/admin/PirepsTabs'
 
 async function getAllPireps() {
@@ -32,16 +31,10 @@ async function getAllPireps() {
 }
 
 export default async function AdminPirepsPage() {
-    const session = await auth()
-
-    if (!session) {
-        redirect('/crew')
-    }
 
     const { pireps: allPireps, total: totalPireps } = await getAllPireps()
 
     return (
-        <ResponsiveCrewLayout isAdmin={true} callsign={session.user.callsign}>
             <Box p={{ base: 4, md: 6 }} minH="100vh">
                 <Container maxW="100%" py={{ base: 4, md: 8 }}>
                     <VStack spacing={6} align="stretch">
@@ -53,6 +46,5 @@ export default async function AdminPirepsPage() {
                     </VStack>
                 </Container>
             </Box>
-        </ResponsiveCrewLayout>
     )
 }

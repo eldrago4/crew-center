@@ -3,8 +3,7 @@ import db from "@/db/client";
 import { routes } from "@/db/schema";
 import { count } from "drizzle-orm";
 import RoutesClient from "./RoutesClient";
-import { auth } from '@/auth'
-import { redirect } from 'next/navigation'
+
 
 export const revalidate = 86400;
 
@@ -51,7 +50,7 @@ async function getRoutesCount() {
 }
 
 export default async function RoutesPage() {
-  const session = await auth()
+
   const [ routesData, cacheVersion ] = await Promise.all([
     getRoutesData(),
     getRoutesCount(),

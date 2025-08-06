@@ -1,12 +1,11 @@
 
 import { Box, Heading, Container, VStack } from '@chakra-ui/react';
 import DatabaseViewer from '@/components/admin/DatabaseViewer';
+import { getStaff } from '@/app/shared/users';
 
-
+export const dynamic = 'force-dynamic';
 
 export default async function FleetDatabasePage() {
-
-
     let initialFleetData = '';
     try {
         initialFleetData = await getStaff();
@@ -16,15 +15,15 @@ export default async function FleetDatabasePage() {
     }
 
     return (
-            <Box p={{ base: 4, md: 6 }} minH="100vh">
-                <Container maxW="100%" py={{ base: 4, md: 8 }}>
-                    <VStack spacing={6} align="stretch">
-                        <Heading size="xl" color="fg">
-                            [CEO] Server Configuration
-                        </Heading>
-                        <DatabaseViewer initialModuleData={initialFleetData} moduleName="staff" redis={true}/>
-                    </VStack>
-                </Container>
-            </Box>
+        <Box p={{ base: 4, md: 6 }} minH="100vh">
+            <Container maxW="100%" py={{ base: 4, md: 8 }}>
+                <VStack spacing={6} align="stretch">
+                    <Heading size="xl" color="fg">
+                        [CEO] Server Configuration
+                    </Heading>
+                    <DatabaseViewer initialModuleData={initialFleetData} moduleName="staff" redis={true} />
+                </VStack>
+            </Container>
+        </Box>
     );
 }
