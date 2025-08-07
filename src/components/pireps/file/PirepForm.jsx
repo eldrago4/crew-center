@@ -17,8 +17,8 @@ import {
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-// The component receives pre-fetched data and the userId as props from its parent Server Component.
-export function PirepForm({ userId, initialAircraft, initialOperators, initialMultipliers, initialIfatcMultipliers }) {
+// The component receives pre-fetched data and the session object as props from its parent Server Component.
+export function PirepForm({ userId, session, initialAircraft, initialOperators, initialMultipliers, initialIfatcMultipliers }) {
     // Get today's date in YYYY-MM-DD format for default input values.
     const today = new Date().toISOString().split('T')[ 0 ];
 
@@ -69,7 +69,6 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
 
         // Handle aircraft selection from URL
         if (urlAircraft) {
-            // Find exact match in aircraft options
             const exactMatch = aircraftOptions.find(ac =>
                 ac.value.toLowerCase() === urlAircraft.toLowerCase()
             );
@@ -77,7 +76,6 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
             if (exactMatch) {
                 setAircraft(exactMatch.value);
             } else {
-                // Try to find partial match (e.g., "A320" matches "Airbus 320")
                 const partialMatch = aircraftOptions.find(ac =>
                     ac.value.toLowerCase().includes(urlAircraft.toLowerCase())
                 );
@@ -95,6 +93,7 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
     const [ ifatcTime, setIfatcTime ] = useState({ open: '', close: '' });
     const [ selectedIfatcMultiplierIdx, setSelectedIfatcMultiplierIdx ] = useState("0");
     const [ ifatcComments, setIfatcComments ] = useState(ifatcMultiplierOptions[ 0 ]?.description || '');
+    const [ submitting, setSubmitting ] = useState(false);
 
     // Helper: is the current value valid?
     const validIfatcIdx = ifatcMultiplierCollection.items.findIndex(item => item.value === selectedIfatcMultiplierIdx);
@@ -122,13 +121,43 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
         }
     }, [ selectedIfatcMultiplierIdx, ifatcMultiplierOptions ]);
 
-
     // Handles form submission for both Flight and IFATC PIREPs.
     const handleSubmit = async (type) => {
         try {
+            setSubmitting(true);
             let formData = {};
 
             if (type === 'flight') {
+                // Validate required fields
+                if (!flightNumber.trim()) {
+                    alert('Flight Number is required');
+                    return;
+                }
+                if (!departureIcao.trim() || departureIcao.length !== 4) {
+                    alert('Valid 4-character Departure ICAO is required');
+                    return;
+                }
+                if (!arrivalIcao.trim() || arrivalIcao.length !== 4) {
+                    alert('Valid 4-character Arrival ICAO is required');
+                    return;
+                }
+                if (!flightTime.hh.trim() || !flightTime.mm.trim()) {
+                    alert('Flight Time is required');
+                    return;
+                }
+                if (isNaN(parseInt(flightTime.hh)) || isNaN(parseInt(flightTime.mm))) {
+                    alert('Flight Time must be valid numbers');
+                    return;
+                }
+                if (parseInt(flightTime.hh) < 0 || parseInt(flightTime.hh) > 23) {
+                    alert('Flight hours must be between 0-23');
+                    return;
+                }
+                if (parseInt(flightTime.mm) < 0 || parseInt(flightTime.mm) > 59) {
+                    alert('Flight minutes must be between 0-59');
+                    return;
+                }
+
                 formData = {
                     flightNumber,
                     date: flightDate,
@@ -141,6 +170,27 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
                     comments,
                     userId
                 };
+
+                const response = await fetch('/api/users/pireps', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    alert('Flight PIREP submitted successfully!');
+                    // Reset form fields
+                    setFlightDate(today);
+                    setFlightNumber('');
+                    setDepartureIcao('');
+                    setArrivalIcao('');
+                    setFlightTime({ hh: '', mm: '' });
+                    setSelectedMultiplierIdx(0);
+                    setComments(multiplierOptions[0]?.description || '');
+                } else {
+                    const error = await response.json();
+                    alert(`Error: ${error.error || 'Failed to submit flight PIREP'}`);
+                }
             } else if (type === 'ifatc') {
                 const openTimeStr = ifatcTime.open;
                 const closeTimeStr = ifatcTime.close;
@@ -149,11 +199,12 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
                     alert("Please fill in Airport, Open Time, and Close Time.");
                     return;
                 }
+
                 const openDate = new Date(`1970-01-01T${openTimeStr}:00`);
                 const closeDate = new Date(`1970-01-01T${closeTimeStr}:00`);
 
                 let timeDifference = closeDate.getTime() - openDate.getTime();
-                if (timeDifference < 0) { // Handles sessions that cross midnight
+                if (timeDifference < 0) {
                     timeDifference += 24 * 60 * 60 * 1000;
                 }
 
@@ -161,12 +212,18 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
                 const minutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
                 const computedFlightTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
 
+                let multiplierValue = '1.0';
                 const idx = parseInt(selectedIfatcMultiplierIdx, 10);
-                const multiplierValue = (initialIfatcMultipliers && initialIfatcMultipliers.length > idx)
-                    ? (typeof initialIfatcMultipliers[ idx ] === 'string'
-                        ? initialIfatcMultipliers[ idx ]
-                        : initialIfatcMultipliers[ idx ]?.value)
-                    : '1.0';
+
+                if (initialIfatcMultipliers && initialIfatcMultipliers.length > 0 && !isNaN(idx) && idx >= 0 && idx < initialIfatcMultipliers.length) {
+                    const selectedMultiplier = initialIfatcMultipliers[ idx ];
+                    if (typeof selectedMultiplier === 'string') {
+                        multiplierValue = selectedMultiplier;
+                    } else if (selectedMultiplier && typeof selectedMultiplier === 'object' && selectedMultiplier.value) {
+                        multiplierValue = String(selectedMultiplier.value);
+                    }
+                }
+
                 formData = {
                     flightNumber: 'IFATC',
                     date: ifatcDate,
@@ -179,32 +236,30 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
                     comments: ifatcComments,
                     userId
                 };
-            }
 
-            // Post the prepared data to the API endpoint.
-            const response = await fetch('/api/users/pireps', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
+                const response = await fetch('/api/users/pireps', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
 
-            if (response.ok) {
-                alert('PIREP submitted successfully!');
-                // Reset form data
-                setFlightDate(today);
-                setFlightNumber('');
-                setDepartureIcao('');
-                setArrivalIcao('');
-                setFlightTime({ hh: '', mm: '' });
-                setSelectedMultiplierIdx(0);
-                setComments(multiplierOptions[ 0 ]?.description || '');
-            } else {
-                const error = await response.json();
-                alert(`Error: ${error.error || 'Failed to submit PIREP'}`);
+                if (response.ok) {
+                    alert('PIREP submitted successfully!');
+                    setIfatcDate(today);
+                    setAirportIcao('');
+                    setIfatcTime({ open: '', close: '' });
+                    setSelectedIfatcMultiplierIdx("0");
+                    setIfatcComments(ifatcMultiplierOptions[ 0 ]?.description || '');
+                } else {
+                    const error = await response.json();
+                    alert(`Error: ${error.error || 'Failed to submit PIREP'}`);
+                }
             }
         } catch (err) {
             console.error('An error occurred during PIREP submission:', err);
             alert('An unexpected error occurred. Please try again.');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -221,22 +276,21 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
                         <Fieldset.Legend>Flight Details</Fieldset.Legend>
                         <Fieldset.Content as={Stack} spacing={5}>
                             <SimpleGrid columns={{ base: 1, md: 2 }} gap={8}>
-                                {/* Fields for Flight Details... */}
                                 <Field.Root>
                                     <Field.Label>Arrival Date</Field.Label>
                                     <Input type="date" value={flightDate} onChange={(e) => setFlightDate(e.target.value)} />
                                 </Field.Root>
-                                <Field.Root>
-                                    <Field.Label>Flight Number</Field.Label>
+                                <Field.Root required>
+                                    <Field.Label>Flight Number <Field.RequiredIndicator /></Field.Label>
                                     <Input
-                                        placeholder="IV1234"
+                                        placeholder="AI108(A)"
                                         value={flightNumber}
                                         onChange={(e) => setFlightNumber(e.target.value.toUpperCase().slice(0, 10))}
                                         maxLength={10}
                                     />
                                 </Field.Root>
-                                <Field.Root>
-                                    <Field.Label>Departure (ICAO)</Field.Label>
+                                <Field.Root required>
+                                    <Field.Label>Departure (ICAO)<Field.RequiredIndicator /></Field.Label>
                                     <Input
                                         placeholder="e.g., VOMM"
                                         value={departureIcao}
@@ -244,8 +298,8 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
                                         maxLength={4}
                                     />
                                 </Field.Root>
-                                <Field.Root>
-                                    <Field.Label>Arrival (ICAO)</Field.Label>
+                                <Field.Root required>
+                                    <Field.Label>Arrival (ICAO)<Field.RequiredIndicator /></Field.Label>
                                     <Input
                                         placeholder="e.g., VECC"
                                         value={arrivalIcao}
@@ -262,7 +316,8 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
                                         size="sm"
                                         width="100%"
                                     >
-                                        <Select.HiddenSelect />                                        <Select.Control>
+                                        <Select.HiddenSelect />
+                                        <Select.Control>
                                             <Select.Trigger>
                                                 <Select.ValueText placeholder="Select aircraft..." />
                                             </Select.Trigger>
@@ -316,55 +371,67 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
                                         </Portal>
                                     </Select.Root>
                                 </Field.Root>
-                                <Field.Root>
-                                    <Field.Label>Flight Time</Field.Label>
-                                    <HStack spacing={8}>
-                                        <Input placeholder="HH" w="70px" value={flightTime.hh} onChange={(e) => setFlightTime({ ...flightTime, hh: e.target.value })} />
-                                        <Input placeholder="MM" w="70px" value={flightTime.mm} onChange={(e) => setFlightTime({ ...flightTime, mm: e.target.value })} />
-                                    </HStack>
-                                </Field.Root>
-                                <Field.Root>
-                                    <Field.Label>Multiplier</Field.Label>
-                                    <Select.Root
-                                        collection={multiplierCollection}
-                                        value={[ multiplierOptions[ selectedMultiplierIdx ]?.value ]}
-                                        onValueChange={e => {
-                                            const idx = multiplierOptions.findIndex(opt => opt.value.toString() === e.value[ 0 ]?.toString());
-                                            setSelectedMultiplierIdx(idx === -1 ? 0 : idx);
-                                            setComments(multiplierOptions[ idx === -1 ? 0 : idx ]?.description || '');
-                                        }}
-                                        size="sm"
-                                        width="100%"
-                                    >
-                                        <Select.HiddenSelect />
-                                        <Select.Control>
-                                            <Select.Trigger>
-                                                <Select.ValueText placeholder="Select multiplier..." />
-                                            </Select.Trigger>
-                                            <Select.IndicatorGroup>
-                                                <Select.Indicator />
-                                            </Select.IndicatorGroup>
-                                        </Select.Control>
-                                        <Portal>
-                                            <Select.Positioner>
-                                                <Select.Content>
-                                                    {multiplierCollection.items.map((item, idx) => (
-                                                        <Select.Item item={item} key={item.value + '-' + idx}>
-                                                            {item.label}
-                                                            <Select.ItemIndicator />
-                                                        </Select.Item>
-                                                    ))}
-                                                </Select.Content>
-                                            </Select.Positioner>
-                                        </Portal>
-                                    </Select.Root>
-                                </Field.Root>
                             </SimpleGrid>
+                            <Field.Root required>
+                                <Field.Label>Flight Time <Field.RequiredIndicator /></Field.Label>
+                                <HStack spacing={8}>
+                                    <Input
+                                        placeholder="HH"
+                                        w="70px"
+                                        maxLength={2}
+                                        value={flightTime.hh}
+                                        onChange={(e) => setFlightTime({ ...flightTime, hh: e.target.value.slice(0, 2) })}
+                                    />
+                                    <Input
+                                        placeholder="MM"
+                                        w="70px"
+                                        maxLength={2}
+                                        value={flightTime.mm}
+                                        onChange={(e) => setFlightTime({ ...flightTime, mm: e.target.value.slice(0, 2) })}
+                                    />
+                                </HStack>
+                            </Field.Root>
+                            <Field.Root>
+                                <Field.Label>Multiplier</Field.Label>
+                                <Select.Root
+                                    collection={multiplierCollection}
+                                    value={[ multiplierOptions[ selectedMultiplierIdx ]?.value ]}
+                                    onValueChange={e => {
+                                        const idx = multiplierOptions.findIndex(opt => opt.value.toString() === e.value[ 0 ]?.toString());
+                                        setSelectedMultiplierIdx(idx === -1 ? 0 : idx);
+                                        setComments(multiplierOptions[ idx === -1 ? 0 : idx ]?.description || '');
+                                    }}
+                                    size="sm"
+                                    width="100%"
+                                >
+                                    <Select.HiddenSelect />
+                                    <Select.Control>
+                                        <Select.Trigger>
+                                            <Select.ValueText placeholder="Select multiplier..." />
+                                        </Select.Trigger>
+                                        <Select.IndicatorGroup>
+                                            <Select.Indicator />
+                                        </Select.IndicatorGroup>
+                                    </Select.Control>
+                                    <Portal>
+                                        <Select.Positioner>
+                                            <Select.Content>
+                                                {multiplierCollection.items.map((item, idx) => (
+                                                    <Select.Item item={item} key={item.value + '-' + idx}>
+                                                        {item.label}
+                                                        <Select.ItemIndicator />
+                                                    </Select.Item>
+                                                ))}
+                                            </Select.Content>
+                                        </Select.Positioner>
+                                    </Portal>
+                                </Select.Root>
+                            </Field.Root>
                             <Field.Root>
                                 <Field.Label>Pilot Remarks</Field.Label>
                                 <Textarea placeholder="Add any comments about your flight..." value={comments} onChange={(e) => setComments(e.target.value.toUpperCase())} />
                             </Field.Root>
-                            <Button alignSelf="flex-start" onClick={() => handleSubmit('flight')}>Submit Flight PIREP</Button>
+                            <Button alignSelf="flex-start" onClick={() => handleSubmit('flight')} disabled={submitting} isLoading={submitting}>Submit Flight PIREP</Button>
                         </Fieldset.Content>
                     </Fieldset.Root>
                 </form>
@@ -376,73 +443,64 @@ export function PirepForm({ userId, initialAircraft, initialOperators, initialMu
                         <Fieldset.Legend>IFATC Session Details</Fieldset.Legend>
                         <Fieldset.Content as={Stack} spacing={10}>
                             <SimpleGrid columns={{ base: 1, md: 2 }} gap={12}>
-                                {/* Fields for IFATC Details... */}
                                 <Field.Root>
                                     <Field.Label>Date</Field.Label>
                                     <Input type="date" value={ifatcDate} onChange={(e) => setIfatcDate(e.target.value)} />
                                 </Field.Root>
-                                <Field.Root>
-                                    <Field.Label>Airport (ICAO)</Field.Label>
+                                <Field.Root required>
+                                    <Field.Label>Airport (ICAO)<Field.RequiredIndicator /></Field.Label>
                                     <Input placeholder="e.g., VIDP" value={airportIcao} onChange={(e) => setAirportIcao(e.target.value)} />
                                 </Field.Root>
-                                <Field.Root>
-                                    <Field.Label>Open Time (Local)</Field.Label>
+                                <Field.Root required>
+                                    <Field.Label>Open Time (Local)<Field.RequiredIndicator /></Field.Label>
                                     <Input type="time" w="120px" value={ifatcTime.open} onChange={(e) => setIfatcTime({ ...ifatcTime, open: e.target.value })} />
                                 </Field.Root>
-                                <Field.Root>
-                                    <Field.Label>Close Time (Local)</Field.Label>
+                                <Field.Root required>
+                                    <Field.Label>Close Time (Local)<Field.RequiredIndicator /></Field.Label>
                                     <Input type="time" w="120px" value={ifatcTime.close} onChange={(e) => setIfatcTime({ ...ifatcTime, close: e.target.value })} />
                                 </Field.Root>
-                                {/* Only render Select if value is valid and present in options */}
-                                {ifatcMultiplierOptions.length > 0 &&
-                                    typeof selectedIfatcMultiplierIdx === 'string' &&
-                                    selectedIfatcMultiplierIdx !== "" &&
-                                    isValidIfatcMultiplier && (
-                                        <Field.Root>
-                                            <Field.Label>Multiplier</Field.Label>
-                                            <Select.Root
-                                                collection={ifatcMultiplierCollection}
-                                                value={[ selectedIfatcMultiplierIdx ]}
-                                                onValueChange={e => setSelectedIfatcMultiplierIdx(e.value[ 0 ])}
-                                                size="sm"
-                                                width="100%"
-                                            >
-                                                <Select.HiddenSelect />
-                                                <Select.Control>
-                                                    <Select.Trigger>
-                                                        <Select.ValueText placeholder="Select multiplier..." />
-                                                    </Select.Trigger>
-                                                    <Select.IndicatorGroup>
-                                                        <Select.Indicator />
-                                                    </Select.IndicatorGroup>
-                                                </Select.Control>
-                                                <Portal>
-                                                    <Select.Positioner>
-                                                        <Select.Content>
-                                                            {ifatcMultiplierCollection.items
-                                                                .filter(item => typeof item.value === 'string' && item.label)
-                                                                .map((item, idx) => (
-                                                                    <Select.Item item={item} key={item.value + '-' + idx}>
-                                                                        {item.label}
-                                                                        <Select.ItemIndicator />
-                                                                    </Select.Item>
-                                                                ))}
-                                                        </Select.Content>
-                                                    </Select.Positioner>
-                                                </Portal>
-                                            </Select.Root>
-                                        </Field.Root>
-                                    )}
                             </SimpleGrid>
+                            <Field.Root required>
+                                <Field.Label>Multiplier<Field.RequiredIndicator /></Field.Label>
+                                <Select.Root
+                                    collection={ifatcMultiplierCollection}
+                                    value={[ selectedIfatcMultiplierIdx ]}
+                                    onValueChange={e => setSelectedIfatcMultiplierIdx(e.value[ 0 ])}
+                                    size="sm"
+                                    width="100%"
+                                >
+                                    <Select.HiddenSelect />
+                                    <Select.Control>
+                                        <Select.Trigger>
+                                            <Select.ValueText placeholder="Select multiplier..." />
+                                        </Select.Trigger>
+                                        <Select.IndicatorGroup>
+                                            <Select.Indicator />
+                                        </Select.IndicatorGroup>
+                                    </Select.Control>
+                                    <Portal>
+                                        <Select.Positioner>
+                                            <Select.Content>
+                                                {ifatcMultiplierCollection.items.map((item, idx) => (
+                                                    <Select.Item item={item} key={item.value + '-' + idx}>
+                                                        {item.label}
+                                                        <Select.ItemIndicator />
+                                                    </Select.Item>
+                                                ))}
+                                            </Select.Content>
+                                        </Select.Positioner>
+                                    </Portal>
+                                </Select.Root>
+                            </Field.Root>
                             <Field.Root>
                                 <Field.Label>ATC Remarks</Field.Label>
                                 <Textarea placeholder="Add any comments about your session..." value={ifatcComments} onChange={(e) => setIfatcComments(e.target.value.toUpperCase())} />
                             </Field.Root>
-                            <Button alignSelf="flex-start" onClick={() => handleSubmit('ifatc')}>Submit IFATC PIREP</Button>
+                            <Button alignSelf="flex-start" onClick={() => handleSubmit('ifatc')} disabled={submitting} isLoading={submitting}>Submit IFATC PIREP</Button>
                         </Fieldset.Content>
                     </Fieldset.Root>
                 </form>
             </Tabs.Content>
         </Tabs.Root>
-    )
-}
+    );
+};

@@ -65,9 +65,9 @@ export async function GET(request) {
 
     // Apply conditions if any
     if (conditions.length > 0) {
-      let whereClause = conditions[0]
+      let whereClause = conditions[ 0 ]
       for (let i = 1; i < conditions.length; i++) {
-        whereClause = sql`${whereClause} AND ${conditions[i]}`
+        whereClause = sql`${whereClause} AND ${conditions[ i ]}`
       }
 
       query = query.where(whereClause)
@@ -76,7 +76,7 @@ export async function GET(request) {
 
     // Get total count for pagination
     const countResult = await countQuery
-    const total = Number(countResult[0]?.count || 0)
+    const total = Number(countResult[ 0 ]?.count || 0)
 
     // Fetch paginated pireps
     const pirepList = await query
@@ -119,7 +119,9 @@ export async function POST(request) {
     } = body;
 
     // Basic validation for required fields
-    if (!flightNumber || !date || !flightTime || !departureIcao || !arrivalIcao || !aircraft || !userId) {
+    // Accept empty strings as present for IFATC
+    const requiredFields = [ flightNumber, date, flightTime, departureIcao, arrivalIcao, aircraft, userId ];
+    if (requiredFields.some(f => f === undefined || f === null)) {
       return NextResponse.json(
         { error: 'Missing required PIREP fields: flightNumber, date, flightTime, departureIcao, arrivalIcao, aircraft, userId' },
         { status: 400 }
@@ -129,7 +131,7 @@ export async function POST(request) {
     // Prepare the PIREP data for insertion
     const newPirepData = {
       flightNumber,
-      date: new Date(date).toISOString().split('T')[0], // Ensure date is in a format Drizzle expects for timestamp
+      date: new Date(date).toISOString().split('T')[ 0 ], // Ensure date is in a format Drizzle expects for timestamp
       flightTime,
       departureIcao,
       arrivalIcao,
@@ -153,7 +155,7 @@ export async function POST(request) {
     }
 
     return NextResponse.json(
-      { message: 'PIREP submitted successfully', pirep: insertedPireps[0] },
+      { message: 'PIREP submitted successfully', pirep: insertedPireps[ 0 ] },
       { status: 201 } // 201 Created status
     );
 
@@ -178,7 +180,7 @@ export async function PATCH(request) {
       );
     }
 
-    if (!['approve', 'reject'].includes(action)) {
+    if (![ 'approve', 'reject' ].includes(action)) {
       return NextResponse.json(
         { error: 'Invalid action. Must be either "approve" or "reject"' },
         { status: 400 }
@@ -195,7 +197,7 @@ export async function PATCH(request) {
       );
     }
 
-    const pirep = pirepResult[0];
+    const pirep = pirepResult[ 0 ];
 
     if (action === 'approve') {
       // Update pirep to set valid = true
@@ -208,8 +210,8 @@ export async function PATCH(request) {
 
       // Calculate flight time in minutes and add to user's flight time
       const flightTimeStr = pirep.flightTime; // Format: "HH:MM:SS"
-      const [hours, minutes, seconds] = flightTimeStr.split(':').map(Number);
-      const flightTimeMinutes = hours * 60 + minutes + seconds / 60;
+      const [ hours, minutes, seconds ] = flightTimeStr.split(':').map(Number);
+      const flightTimeMinutes = hours * 60 + minutes;
 
       // Apply multiplier if available
       const multiplier = pirep.multiplier ? parseFloat(pirep.multiplier) : 1;
@@ -229,12 +231,35 @@ export async function PATCH(request) {
       });
 
     } else if (action === 'reject') {
+      // Check current valid status to determine if we need to deduct flight time
+      let flightTimeDeducted = null;
+
+      if (pirep.valid === true) {
+        // Calculate flight time in minutes and deduct from user's flight time
+        const flightTimeStr = pirep.flightTime; // Format: "HH:MM:SS"
+        const [ hours, minutes, seconds ] = flightTimeStr.split(':').map(Number);
+        const flightTimeMinutes = hours * 60 + minutes;
+
+        // Apply multiplier if available
+        const multiplier = pirep.multiplier ? parseFloat(pirep.multiplier) : 1;
+        const adjustedFlightTimeMinutes = flightTimeMinutes * multiplier;
+
+        // Update user's flight time (deduct)
+        await db.update(users)
+          .set({
+            flightTime: sql`"flightTime" - ${adjustedFlightTimeMinutes} * INTERVAL '1 minute'`
+          })
+          .where(eq(users.id, pirep.userId));
+
+        flightTimeDeducted = `${adjustedFlightTimeMinutes} minutes`;
+      }
+
       // Update pirep to set valid = false and add admin comments
       const updateData = {
         valid: false,
         updatedAt: new Date().toISOString()
       };
-      
+
       if (adminComments) {
         updateData.adminComments = adminComments;
       }
@@ -246,6 +271,7 @@ export async function PATCH(request) {
       return NextResponse.json({
         message: 'PIREP rejected successfully',
         pirepId,
+        ...(flightTimeDeducted && { flightTimeDeducted }),
         ...(adminComments && { adminComments })
       });
     }

@@ -1,3 +1,4 @@
+import React from 'react';
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
@@ -16,7 +17,9 @@ export default async function RootLayout({ children }) {
       callsign={session.user.callsign}
       isAdmin={isAdmin}
     >
-      {children}
+      {React.Children.map(children, child => 
+        React.cloneElement(child, { session })
+      )}
     </ResponsiveCrewLayout>
   );
 }

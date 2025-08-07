@@ -19,6 +19,7 @@ import {
 import NextImage from 'next/image';
 import Typed from "typed.js";
 import { FaGlobe, FaUsers, FaDiscord, FaClipboardList, FaCalendarWeek, FaClock, FaChartBar, FaUserGroup, FaArrowRight } from "react-icons/fa6";
+import { FaGlobeAsia } from "react-icons/fa"
 import CountUp from 'react-countup';
 
 const stats = [
@@ -196,7 +197,7 @@ export default function TestPage() {
                                         Our Achievements
                                     </Text>
                                 </HStack>
-                                <Heading as="h2" fontSize={{ base: '4xl', lg: '6xl' }} fontWeight="black" letterSpacing="tight" mb={4} fontFamily="'Playfair Display', serif" sx={{ background: 'linear-gradient(to right, #ff6b35, #f7931e, #138808)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                <Heading as="h2" fontSize={{ base: '4xl', lg: '6xl' }} fontWeight="black" letterSpacing="tight" mb={4} fontFamily="'Playfair Display', serif">
                                     Excellence in Numbers
                                 </Heading>
                                 <Text color="gray.600" fontSize={{ base: 'lg', lg: 'xl' }} maxW="2xl" mx="auto" lineHeight="relaxed" fontFamily="'Inter', sans-serif">
@@ -244,7 +245,7 @@ export default function TestPage() {
                             </SimpleGrid>
                             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={8} maxW="4xl" mx="auto" w="full" justifyItems="center">
                                 <VStack maxW="90%" maxH="90%" bg="whiteAlpha.600" backdropFilter="blur(4px)" p={6} rounded="2xl" shadow="lg" border="1px solid" borderColor="whiteAlpha.700">
-                                    <Text fontSize="3xl">🏆</Text>
+                                    <FaUserGroup size="2.5rem" />
                                     <Heading size="md" color="#ff6b35">Inclusive Community</Heading>
                                     <Text color="gray.600">Pilots from over 20 countries</Text>
                                 </VStack>
@@ -254,7 +255,7 @@ export default function TestPage() {
                                     <Text color="gray.600">Proudly Representing India</Text>
                                 </VStack>
                                 <VStack maxW="90%" maxH="90%" bg="whiteAlpha.600" backdropFilter="blur(4px)" p={6} rounded="2xl" shadow="lg" border="1px solid" borderColor="whiteAlpha.700">
-                                    <Text fontSize="3xl">✈️</Text>
+                                    <FaGlobeAsia size="2.5rem" />
                                     <Heading size="md" color="#f7931e">Global Network</Heading>
                                     <Text color="gray.600">Connecting Continents</Text>
                                 </VStack>
