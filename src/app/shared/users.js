@@ -21,7 +21,6 @@ export async function getDummyData() {
 }
 
 let cachedStaff = null;
-
 export async function getStaff() {
   if (cachedStaff) {
     return cachedStaff;
