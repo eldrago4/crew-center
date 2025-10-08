@@ -26,11 +26,8 @@ import {
     FiChevronRight,
 } from 'react-icons/fi'
 
-import { useSession } from 'next-auth/react';
-import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
 
 function AdminUsersPage() {
-    const { data: session, status } = useSession();
     const [ users, setUsers ] = useState([])
     const [ filteredUsers, setFilteredUsers ] = useState([])
     const [ loading, setLoading ] = useState(true)
@@ -126,15 +123,8 @@ function AdminUsersPage() {
         })
     }
 
-    if (status === 'loading') {
-        return <div>Loading session...</div>;
-    }
-    if (!session) {
-        return <div>Session not found. Please log in.</div>;
-    }
 
     return (
-        <ResponsiveCrewLayout isAdmin={true} callsign={session.user.callsign}>
             <Box p={{ base: 4, md: 6 }} minH="100vh">
                 <Stack spacing={6}>
                     <Heading size="lg">Pilot Management Console</Heading>
@@ -289,7 +279,6 @@ function AdminUsersPage() {
                     </Pagination.Root>
                 </Stack>
             </Box>
-        </ResponsiveCrewLayout>
     );
 }
 

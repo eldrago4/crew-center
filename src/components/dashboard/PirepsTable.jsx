@@ -71,13 +71,25 @@ export default function PirepsTable({ pireps }) {
                                         <Table.Cell>{pirep.aircraft}</Table.Cell>
                                         <Table.Cell>
                                             <Badge
-                                                colorScheme={pirep.approved ? 'green' : 'yellow'}
-                                                variant="subtle"
+                                                colorPalette={
+                                                    pirep.approved === true
+                                                        ? 'green'
+                                                        : pirep.approved === null
+                                                            ? 'yellow'
+                                                            : 'red'
+                                                }
+                                                variant="outline"
                                                 rounded="full"
                                                 px="2"
                                                 py="1"
                                             >
-                                                {pirep.approved ? 'Approved' : 'Pending'}
+                                                {
+                                                    pirep.approved === true
+                                                        ? 'Approved'
+                                                        : pirep.approved === null
+                                                            ? 'Pending'
+                                                            : 'Rejected'
+                                                }
                                             </Badge>
                                         </Table.Cell>
                                     </Table.Row>

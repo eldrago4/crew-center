@@ -18,7 +18,7 @@ async function fetchModuleValue(moduleName) {
 
     // Drizzle ORM with jsonb() type should already return a parsed JavaScript object/array.
     // No need for JSON.parse here.
-    const value = result[0].value;
+    const value = result[ 0 ].value;
 
     cache.set(moduleName, { value: value });
 
@@ -30,8 +30,17 @@ async function fetchModuleValue(moduleName) {
 }
 
 
+
 async function fetchFleetModule(module) {
-  return fetchModuleValue(module);
+  const data = await fetchModuleValue(module);
+  if (module === 'fleet' && Array.isArray(data)) {
+    // Map to { label, value } for select fields
+    return data.map(aircraft => ({
+      label: aircraft.icao,
+      value: aircraft.icao
+    }));
+  }
+  return data;
 }
 
 async function updateModuleValue(moduleName, newValue) {

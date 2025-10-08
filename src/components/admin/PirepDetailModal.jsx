@@ -63,7 +63,7 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
     const handleAccept = async () => {
         setProcessingAction('accept');
         try {
-            const response = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/users/pireps`, {
+            const response = await fetch('/api/users/pireps', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
