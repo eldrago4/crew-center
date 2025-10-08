@@ -5,7 +5,7 @@ import {
   Field,
 } from "@chakra-ui/react";
 import { DarkMode } from "./ui/color-mode";
-export default function CallsignInput({ value, onChange }) {
+export default function CallsignInput({ value, onChange, borderColor }) {
   const handleChange = (e) => {
     const digits = e.target.value.replace(/\D/g, "").slice(0, 3); // only digits, max 3
     onChange(digits);
@@ -21,7 +21,7 @@ export default function CallsignInput({ value, onChange }) {
           onChange={handleChange}
           inputMode="numeric"
           placeholder="136"
-          borderColor="gray.700"
+          borderColor={borderColor || "gray.700"}
           _focus={{
             borderColor: "indigo.500",
             boxShadow: "0 0 0 2px rgba(99,102,241,0.6)",

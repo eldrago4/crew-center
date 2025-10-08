@@ -1,5 +1,7 @@
 // src/app/api/apply/route.js
 import { NextResponse } from 'next/server';
+import db from '@/db/client';
+import { applicants } from '@/db/schema';
 
 // Securely checks the user's grade by calling the Infinite Flight API.
 // The API key is read from server-side environment variables.
@@ -93,7 +95,7 @@ export async function POST(request) {
             return NextResponse.json({ success: true });
 
         } else if (type === 'SUBMIT_TEST') {
-            const { score, passed, applicantInfo } = payload;
+            const { score, passed, applicantInfo, callsign } = payload;
             const resultEmbed = {
                 title: 'New Written Test Result',
                 color: passed ? 0x00ff00 : 0xff0000, // Green for pass, Red for fail
@@ -105,6 +107,11 @@ export async function POST(request) {
             };
 
             await sendToDiscord(process.env.DISCORD_TEST_WEBHOOK_URL, resultEmbed);
+
+            if (passed) {
+                // Applicant will be inserted when callsign is entered and Discord login clicked
+            }
+
             return NextResponse.json({ success: true });
 
         } else {

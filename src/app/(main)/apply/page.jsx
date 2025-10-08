@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Heading, Text, VStack, Flex } from '@chakra-ui/react';
+import { SessionProvider } from 'next-auth/react';
 import { useApplicationProcess } from '@/hooks/useApplicationProcess';
 import ApplicationForm from '@/components/ApplicationForm';
 import WrittenTest from '@/components/WrittenTest';
@@ -24,14 +25,14 @@ export default function ApplyPage() {
             case 2:
                 return <WrittenTest state={state} questions={questions} {...handlers} />;
             case 3:
-                return <ResultsDisplay state={state} {...handlers} />;
+                return <ResultsDisplay state={state} resetApplication={handlers.resetApplication} handleCallsignChange={handlers.handleCallsignChange} />;
             default:
                 return <ApplicationForm state={state} {...handlers} />;
         }
     };
 
     return (
-        <>
+        <SessionProvider>
             <ErrorDialog
                 isOpen={state.status === 'error'}
                 title="An Error Occurred"
@@ -81,6 +82,6 @@ export default function ApplyPage() {
 
             </Box >
 
-        </>
+        </SessionProvider>
     );
 }

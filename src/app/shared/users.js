@@ -1,5 +1,5 @@
 import db from '@/db/client';
-import { users } from '@/db/schema';
+import { users, applicants } from '@/db/schema';
 import { Redis } from '@upstash/redis';
 
 const redis = Redis.fromEnv();
@@ -16,6 +16,22 @@ export async function getDummyData() {
     }));
   } catch (e) {
     console.error('Error fetching users from DB in getDummyData:', e);
+    return [];
+  }
+}
+
+export async function getApplicantsData() {
+  try {
+    if (typeof window !== 'undefined') {
+      throw new Error('function should only be called on the server');
+    }
+    const data = await db.select({ callsign: applicants.id, discordId: applicants.discordId }).from(applicants);
+    return (data || []).map(a => ({
+      callsign: a.callsign,
+      discordId: a.discordId != null ? String(a.discordId) : null
+    }));
+  } catch (e) {
+    console.error('Error fetching applicants from DB in getApplicantsData:', e);
     return [];
   }
 }
@@ -44,7 +60,7 @@ export async function updateStaff(jsonData) {
 
     await redis.json.set('staff', '$', jsonData);
 
-    cachedStaff = null; 
+    cachedStaff = null;
 
     return { success: true, message: 'Staff data updated successfully.' };
   } catch (error) {

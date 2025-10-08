@@ -22,10 +22,10 @@ export const pireps = pgTable("pireps", {
 }, (table) => [
 	index("index_user").using("hash", table.userId.asc().nullsLast().op("text_ops")),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "user_id"
-		}).onUpdate("cascade").onDelete("cascade"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "user_id"
+	}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
 export const routes = pgTable("routes", {
@@ -69,4 +69,11 @@ export const notams = pgTable("notams", {
 export const crewcenter = pgTable("crewcenter", {
 	module: text().primaryKey().notNull(),
 	value: jsonb(),
+});
+
+export const applicants = pgTable("applicants", {
+	id: char({ length: 7 }).primaryKey().notNull(),
+	ifcName: varchar({ length: 20 }),
+	discordId: bigint({ mode: "bigint" }),
+	passedAt: timestamp({ mode: 'string' }),
 });
