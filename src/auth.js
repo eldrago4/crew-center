@@ -36,10 +36,10 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         } catch (e) {
           if (rest?.request?.headers?.cookie) {
             const cookies = parse(rest.request.headers.cookie);
-            callsign = cookies['pending-callsign'];
+            callsign = cookies[ 'pending-callsign' ];
             if (!callsign) {
-              callsign = cookies['applicant-callsign'];
-              ifcName = cookies['applicant-ifcName'];
+              callsign = cookies[ 'applicant-callsign' ];
+              ifcName = cookies[ 'applicant-ifcName' ];
               isApplicant = !!callsign;
             }
           }
@@ -81,7 +81,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
 
     async jwt({ token, user }) {
-      if (user?.callsign) token.callsign = user.callsign;
+      if (user?.callsign) token.callsign = String(user.callsign).toUpperCase();
       if (typeof user?.redirectToIfcName === 'boolean') {
         token.redirectToIfcName = user.redirectToIfcName;
       } else {
@@ -115,9 +115,48 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         }
 
         try {
-          const staffData = await getStaff();
-          if (staffData && staffData[ token.callsign ]) {
-            session.user.permissions = staffData[ token.callsign ].permissions || [];
+          let staffData = await getStaff();
+          let perms = [];
+
+          // If Redis returned a JSON string, try parse it
+          if (typeof staffData === 'string') {
+            try {
+              staffData = JSON.parse(staffData);
+            } catch (e) {
+              // leave as-is; we'll handle gracefully below
+            }
+          }
+
+          if (staffData) {
+            try {
+              if (typeof staffData === 'object' && !Array.isArray(staffData)) {
+                // Normalize lookup keys: try token.callsign (already uppercased in jwt), fallback to lower
+                const callsignKeys = [ token.callsign, token.callsign?.toUpperCase(), token.callsign?.toLowerCase() ];
+                for (const k of callsignKeys) {
+                  if (!k) continue;
+                  const entry = staffData[ k ];
+                  if (entry && Array.isArray(entry.permissions)) {
+                    perms = entry.permissions;
+                    break;
+                  }
+                }
+              } else if (Array.isArray(staffData)) {
+                // if staffData is an array of entries, find by callsign property
+                const found = staffData.find(s => {
+                  const sCalls = s?.callsign || s?.id || s?.key;
+                  return sCalls === token.callsign || sCalls === token.callsign?.toUpperCase() || sCalls === token.callsign?.toLowerCase();
+                });
+                perms = found?.permissions || [];
+              }
+            } catch (e) {
+              console.error('[AUTH SESSION] Error resolving staff permissions shape:', e);
+              perms = [];
+            }
+          }
+
+          // Normalize permission values to strings and lower-case for consistent checks
+          if (Array.isArray(perms)) {
+            session.user.permissions = perms.map(p => String(p).toLowerCase());
           } else {
             session.user.permissions = [];
           }

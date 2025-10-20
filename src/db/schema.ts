@@ -8,7 +8,7 @@ export const pireps = pgTable("pireps", {
 	pirepId: integer().primaryKey().generatedAlwaysAsIdentity({ name: "pireps_pirep_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
 	flightNumber: text().notNull(),
 	date: date().notNull(),
-	flightTime: time().notNull(),
+	flightTime: interval({ precision: 0 }).notNull(),
 	departureIcao: text().notNull(),
 	arrivalIcao: text().notNull(),
 	operator: text().default('Indian Virtual').notNull(),
