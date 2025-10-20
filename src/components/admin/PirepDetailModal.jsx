@@ -58,7 +58,7 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
     const statusBadge = pirep ? getStatusBadgeProps(pirep.valid) : { colorPalette: 'gray', text: 'N/A' };
 
     // Helper for logbook URL
-    const logbookUrl = pirep?.user?.ifcName ? `https://iflytics.vercel.app/user/${encodeURIComponent(pirep.user.ifcName)}/flights` : null;
+    const logbookUrl = pirep?.user?.ifcName ? `https://iflytics.app/user/${encodeURIComponent(pirep.user.ifcName)}/flights` : null;
 
     const handleAccept = async () => {
         setProcessingAction('accept');
