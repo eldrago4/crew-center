@@ -35,12 +35,21 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
         if (typeof opt === 'string') return opt !== flightDefaultMultiplier.value;
         return opt.value !== flightDefaultMultiplier.value;
     })) ];
-    const multiplierCollection = createListCollection({ items: multiplierOptions });
+    // Build multiplier collection where each item's value is the string index so duplicate numeric values are allowed
+    const multiplierCollection = createListCollection({
+        items: multiplierOptions.map((opt, idx) => ({
+            label: typeof opt === 'string' ? opt : opt.label,
+            value: String(idx),
+            description: typeof opt === 'string' ? '' : opt.description,
+            rawValue: typeof opt === 'string' ? opt : opt.value,
+        }))
+    });
     // For IFATC, build select options with string index as value for robust selection
     const ifatcMultiplierOptions = (initialIfatcMultipliers || []).map((opt, idx) => ({
         label: typeof opt === 'string' ? opt : opt.label,
         value: String(idx),
         description: typeof opt === 'string' ? '' : opt.description,
+        rawValue: typeof opt === 'string' ? opt : opt.value,
     }));
     const ifatcMultiplierCollection = createListCollection({ items: ifatcMultiplierOptions });
 
@@ -53,8 +62,9 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
     const [ departureIcao, setDepartureIcao ] = useState('');
     const [ arrivalIcao, setArrivalIcao ] = useState('');
     const [ flightTime, setFlightTime ] = useState({ hh: '', mm: '' });
-    const [ selectedMultiplierIdx, setSelectedMultiplierIdx ] = useState(0);
-    const [ comments, setComments ] = useState(multiplierOptions[ 0 ]?.description || '');
+    // store selected multiplier as string index to allow duplicates in raw multiplier values
+    const [ selectedMultiplierIdx, setSelectedMultiplierIdx ] = useState('0');
+    const [ comments, setComments ] = useState(multiplierCollection.items[ 0 ]?.description || '');
 
     // Auto-fill form fields from URL parameters
     useEffect(() => {
@@ -158,6 +168,10 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                     return;
                 }
 
+                // Resolve multiplier raw value from the selected index (allows duplicate numeric values)
+                const selIdx = parseInt(selectedMultiplierIdx, 10) || 0;
+                const resolvedMultiplier = multiplierCollection.items[ selIdx ]?.rawValue || multiplierOptions[ selIdx ]?.value || '1.0';
+
                 formData = {
                     flightNumber,
                     date: flightDate,
@@ -166,7 +180,7 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                     arrivalIcao,
                     aircraft,
                     operator,
-                    multiplier: multiplierOptions[ selectedMultiplierIdx ]?.value,
+                    multiplier: resolvedMultiplier,
                     comments,
                     userId
                 };
@@ -185,8 +199,8 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                     setDepartureIcao('');
                     setArrivalIcao('');
                     setFlightTime({ hh: '', mm: '' });
-                    setSelectedMultiplierIdx(0);
-                    setComments(multiplierOptions[0]?.description || '');
+                    setSelectedMultiplierIdx('0');
+                    setComments(multiplierCollection.items[ 0 ]?.description || '');
                 } else {
                     const error = await response.json();
                     alert(`Error: ${error.error || 'Failed to submit flight PIREP'}`);
@@ -212,17 +226,9 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                 const minutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
                 const computedFlightTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
 
-                let multiplierValue = '1.0';
-                const idx = parseInt(selectedIfatcMultiplierIdx, 10);
-
-                if (initialIfatcMultipliers && initialIfatcMultipliers.length > 0 && !isNaN(idx) && idx >= 0 && idx < initialIfatcMultipliers.length) {
-                    const selectedMultiplier = initialIfatcMultipliers[ idx ];
-                    if (typeof selectedMultiplier === 'string') {
-                        multiplierValue = selectedMultiplier;
-                    } else if (selectedMultiplier && typeof selectedMultiplier === 'object' && selectedMultiplier.value) {
-                        multiplierValue = String(selectedMultiplier.value);
-                    }
-                }
+                // Resolve IFATC multiplier by index from collection
+                const ifatcIdx = parseInt(selectedIfatcMultiplierIdx, 10) || 0;
+                let multiplierValue = ifatcMultiplierCollection.items[ ifatcIdx ]?.rawValue || (initialIfatcMultipliers && initialIfatcMultipliers[ ifatcIdx ]?.value) || '1.0';
 
                 formData = {
                     flightNumber: 'IFATC',
@@ -395,11 +401,12 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                                 <Field.Label>Multiplier</Field.Label>
                                 <Select.Root
                                     collection={multiplierCollection}
-                                    value={[ multiplierOptions[ selectedMultiplierIdx ]?.value ]}
+                                    value={[ selectedMultiplierIdx ]}
                                     onValueChange={e => {
-                                        const idx = multiplierOptions.findIndex(opt => opt.value.toString() === e.value[ 0 ]?.toString());
-                                        setSelectedMultiplierIdx(idx === -1 ? 0 : idx);
-                                        setComments(multiplierOptions[ idx === -1 ? 0 : idx ]?.description || '');
+                                        const val = e.value && e.value[ 0 ] ? e.value[ 0 ] : '0';
+                                        setSelectedMultiplierIdx(val);
+                                        const idx = parseInt(val, 10) || 0;
+                                        setComments(multiplierCollection.items[ idx ]?.description || '');
                                     }}
                                     size="sm"
                                     width="100%"
