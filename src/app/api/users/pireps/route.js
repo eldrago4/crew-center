@@ -145,14 +145,96 @@ export async function POST(request) {
       updatedAt: new Date().toISOString(), // Set current timestamp for updatedAt
     };
 
-    // Insert the new PIREP record into the database
     const insertedPireps = await db.insert(pireps).values(newPirepData).returning();
 
-    // Drizzle's `returning()` method returns an array of the inserted rows.
-    // We expect one row for a single insert.
     if (insertedPireps.length === 0) {
       throw new Error('Failed to insert PIREP: No record returned.');
     }
+
+    (async () => {
+      try {
+        const inserted = insertedPireps[ 0 ];
+
+        let userData = null;
+        try {
+          const u = await db.select({ id: users.id, ifcName: users.ifcName, rank: users.rank }).from(users).where(eq(users.id, inserted.userId));
+          if (u && u.length > 0) userData = u[ 0 ];
+        } catch (uErr) {
+          console.warn('Could not fetch user data for PIREP webhook:', uErr); // Use warn if non-critical
+          userData = null;
+        }
+
+        const fields = [
+          {
+            name: 'Pilot',
+            value: userData
+              ? `(\`${userData.id}\`) ${userData.ifcName}`
+              : `<@${inserted.userId}>`,
+            inline: true
+          },
+          {
+            name: 'Flight Time',
+            value: inserted.flightTime || '—',
+            inline: true
+          },
+          {
+            name: 'Operator',
+            value: inserted.operator || '—',
+            inline: true
+          }
+        ];
+
+        // Only include multiplier field when it's explicitly not 1
+        if (inserted.multiplier && Number(inserted.multiplier) !== 1) {
+          fields.push({
+            name: '💰 Multiplier',
+            value: `**${inserted.multiplier}x**`,
+            inline: true
+          });
+        }
+
+        const embed = {
+          title: `New PIREP: **${inserted.flightNumber}**`,
+          description: `**${inserted.departureIcao || 'N/A'}** ➔ **${inserted.arrivalIcao || 'N/A'}**`,
+          color: 0x1ABC9C,
+          fields,
+          timestamp: new Date(inserted.updatedAt || Date.now()).toISOString(),
+          footer: {
+            text: `# ${inserted.pirepId ?? inserted.id ?? 'N/A'}`
+          }
+        };
+
+        const components = [
+          {
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 5,
+                label: 'Copy PIREP',
+                url: `https://indianvirtual.site/crew/pireps/file?flightNumber=${encodeURI(inserted.flightNumber)}&departureIcao=${inserted.departureIcao}&arrivalIcao=${inserted.arrivalIcao}&aircraft=${encodeURI(inserted.aircraft)}`
+              },
+            ]
+          }
+        ];
+
+        const webhookBody = {
+          embeds: [ embed ],
+          components: components // <-- Added components here
+        };
+
+        const webhookUrl = process.env.DISCORD_PIREP_WEBHOOK_URL;
+
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(webhookBody),
+          // we don't await long; let it be best-effort
+        });
+      } catch (err) {
+        console.error('Failed to send PIREP webhook:', err);
+      }
+    })();
 
     return NextResponse.json(
       { message: 'PIREP submitted successfully', pirep: insertedPireps[ 0 ] },

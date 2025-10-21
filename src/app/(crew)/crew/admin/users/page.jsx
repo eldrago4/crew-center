@@ -1,6 +1,6 @@
 
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
     Box,
     Heading,
@@ -29,13 +29,15 @@ import {
 
 function AdminUsersPage() {
     const [ users, setUsers ] = useState([])
-    const [ filteredUsers, setFilteredUsers ] = useState([])
     const [ loading, setLoading ] = useState(true)
     const [ error, setError ] = useState(null)
     const [ searchTerm, setSearchTerm ] = useState('')
+    const [ debouncedSearch, setDebouncedSearch ] = useState('')
     const [ sortConfig, setSortConfig ] = useState({ key: 'lastActive', direction: 'desc' })
     const [ currentPage, setCurrentPage ] = useState(1)
+    const [ totalUsers, setTotalUsers ] = useState(0)
     const usersPerPage = 15
+    const abortRef = useRef(null)
 
     // Define handlers for menu actions
     const handleProfile = (userId) => {
@@ -53,8 +55,10 @@ function AdminUsersPage() {
                 return
             }
             alert(`User ${userId} revoked successfully`)
+            // Refresh current page after delete to keep pagination accurate
             setUsers(prevUsers => prevUsers.filter(user => user.id !== userId))
-            setFilteredUsers(prevUsers => prevUsers.filter(user => user.id !== userId))
+            // Force a refetch by touching the debouncedSearch state (will trigger useEffect)
+            setDebouncedSearch(s => s)
         } catch (error) {
             alert(`Error revoking access: ${error.message}`)
         }
@@ -64,51 +68,67 @@ function AdminUsersPage() {
         alert(`Inactive Notice clicked for user ${userId}`)
     }
 
+    // Debounce searchTerm -> debouncedSearch
+    useEffect(() => {
+        const id = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300)
+        return () => clearTimeout(id)
+    }, [ searchTerm ])
+
+    // Fetch users from API whenever page or debounced search changes
     useEffect(() => {
         const fetchUsers = async () => {
+            setLoading(true)
+            setError(null)
+
+            // abort previous
+            if (abortRef.current) abortRef.current.abort()
+            const controller = new AbortController()
+            abortRef.current = controller
+
             try {
-                const res = await fetch('/api/users')
+                const params = new URLSearchParams()
+                params.set('page', String(currentPage))
+                params.set('limit', String(usersPerPage))
+                if (debouncedSearch) params.set('name', debouncedSearch)
+
+                const res = await fetch(`/api/users?${params.toString()}`, { signal: controller.signal })
                 if (!res.ok) throw new Error('Failed to fetch users')
                 const json = await res.json()
                 const data = json.data || []
                 setUsers(data)
-                setFilteredUsers(data)
+                setTotalUsers(json.pagination?.total ?? data.length)
             } catch (err) {
+                if (err.name === 'AbortError') return
                 setError(err.message)
+                setUsers([])
+                setTotalUsers(0)
             } finally {
                 setLoading(false)
+                abortRef.current = null
             }
         }
+
         fetchUsers()
-    }, [])
+    }, [ currentPage, debouncedSearch ])
 
+    // Apply client-side sort to the current page of users
     useEffect(() => {
-        let result = [ ...users ]
-        if (searchTerm) {
-            result = result.filter(
-                user =>
-                    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    user.rank.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-        }
-        if (sortConfig.key) {
-            result.sort((a, b) => {
-                if (sortConfig.key === 'lastActive') {
-                    return sortConfig.direction === 'asc'
-                        ? new Date(a.lastActive) - new Date(b.lastActive)
-                        : new Date(b.lastActive) - new Date(a.lastActive)
-                }
-                return 0
-            })
-        }
-        setFilteredUsers(result)
-        setCurrentPage(1)
-    }, [ users, searchTerm, sortConfig ])
+        if (!users || users.length === 0) return
+        if (!sortConfig.key) return
+        const sorted = [ ...users ].sort((a, b) => {
+            if (sortConfig.key === 'lastActive') {
+                return sortConfig.direction === 'asc'
+                    ? new Date(a.lastActive) - new Date(b.lastActive)
+                    : new Date(b.lastActive) - new Date(a.lastActive)
+            }
+            return 0
+        })
+        setUsers(sorted)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ sortConfig ])
 
-    const totalPages = Math.ceil(filteredUsers.length / usersPerPage)
-    const indexOfLastUser = currentPage * usersPerPage
-    const indexOfFirstUser = indexOfLastUser - usersPerPage
-    const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser)
+    const totalPages = Math.ceil(totalUsers / usersPerPage)
+    const currentUsers = users
 
     const isOldTimestamp = timestamp => {
         const thirtyDaysAgo = new Date()
@@ -125,160 +145,168 @@ function AdminUsersPage() {
 
 
     return (
-            <Box p={{ base: 4, md: 6 }} minH="100vh">
-                <Stack spacing={6}>
-                    <Heading size="lg">Pilot Management Console</Heading>
-                    <InputGroup maxW="md" startElement={<FiSearch color="fg-subtle" />}>
-                        <Input
-                            placeholder="Search users..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            variant="filled"
-                            bg="bg.muted"
-                        />
-                    </InputGroup>
+        <Box p={{ base: 4, md: 6 }} minH="100vh">
+            <Stack spacing={6}>
+                <Heading size="lg">Pilot Management Console</Heading>
+                <InputGroup maxW="md" startElement={<FiSearch color="fg-subtle" />}>
+                    <Input
+                        placeholder="Search users..."
+                        value={searchTerm}
+                        onChange={e => {
+                            setSearchTerm(e.target.value)
+                            // reset to first page when typing a new query
+                            setCurrentPage(1)
+                        }}
+                        variant="filled"
+                        bg="bg.muted"
+                    />
+                </InputGroup>
 
-                    {error && (
-                        <Alert.Root status="error" variant="subtle" borderRadius="md">
-                            <Alert.Indicator />
-                            <Alert.Content>
-                                <Alert.Title>Error</Alert.Title>
-                                <Alert.Description>{error}</Alert.Description>
-                            </Alert.Content>
-                        </Alert.Root>
-                    )}
+                {error && (
+                    <Alert.Root status="error" variant="subtle" borderRadius="md">
+                        <Alert.Indicator />
+                        <Alert.Content>
+                            <Alert.Title>Error</Alert.Title>
+                            <Alert.Description>{error}</Alert.Description>
+                        </Alert.Content>
+                    </Alert.Root>
+                )}
 
-                    <Box overflowX="auto" borderWidth="1px" borderRadius="md" bg="bg.default">
-                        <Table.Root variant="simple" minW="600px">
-                            <Table.Header bg="bg.muted">
-                                <Table.Row>
-                                    <Table.ColumnHeader px={2} py={2}>Name</Table.ColumnHeader>
-                                    <Table.ColumnHeader px={2} py={2} cursor="pointer" onClick={() => requestSort('lastActive')}>
-                                        <Stack direction="row" align="center" spacing={0.5} fontSize="sm">
-                                            <span>Rank</span>
-                                        </Stack>
-                                    </Table.ColumnHeader>
-                                    <Table.ColumnHeader
-                                        px={2}
-                                        py={2}
-                                        cursor="pointer"
-                                        onClick={() => requestSort('lastActive')}
-                                    >
-                                        <Stack direction="row" align="center" spacing={0.5} fontSize="sm">
-                                            <span>Last Active</span>
-                                            {sortConfig.key === 'lastActive' &&
-                                                (sortConfig.direction === 'asc' ? (
-                                                    <FiChevronUp />
-                                                ) : (
-                                                    <FiChevronDown />
-                                                ))}
-                                        </Stack>
-                                    </Table.ColumnHeader>
-                                    <Table.ColumnHeader px={2} py={2}>Actions</Table.ColumnHeader>
-                                </Table.Row>
-                            </Table.Header>
-                            <Table.Body>
-                                {loading ? (
-                                    Array.from({ length: 15 }).map((_, idx) => (
-                                        <Table.Row key={idx}>
-                                            <Table.Cell colSpan={4} px={2} py={1}>
-                                                <Skeleton height="20px" borderRadius="md" />
-                                            </Table.Cell>
-                                        </Table.Row>
-                                    ))
-                                ) : currentUsers.length === 0 ? (
-                                    <Table.Row>
+                <Box overflowX="auto" borderWidth="1px" borderRadius="md" bg="bg.default">
+                    <Table.Root variant="simple" minW="600px">
+                        <Table.Header bg="bg.muted">
+                            <Table.Row>
+                                <Table.ColumnHeader px={2} py={2}>Name</Table.ColumnHeader>
+                                <Table.ColumnHeader px={2} py={2} cursor="pointer" onClick={() => requestSort('lastActive')}>
+                                    <Stack direction="row" align="center" spacing={0.5} fontSize="sm">
+                                        <span>Rank</span>
+                                    </Stack>
+                                </Table.ColumnHeader>
+                                <Table.ColumnHeader
+                                    px={2}
+                                    py={2}
+                                    cursor="pointer"
+                                    onClick={() => requestSort('lastActive')}
+                                >
+                                    <Stack direction="row" align="center" spacing={0.5} fontSize="sm">
+                                        <span>Last Active</span>
+                                        {sortConfig.key === 'lastActive' &&
+                                            (sortConfig.direction === 'asc' ? (
+                                                <FiChevronUp />
+                                            ) : (
+                                                <FiChevronDown />
+                                            ))}
+                                    </Stack>
+                                </Table.ColumnHeader>
+                                <Table.ColumnHeader px={2} py={2}>Actions</Table.ColumnHeader>
+                            </Table.Row>
+                        </Table.Header>
+                        <Table.Body>
+                            {loading ? (
+                                Array.from({ length: 15 }).map((_, idx) => (
+                                    <Table.Row key={idx}>
                                         <Table.Cell colSpan={4} px={2} py={1}>
-                                            <Text textAlign="center" fontSize="sm">No users found.</Text>
+                                            <Skeleton height="20px" borderRadius="md" />
                                         </Table.Cell>
                                     </Table.Row>
-                                ) : (
-                                    currentUsers.map(user => (
-                                        <Table.Row key={user.id}>
-                                            <Table.Cell fontWeight="medium" px={2} py={1} fontSize="sm">{user.name}</Table.Cell>
-                                            <Table.Cell px={2} py={1} fontSize="sm">{user.rank}</Table.Cell>
-                                            <Table.Cell
-                                                color={isOldTimestamp(user.lastActive) ? 'fg.warning' : undefined}
-                                                px={2}
-                                                py={1}
-                                                fontSize="sm"
-                                            >
-                                                {new Date(user.lastActive).toLocaleString()}
-                                            </Table.Cell>
-                                            <Table.Cell px={2} py={1}>
-                                                <Menu.Root colorPalette="gray">
-                                                    <Menu.Trigger asChild>
-                                                        <IconButton
-                                                            color="blue"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            aria-label="Actions"
+                                ))
+                            ) : currentUsers.length === 0 ? (
+                                <Table.Row>
+                                    <Table.Cell colSpan={4} px={2} py={1}>
+                                        <Text textAlign="center" fontSize="sm">No users found.</Text>
+                                    </Table.Cell>
+                                </Table.Row>
+                            ) : (
+                                currentUsers.map(user => (
+                                    <Table.Row key={user.id}>
+                                        <Table.Cell fontWeight="medium" px={2} py={1} fontSize="sm">{user.name}</Table.Cell>
+                                        <Table.Cell px={2} py={1} fontSize="sm">{user.rank}</Table.Cell>
+                                        <Table.Cell
+                                            color={isOldTimestamp(user.lastActive) ? 'fg.warning' : undefined}
+                                            px={2}
+                                            py={1}
+                                            fontSize="sm"
+                                        >
+                                            {new Date(user.lastActive).toLocaleString()}
+                                        </Table.Cell>
+                                        <Table.Cell px={2} py={1}>
+                                            <Menu.Root colorPalette="gray">
+                                                <Menu.Trigger asChild>
+                                                    <IconButton
+                                                        color="blue"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        aria-label="Actions"
+                                                    >
+                                                        <FiMoreVertical />
+                                                    </IconButton>
+                                                </Menu.Trigger>
+                                                <Menu.Positioner>
+                                                    <Menu.Content>
+                                                        <Menu.Item cursor="pointer" onClick={() => handleProfile(user.id)}>
+                                                            Profile
+                                                        </Menu.Item>
+                                                        <Menu.Item
+                                                            color="fg.error"
+                                                            cursor="pointer"
+                                                            onClick={async () => {
+                                                                await handleRevokeAccess(user.id)
+                                                                // After revoke, refetch current page
+                                                                setCurrentPage(1)
+                                                            }}
                                                         >
-                                                            <FiMoreVertical />
-                                                        </IconButton>
-                                                    </Menu.Trigger>
-                                                    <Menu.Positioner>
-                                                        <Menu.Content>
-                                                            <Menu.Item cursor="pointer" onClick={() => handleProfile(user.id)}>
-                                                                Profile
-                                                            </Menu.Item>
-                                                            <Menu.Item
-                                                                color="fg.error"
-                                                                cursor="pointer"
-                                                                onClick={() => handleRevokeAccess(user.id)}
-                                                            >
-                                                                Revoke Access
-                                                            </Menu.Item>
-                                                            <Menu.Item
-                                                                color="fg.warning"
-                                                                cursor="pointer"
-                                                                onClick={() => handleInactiveNotice(user.id)}
-                                                            >
-                                                                Inactive Notice
-                                                            </Menu.Item>
-                                                        </Menu.Content>
-                                                    </Menu.Positioner>
-                                                </Menu.Root>
-                                            </Table.Cell>
-                                        </Table.Row>
-                                    ))
-                                )}
-                            </Table.Body>
-                        </Table.Root>
-                    </Box>
+                                                            Revoke Access
+                                                        </Menu.Item>
+                                                        <Menu.Item
+                                                            color="fg.warning"
+                                                            cursor="pointer"
+                                                            onClick={() => handleInactiveNotice(user.id)}
+                                                        >
+                                                            Inactive Notice
+                                                        </Menu.Item>
+                                                    </Menu.Content>
+                                                </Menu.Positioner>
+                                            </Menu.Root>
+                                        </Table.Cell>
+                                    </Table.Row>
+                                ))
+                            )}
+                        </Table.Body>
+                    </Table.Root>
+                </Box>
 
-                    <Pagination.Root
-                        count={filteredUsers.length}
-                        page={currentPage}
-                        pageSize={usersPerPage}
-                        onChange={setCurrentPage}
-                    >
-                        <Stack direction="row" color="fg" justify="flex-end" align="center" gap={2} mt={2}>
-                            <Pagination.PrevTrigger aria-label="Previous page">
-                                <FiChevronLeft />
-                            </Pagination.PrevTrigger>
-                            <Pagination.Items
-                                render={({ page: pageNumber, isSelected, onClick }) => (
-                                    <Button
-                                        key={pageNumber}
-                                        aria-label={`Go to page ${pageNumber}`}
-                                        variant={isSelected ? 'solid' : 'ghost'}
-                                        isActive={isSelected}
-                                        onClick={onClick}
-                                        size="sm"
-                                        color="fg"
-                                    >
-                                        {pageNumber}
-                                    </Button>
-                                )}
-                            />
-                            <Pagination.NextTrigger aria-label="Next page">
-                                <FiChevronRight />
-                            </Pagination.NextTrigger>
-                        </Stack>
-                    </Pagination.Root>
-                </Stack>
-            </Box>
+                <Pagination.Root
+                    count={totalUsers}
+                    page={currentPage}
+                    pageSize={usersPerPage}
+                    onPageChange={(details) => setCurrentPage(details.page)}
+                >
+                    <Stack direction="row" color="fg" justify="flex-end" align="center" gap={2} mt={2}>
+                        <Pagination.PrevTrigger aria-label="Previous page">
+                            <FiChevronLeft />
+                        </Pagination.PrevTrigger>
+                        <Pagination.Items
+                            render={(p) => (
+                                <Button
+                                    key={p.value}
+                                    aria-label={`Go to page ${p.value}`}
+                                    variant={p.isSelected ? 'solid' : 'ghost'}
+                                    isActive={p.isSelected}
+                                    onClick={p.onClick}
+                                    size="sm"
+                                    color="fg"
+                                >
+                                    {p.value}
+                                </Button>
+                            )}
+                        />
+                        <Pagination.NextTrigger aria-label="Next page">
+                            <FiChevronRight />
+                        </Pagination.NextTrigger>
+                    </Stack>
+                </Pagination.Root>
+            </Stack>
+        </Box>
     );
 }
 

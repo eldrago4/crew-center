@@ -76,14 +76,14 @@ export async function GET(request) {
                 lastActive: users.lastActive
               })
               .from(users)
-              .where(sql`users.ifcName ILIKE ${'%' + nameFilter + '%'}`)
+              .where(sql`${users.ifcName} ILIKE ${'%' + nameFilter + '%'}`)
               .limit(limit)
               .offset(offset)
               .execute(),
             db
               .select({ count: sql`count(*)` })
               .from(users)
-              .where(sql`users.ifcName ILIKE ${'%' + nameFilter + '%'}`)
+              .where(sql`${users.ifcName} ILIKE ${'%' + nameFilter + '%'}`)
               .execute()
           ])
           return NextResponse.json({
@@ -148,14 +148,14 @@ export async function GET(request) {
             lastActive: users.lastActive
           })
           .from(users)
-          .where(sql`users.ifcName ILIKE ${'%' + nameFilter + '%'}`)
+          .where(sql`${users.ifcName} ILIKE ${'%' + nameFilter + '%'}`)
           .limit(limit)
           .offset(offset)
           .execute(),
         db
           .select({ count: sql`count(*)` })
           .from(users)
-          .where(sql`users.ifcName ILIKE ${'%' + nameFilter + '%'}`)
+          .where(sql`${users.ifcName} ILIKE ${'%' + nameFilter + '%'}`)
           .execute()
       ])
       return NextResponse.json({
@@ -215,7 +215,7 @@ export async function POST(request) {
 export async function PUT(request) {
   try {
     const { id, discordId, ifcName, flightTime, careerMode, rank } = await request.json();
-    
+
     if (!id) {
       return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
     }
@@ -226,7 +226,7 @@ export async function PUT(request) {
     if (flightTime !== undefined) updateData.flightTime = flightTime;
     if (careerMode !== undefined) updateData.careerMode = careerMode;
     if (rank !== undefined) updateData.rank = rank;
-    
+
     // Always update updatedAt
     updateData.updatedAt = new Date().toISOString();
 
