@@ -15,8 +15,6 @@ import { Dialog } from '@chakra-ui/react';
 import { Stat } from '@chakra-ui/react';
 import { toaster } from '@/components/ui/toaster';
 import { useState, useEffect } from 'react';
-import { LuChevronDown, LuChevronUp } from 'react-icons/lu';
-import { IframeProvider } from '@/components/ui/iframe-provider';
 
 export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActionSuccess }) {
     const [ pirep, setPirep ] = useState(null);
@@ -24,7 +22,6 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
     const [ error, setError ] = useState(null);
     const [ adminComments, setAdminComments ] = useState('');
     const [ processingAction, setProcessingAction ] = useState(null);
-    const [ showLogbook, setShowLogbook ] = useState(false);
 
     useEffect(() => {
         if (isOpen && pirepId) {
@@ -175,15 +172,17 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
                                     {statusBadge.text}
                                 </Badge>
                             )}
-                            {/* Logbook Button */}
+                            {/* Logbook Button - opens in a new tab */}
                             {logbookUrl && (
                                 <Button
+                                    as="a"
+                                    href={logbookUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                     size="sm"
                                     colorPalette="blue"
                                     variant="outline"
                                     ml={2}
-                                    rightIcon={showLogbook ? <LuChevronUp /> : <LuChevronDown />}
-                                    onClick={() => setShowLogbook((v) => !v)}
                                 >
                                     Logbook
                                 </Button>
@@ -193,23 +192,7 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
                     <Dialog.CloseTrigger />
 
                     <Dialog.Body p={6}>
-                        {/* Logbook Embed Dropdown */}
-                        {showLogbook && logbookUrl && (
-                            <Box mb={6} borderWidth="1px" borderRadius="lg" overflow="hidden" shadow="md" bg="gray.50">
-                                <IframeProvider>
-                                    <Box w="100%" minH="500px">
-                                        <iframe
-                                            src={logbookUrl}
-                                            title="User Logbook"
-                                            width="100%"
-                                            height="500"
-                                            style={{ border: 'none' }}
-                                            allowFullScreen
-                                        />
-                                    </Box>
-                                </IframeProvider>
-                            </Box>
-                        )}
+                        {/* Note: Logbook opens in a new tab; no iframe embed */}
                         {loading && (
                             <Center py={10}>
                                 <Spinner size="xl" color="purple.500" thickness="4px" />

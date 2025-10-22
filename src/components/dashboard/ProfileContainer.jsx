@@ -2,7 +2,8 @@
 import BasicInfo from './BasicInfo'
 import PirepsTable from './PirepsTable'
 import Notams from './Notams'
-import { Grid } from '@chakra-ui/react'
+import { Grid, Box, Stack, Heading, Text, Button, Link, Badge, HStack, Container } from '@chakra-ui/react'
+import SignupOrFileButton from './SignupOrFileButton'
 import db from '@/db/client'
 import { users, pireps, notams } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
@@ -96,6 +97,99 @@ export default async function ProfileContainer({ user }) {
         />
         <Notams notams={notamsData.data} />
       </Grid>
+      {/* Promotional box above PIREPs */}
+      <Container maxW="100%" py="8" px="4">
+        <Box
+          borderRadius="xl"
+          overflow="hidden"
+          position="relative"
+          minH={{ base: '220px', md: '160px' }}
+          bgGradient={user.image ? undefined : 'linear-gradient(135deg, rgba(99,102,241,0.9), rgba(139,92,246,0.85))'}
+          backgroundImage={`url(/fedex.png)`}
+          backgroundSize="cover"
+          backgroundPosition="center"
+          boxShadow="lg"
+        >
+          {/* Dark overlay for contrast */}
+          <Box position="absolute" inset={0} bg="linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.25))" />
+
+          <Box position="relative" py={{ base: 4, md: 8 }} pl={{ base: 6, md: 12 }} pr={{ base: 4, md: 8 }} color="white">
+            <Stack spacing={3} maxW={{ base: 'full', md: '60%' }}>
+              <Heading as="h3" size="md" lineHeight={1.05} letterSpacing="tight">
+                Mail Run to the Hub
+              </Heading>
+              <Box pb={11}>
+                <Badge
+                  variant="surface"
+                  px={3}
+                  py={2}
+                  fontSize="sm"
+                  borderRadius="md"
+                  borderColor="rgba(204, 47, 47, 1)"
+                  colorPalette="rgba(204, 47, 47, 1)"
+                  display="inline-flex"
+                >
+                  KMLU-KMEM
+                </Badge>
+              </Box>
+              {/* badges moved to bottom-right corner */}
+
+              <HStack spacing={4} align="center">
+                <Box textAlign="center">
+                  <Text fontSize="xs" opacity={0.85}>Multiplier</Text>
+                  <Text fontSize={{ base: 'xl', md: '3xl' }} fontWeight="800" lineHeight={1}>
+                    3x
+                  </Text>
+                </Box>
+
+                <SignupOrFileButton
+                  pushbackIso={'2025-10-25T20:45:00+05:30'}
+                  flightNumber={'Mail Run to the Hub'}
+                  departureIcao={'KMLU'}
+                  arrivalIcao={'KMEM'}
+                  aircraft={'Cessna 208 Caravan (FedEx)'}
+                  signupUrl={'https://discord.gg/ketMu3B3rf?event=1430179836135211068'}
+                />
+              </HStack>
+            </Stack>
+          </Box>
+          {/* Bottom-right badges (aircraft/time & pushback) */}
+          <Box position="absolute" bottom={{ base: 4, md: 6 }} right={{ base: 4, md: 6 }} zIndex={3} display="flex" flexDirection="column" gap={2} alignItems="flex-end">
+            <Badge
+              colorPalette="purple"
+              variant="subtle"
+              px={3}
+              py={2}
+              fontSize="sm"
+              borderRadius="md"
+              display="inline-flex"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              textOverflow="ellipsis"
+              maxW="max-content"
+            >
+              Cessna 208 Caravan (FedEx) · 1 hour
+            </Badge>
+
+            <Badge
+              colorPalette="purple"
+              variant="subtle"
+              px={3}
+              py={2}
+              fontSize="sm"
+              borderRadius="md"
+              display="inline-flex"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              textOverflow="ellipsis"
+              maxW="max-content"
+            >
+              Pushback: Sat, Oct 25 · 8:45 PM IST
+            </Badge>
+          </Box>
+
+        </Box>
+      </Container>
       <PirepsTable pireps={userData.pireps} />
     </>
   )
