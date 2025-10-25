@@ -391,13 +391,19 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
                   &lt;
                 </IconButton>
               </Pagination.PrevTrigger>
-              <Pagination.Items
-                render={(page) => (
-                  <IconButton variant={{ base: "outline", _selected: "solid" }}>
-                    {page.value}
-                  </IconButton>
-                )}
-              />
+              <Pagination.Items>
+                {(pages) => pages.map((page, i) => (
+                  page.type === 'page' ? (
+                    <Pagination.Item key={i} value={page.value} isSelected={page.isSelected} onClick={page.onClick} asChild>
+                      <IconButton variant={{ base: "outline", _selected: "solid" }}>
+                        {page.value}
+                      </IconButton>
+                    </Pagination.Item>
+                  ) : (
+                    <Pagination.Ellipsis key={i} index={i}>&#8230;</Pagination.Ellipsis>
+                  )
+                ))}
+              </Pagination.Items>
               <Pagination.NextTrigger asChild>
                 <IconButton>
                   &gt;

@@ -154,13 +154,13 @@ export default async function ProfileContainer({ user }) {
             </Stack>
           </Box>
           {/* Bottom-right badges (aircraft/time & pushback) */}
-          <Box position="absolute" bottom={{ base: 4, md: 6 }} right={{ base: 4, md: 6 }} zIndex={3} display="flex" flexDirection="column" gap={2} alignItems="flex-end">
+          <Box position="absolute" bottom={{ base: 2, md: 6 }} right={{ base: 2, md: 6 }} zIndex={3} display="flex" flexDirection="column" gap={1} alignItems="flex-end">
             <Badge
               colorPalette="purple"
               variant="subtle"
-              px={3}
-              py={2}
-              fontSize="sm"
+              px={{ base: 1, md: 3 }}
+              py={{ base: 0.5, md: 2 }}
+              fontSize={{ base: '2xs', md: 'sm' }}
               borderRadius="md"
               display="inline-flex"
               whiteSpace="nowrap"
@@ -174,9 +174,9 @@ export default async function ProfileContainer({ user }) {
             <Badge
               colorPalette="purple"
               variant="subtle"
-              px={3}
-              py={2}
-              fontSize="sm"
+              px={{ base: 1, md: 3 }}
+              py={{ base: 0.5, md: 2 }}
+              fontSize={{ base: '2xs', md: 'sm' }}
               borderRadius="md"
               display="inline-flex"
               whiteSpace="nowrap"

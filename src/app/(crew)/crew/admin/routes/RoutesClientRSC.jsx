@@ -375,17 +375,11 @@ export default function AdminRoutesClient({ initialFleet }) {
                                         <Pagination.Root count={totalPages} page={currentPage} onPageChange={(details) => goToPage(details.page)}>
                                             <ButtonGroup variant="outline" size="sm">
                                                 <Pagination.PrevTrigger asChild><Button>Previous</Button></Pagination.PrevTrigger>
-                                                <Pagination.Items>
-                                                    {(pages) => pages.map((page, i) =>
-                                                        page.type === 'page' ? (
-                                                            <Pagination.Item key={i} {...page} asChild>
-                                                                <Button isActive={page.value === currentPage}>{page.value}</Button>
-                                                            </Pagination.Item>
-                                                        ) : (
-                                                            <Pagination.Ellipsis key={i} index={i}>&#8230;</Pagination.Ellipsis>
-                                                        )
+                                                <Pagination.Items
+                                                    render={(page) => (
+                                                        <Button isActive={page.value === currentPage}>{page.value}</Button>
                                                     )}
-                                                </Pagination.Items>
+                                                />
                                                 <Pagination.NextTrigger asChild><Button>Next</Button></Pagination.NextTrigger>
                                             </ButtonGroup>
                                         </Pagination.Root>
