@@ -321,7 +321,6 @@ export default function AdminRoutesClient({ initialFleet }) {
                                                                         <Input value={editRoute.flightTime} onChange={e => setEditRoute({ ...editRoute, flightTime: e.target.value })} />
                                                                     </Field.Root>
                                                                     <Field.Root required>
-                                                                        <Field.Label>Aircraft</Field.Label>
                                                                         <AircraftSelect
                                                                             value={
                                                                                 Array.isArray(editRoute?.aircraft)

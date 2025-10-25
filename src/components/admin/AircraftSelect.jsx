@@ -15,7 +15,7 @@ function CommaSeparatedValueText({ placeholder }) {
 
 
 
-export default function AircraftSelect({ value, onChange, placeholder = "Select aircraft...", aircraftList: aircraftListProp }) {
+export default function AircraftSelect({ value, onChange, placeholder = "Aircraft", aircraftList: aircraftListProp }) {
     // aircraftListProp is [{label, value}] (from fetchFleetModule)
     const [ aircraftList, setAircraftList ] = useState(Array.isArray(aircraftListProp) ? aircraftListProp : []);
     const [ loading, setLoading ] = useState(!aircraftListProp);
