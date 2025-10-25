@@ -33,13 +33,7 @@ async function fetchModuleValue(moduleName) {
 
 async function fetchFleetModule(module) {
   const data = await fetchModuleValue(module);
-  if (module === 'fleet' && Array.isArray(data)) {
-    // Map to { label, value } for select fields
-    return data.map(aircraft => ({
-      label: aircraft.icao,
-      value: aircraft.icao
-    }));
-  }
+  // For 'fleet', data is already in { label, value } format
   return data;
 }
 
