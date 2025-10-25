@@ -1,0 +1,2363 @@
+﻿<!DOCTYPE html>
+
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Indian Virtual - Pilot Handbook</title>
+<style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+
+        /* NAVIGATION BAR */
+        .nav-container {
+            background: linear-gradient(135deg, #7A0019 0%, #5a0012 100%);
+            padding: 16px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+
+        .nav-title {
+            text-align: center;
+            color: #FFFFFF;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+
+        /* SIDEBAR STYLES */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 60px;
+            bottom: 0;
+            width: 300px;
+            background: #2d2d2d;
+            color: #fff;
+            padding: 20px 0;
+            overflow-y: auto;
+            z-index: 2000;
+            box-shadow: 2px 0 12px rgba(0, 0, 0, 0.3);
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+            border-right: 2px solid #E3B04B;
+        }
+
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+
+
+        #hamburger {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 2001;
+            background: #E3B04B;
+            color: #2d2d2d;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 20px;
+            cursor: pointer;
+            display: block; /* changed from none to block */
+        }
+
+
+        /* SIDEBAR NAVIGATION */
+        .sidebar-nav {
+            padding: 0;
+        }
+
+
+        .nav-category {
+            margin: 8px 0;
+        }
+
+
+        .nav-category-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            cursor: pointer;
+            font-weight: 700;
+            color: #E3B04B;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+
+        .nav-category-title:hover {
+            background: rgba(227, 176, 75, 0.1);
+            padding-left: 20px;
+        }
+
+
+        .nav-category-title .arrow {
+            display: inline-block;
+            transition: transform 0.3s ease;
+            font-size: 12px;
+        }
+
+
+        .nav-category-title.collapsed .arrow {
+            transform: rotate(-90deg);
+        }
+
+
+        .nav-items {
+            list-style: none;
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+
+        .nav-items.collapsed {
+            max-height: 0;
+        }
+
+
+        .nav-item {
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+
+        .nav-item a {
+            display: block;
+            padding: 10px 16px;
+            color: #e0e0e0;
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+
+        .nav-item a:hover {
+            background: rgba(227, 176, 75, 0.15);
+            color: #E3B04B;
+            padding-left: 20px;
+        }
+
+
+        .nav-item.active {
+            border-left-color: #E3B04B;
+            background: rgba(227, 176, 75, 0.1);
+        }
+
+
+        .nav-item.active a {
+            color: #E3B04B;
+            font-weight: 600;
+        }
+
+
+        /* CONTENT AREA */
+        .content-container {
+            margin-top: 60px;
+            margin-left: 300px;
+            padding: 40px;
+            transition: margin-left 0.3s ease;
+        }
+        .content-container.expanded {
+            margin-left: 0;
+        }
+
+
+        .page {
+            display: none;
+            padding: 0;
+            background: transparent;
+            border-radius: 0;
+            box-shadow: none;
+            min-height: 80vh;
+            animation: fadeIn 0.3s ease;
+        }
+
+
+        .page.active {
+            display: block;
+        }
+
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+
+        .header-bar {
+            background: linear-gradient(135deg, #7A0019 0%, #5a0012 100%);
+            color: #FFFFFF;
+            padding: 30px 0;
+            margin-bottom: 30px;
+            border-bottom: 4px solid #E3B04B;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+
+        .header-icon {
+            font-size: 32px;
+            margin-left: 30px;
+        }
+
+
+        .header-bar h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+
+        .section-number {
+            color: #E3B04B;
+            font-weight: 700;
+        }
+
+
+        h2 {
+            color: #E3B04B;
+            font-size: 22px;
+            font-weight: 700;
+            margin: 32px 0 16px 0;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #E3B04B;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+
+        h2::before {
+            content: '☁';
+            font-size: 20px;
+        }
+
+
+        h3 {
+            color: #e0e0e0;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 20px 0 12px 0;
+        }
+
+
+        h4 {
+            color: #e0e0e0;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 16px 0 8px 0;
+        }
+
+
+        .content-box {
+            background: rgba(227, 176, 75, 0.05);
+            border-left: 4px solid #E3B04B;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 4px;
+            color: #d0d0d0;
+        }
+
+
+        .info-card {
+            background: rgba(227, 176, 75, 0.08);
+            border: 1px solid #E3B04B;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 16px 0;
+            color: #d0d0d0;
+        }
+
+
+        .warning-box {
+            background: rgba(122, 0, 25, 0.2);
+            border-left: 4px solid #7A0019;
+            padding: 12px 16px;
+            margin: 12px 0;
+            border-radius: 4px;
+            color: #d0d0d0;
+        }
+
+
+        .warning-box strong {
+            color: #E3B04B;
+        }
+
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            background: rgba(0, 0, 0, 0.3);
+            font-size: 13px;
+        }
+
+
+        table thead {
+            background: rgba(122, 0, 25, 0.4);
+            color: #E3B04B;
+        }
+
+
+        table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(227, 176, 75, 0.2);
+            color: #d0d0d0;
+        }
+
+
+        table tbody tr:hover {
+            background: rgba(227, 176, 75, 0.1);
+        }
+
+
+        ul, ol {
+            margin: 12px 0 12px 24px;
+            color: #d0d0d0;
+        }
+
+
+        li {
+            margin: 6px 0;
+            font-size: 14px;
+        }
+
+
+        .highlight {
+            background: rgba(227, 176, 75, 0.2);
+            padding: 2px 8px;
+            border-radius: 3px;
+            color: #E3B04B;
+            font-weight: 500;
+        }
+
+
+        .badge {
+            background: #E3B04B;
+            color: #2d2d2d;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            margin: 3px 3px 3px 0;
+        }
+
+
+        a {
+            color: #E3B04B;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+
+        a:hover {
+            border-bottom-color: #E3B04B;
+        }
+
+
+        code {
+            background: rgba(227, 176, 75, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #E3B04B;
+            font-size: 13px;
+        }
+
+
+        p {
+            margin: 8px 0;
+            color: #d0d0d0;
+        }
+
+
+        /* NAVIGATION BUTTONS */
+        .page-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 2px solid #E3B04B;
+        }
+
+
+        .nav-button {
+            background: linear-gradient(135deg, #7A0019 0%, #5a0012 100%);
+            color: #FFFFFF;
+            border: 2px solid #E3B04B;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+
+        .nav-button:hover:not(:disabled) {
+            background: #E3B04B;
+            color: #2d2d2d;
+        }
+
+
+        .nav-button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+
+        .page-counter {
+            color: #E3B04B;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+
+        /* RESPONSIVE DESIGN */
+        @media (max-width: 1024px) {
+            .content-container {
+                margin-left: 0;
+                padding: 20px;
+            }
+
+
+            .sidebar {
+                width: 280px;
+            }
+
+
+            #hamburger {
+                display: block;
+            }
+        }
+
+
+        @media (max-width: 768px) {
+            .header-bar {
+                flex-direction: column;
+                text-align: center;
+                padding: 20px;
+            }
+
+
+            .header-icon {
+                margin-left: 0;
+            }
+
+
+            .header-bar h1 {
+                font-size: 24px;
+            }
+
+
+            .page {
+                min-height: 40vh;
+            }
+
+
+            .nav-button {
+                padding: 10px 16px;
+                font-size: 12px;
+            }
+
+
+            .page-navigation {
+                flex-wrap: wrap;
+                gap: 10px;
+                justify-content: center;
+            }
+
+
+            .content-container {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- NAVIGATION BAR -->
+<div class="nav-container">
+<div class="nav-title">FLYING GUIDE</div>
+</div>
+<!-- HAMBURGER BUTTON -->
+<button aria-label="Toggle menu" id="hamburger">☰</button>
+<!-- LEFT SIDEBAR NAV -->
+<div class="sidebar" id="sidebar">
+<nav class="sidebar-nav" id="sidebarNav">
+<!-- Dynamically populated -->
+</nav>
+</div>
+<!-- MAIN CONTENT CONTAINER -->
+<div class="content-container" id="contentContainer">
+<!-- Pages will be dynamically populated -->
+</div>
+<!-- HIDDEN CONTENT SECTIONS - These get cloned and displayed -->
+<div style="display: none;">
+<div class="page" id="section-1-0">
+<div class="header-bar"><div class="header-icon">📘</div>
+<h1><span class="section-number">1.0</span> Introduction to Indian Virtual</h1>
+</div>
+<div class="content-box">
+<p>Welcome to Indian Virtual! As a growing VA within Infinite Flight, we have made this guide for you to get accustomed to INVA's rules and regulations and ensure a uniform code of conduct when flying for the VA. All members are expected to be accustomed to the guidelines and ensure all rules and regulations are adhered to.</p>
+</div>
+<h2>Quick Links</h2>
+<div class="info-card">
+<h3>Official Resources</h3>
+<ul>
+<li><strong>1.1 Indian Virtual Trailer:</strong> <a href="https://youtu.be/qw1alO6nNmk" target="_blank">https://youtu.be/qw1alO6nNmk</a></li>
+<li><strong>1.2 Indian Virtual Website:</strong> <a href="https://www.indianvirtual.site/" target="_blank">Indian Virtual | Apply Now</a></li>
+<li><strong>1.3 Crew Center (Discover Arena):</strong> <a href="https://www.indianvirtual.site/crew" target="_blank">Indian Virtual Discover Page</a></li>
+<li><strong>1.4 IFC Official Thread:</strong> <a href="https://community.infiniteflight.com/t/indian-virtual-inva-official-2024-thread/925631" target="_blank">Indian Virtual Official IFC Thread</a></li>
+</ul>
+</div>
+</div>
+<div class="page" id="section-1-1">
+<div class="header-bar"><div class="header-icon">👥</div>
+<h1><span class="section-number">1.1</span> Meet Our Executives</h1>
+</div>
+<h2>Executive Team</h2>
+<table>
+<thead>
+<tr>
+<th>Title</th>
+<th>Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CEO</strong><br/><small>Chief Executive Officer</small></td>
+<td>Pritish Dewan<br/><span class="badge">INVA 001</span></td>
+</tr>
+<tr>
+<td><strong>COO</strong><br/><small>Chief Operating Officer</small></td>
+<td>VortexVolt<br/><span class="badge">INVA 002</span></td>
+</tr>
+<tr>
+<td><strong>CFO</strong><br/><small>Chief of Flight Operations</small></td>
+<td>DreadPirate<br/><span class="badge">INVA 010</span></td>
+</tr>
+<tr>
+<td><strong>COR</strong><br/><small>Chief of Routes</small></td>
+<td>AnotherPilot77<br/><span class="badge">INVA 007</span></td>
+</tr>
+<tr>
+<td><strong>SUP</strong><br/><small>Supervisor</small></td>
+<td>Haneda<br/><span class="badge">INVA 054</span></td>
+</tr>
+</tbody>
+</table>
+<h2>Staff Team</h2>
+<table>
+<thead>
+<tr>
+<th>Title</th>
+<th>Members</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Flight Experts [FE]</strong></td>
+<td>
+                    Iceman001 <span class="badge">INVA 491</span><br/>
+                    Haneda <span class="badge">INVA 054</span>
+</td>
+</tr>
+<tr>
+<td><strong>Flight Instructors [FI]</strong></td>
+<td>
+                    Aryan <span class="badge">INVA 004</span><br/>
+                    Vasu <span class="badge">INVA 541</span><br/>
+                    SierraHunter <span class="badge">INVA 153</span><br/>
+                    Nandannn <span class="badge">INVA 154</span>
+</td>
+</tr>
+<tr>
+<td><strong>Recruiters [R]</strong></td>
+<td>
+                    eldrago <span class="badge">INVA 011</span><br/>
+                    Vasu <span class="badge">INVA 541</span>
+</td>
+</tr>
+<tr>
+<td><strong>PIREP Managers [PM]</strong></td>
+<td>
+                    Gaurav Shetty <span class="badge">INVA 009</span><br/>
+                    TIGER_ANI <span class="badge">INVA 025</span><br/>
+                    Prathamesh_Shinde <span class="badge">INVA 069</span>
+</td>
+</tr>
+<tr>
+<td><strong>Event Managers [EM]</strong></td>
+<td>
+                    Lalabo <span class="badge">INVA 008</span><br/>
+                    TIGER_ANI <span class="badge">INVA 025</span>
+</td>
+</tr>
+<tr>
+<td><strong>Routes Manager [RM]</strong></td>
+<td>Zeff_29 <span class="badge">INVA 005</span></td>
+</tr>
+<tr>
+<td><strong>Mentor</strong></td>
+<td>AryaJ2002 <span class="badge">INVA 003</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="page" id="section-1-5">
+<div class="header-bar"><div class="header-icon">📝</div>
+<h1><span class="section-number">1.5</span> Abbreviations Guide</h1>
+</div>
+<h2>Frequently Used Abbreviations</h2>
+<div class="info-card">
+<ul>
+<li><span class="highlight">IN</span> - Indian Virtual</li>
+<li><span class="highlight">AI2</span> - Ex Vistara Routes transferred to Air India (can be operated with AI or UK callsign with Vistara Livery)</li>
+<li><span class="highlight">IXH</span> - Air India Express Historic Flights</li>
+<li><span class="highlight">UKH</span> - Vistara Historic flights (stopped during Vistara's sole entity existence)</li>
+<li><span class="highlight">AIH</span> - Air India Historic (file all AIH/UKH/IXH under Air India Historic operator)</li>
+<li><a href="#section-6-1"><span class="highlight">ROTW</span> - Routes of the Week</a></li>
+<li><a href="#section-6-2"><span class="highlight">BOTW</span> - Base of the Week</a></li>
+<li><span class="highlight">Executive Exemption</span> - Permission to fly aircraft not unlocked in your rank</li>
+<li><a href="#section-6-3"><span class="highlight">CEO Routes</span> - CEO Routes</a></li>
+</ul>
+</div>
+<h2>Flight Planning &amp; Navigation</h2>
+<div class="content-box">
+<ul>
+<li><span class="highlight">ATC</span> - Air Traffic Control</li>
+<li><span class="highlight">GPS</span> - Global Positioning System</li>
+<li><span class="highlight">FMS</span> - Flight Management System</li>
+<li><span class="highlight">IFR</span> - Instrument Flight Rules</li>
+<li><span class="highlight">VFR</span> - Visual Flight Rules</li>
+<li><span class="highlight">ETA</span> - Estimated Time of Arrival</li>
+<li><span class="highlight">ETD</span> - Estimated Time of Departure</li>
+<li><span class="highlight">METAR</span> - Meteorological Aerodrome Report</li>
+</ul>
+</div>
+<h2>Aircraft &amp; Systems</h2>
+<div class="content-box">
+<ul>
+<li><span class="highlight">APU</span> - Auxiliary Power Unit</li>
+<li><span class="highlight">IAS</span> - Indicated Airspeed</li>
+<li><span class="highlight">TAS</span> - True Airspeed</li>
+<li><span class="highlight">GS</span> - Ground Speed</li>
+</ul>
+</div>
+<h2>Checklists &amp; Procedures</h2>
+<div class="content-box">
+<ul>
+<li><span class="highlight">ICAO</span> - International Civil Aviation Organization</li>
+<li><span class="highlight">IATA</span> - International Air Transport Association</li>
+<li><span class="highlight">SID</span> - Standard Instrument Departure</li>
+<li><span class="highlight">STAR</span> - Standard Terminal Arrival Route</li>
+<li><span class="highlight">ILS</span> - Instrument Landing System</li>
+<li><span class="highlight">PB</span> - Pushback</li>
+<li><span class="highlight">TO</span> - Takeoff</li>
+<li><span class="highlight">TWY</span> - Taxiway</li>
+<li><span class="highlight">TWR</span> - Tower</li>
+<li><span class="highlight">GND</span> - Ground</li>
+<li><span class="highlight">TS</span> - Tower + ATIS Frequency</li>
+<li><span class="highlight">GTS</span> - Ground + Tower + ATIS Frequency</li>
+</ul>
+</div>
+</div>
+<div class="page" id="section-2-0">
+<div class="header-bar"><div class="header-icon">⚖️</div>
+<h1><span class="section-number">2.0</span> Discord Rules and Regulations</h1>
+</div>
+<h2>Rules of Indian Virtual</h2>
+<div class="info-card">
+<h3>1. Mutual Respect</h3>
+<p>Be respectful to all members of the server. This means you must not make rude or harassing comments.</p>
+</div>
+<div class="info-card">
+<h3>2. No NSFW Material</h3>
+<p>This includes nudity, violence, sex, gore or any graphically disturbing content.</p>
+</div>
+<div class="info-card">
+<h3>3. Impersonation</h3>
+<p>Do not impersonate other users, staff members, or any other individuals or organizations.</p>
+</div>
+<div class="info-card">
+<h3>4. Controversial Discussions</h3>
+<p>Do not talk about religion, ethnicity, race, sexuality, sexual orientation, or anything that may offend another member of Indian Virtual. Keep everything civil and respectful.</p>
+</div>
+<div class="info-card">
+<h3>5. Discord ToS &amp; Community Guidelines</h3>
+<p>All Terms of Service and Community Guidelines by Discord must be followed. This can be found here: <a href="https://discord.com/terms" target="_blank">Terms of Service</a> | <a href="https://discord.com/guidelines" target="_blank">Community Guidelines</a></p>
+</div>
+<div class="info-card">
+<h3>6. Scam Messages</h3>
+<p>Sending phishing links or other misleading information to members of this server is NOT tolerated.</p>
+</div>
+<div class="info-card">
+<h3>7. Indian Virtual Affiliations</h3>
+<p>Indian Virtual airlines is not affiliated with the TATA Group or Air India Limited and its subsidiaries. Indian Virtual is a separate entity created for the players/pilots of Infinite Flight. Please do not state that we are "Air India or Air India Express". Indian Virtual is not related to TATA Group or Air India Limited and its subsidiaries.</p>
+</div>
+<div class="info-card">
+<h3>8. No Rule Loopholing</h3>
+<p>Do not use rule loopholes. If you have a question about a rule, ask a staff member. Click #Tickets to ask your doubts/questions in discord.</p>
+</div>
+<div class="info-card">
+<h3>9. Common Sense</h3>
+<p>Use Common Sense and think before you act and speak.</p>
+</div>
+</div>
+<div class="page" id="section-3-0">
+<div class="header-bar"><div class="header-icon">❓</div>
+<h1><span class="section-number">3.0</span> Frequently Asked Questions</h1>
+</div>
+<div class="info-card">
+<h3>1. What is the final time by which I need to land for CEO routes?</h3>
+<p>You need to land by 11:59 PM (in your respective time zone) on the day the route is mentioned. However, we allow a relaxation period for up to 2-3 hours or more. Open a ticket if you exceed the 11:59pm mark for executive verdict.</p>
+</div>
+<div class="info-card">
+<h3>2. My PIREP got rejected, what should I do?</h3>
+<p>In case of PIREP rejection, open a "PIREP Support" ticket within the discord server. The PIREP managers will get to you soon.</p>
+</div>
+<div class="info-card">
+<h3>3. My flight times are staggered due to AP+, what should I do?</h3>
+<p>Open a ticket in the support section. We will recommend the appropriate hours that should be filed.</p>
+</div>
+<div class="info-card">
+<h3>4. PIREP hasn't been accepted for about 24hrs+, Should I be worried?</h3>
+<p>No, sometimes our PIREP managers get busy with IRL stuff and cannot get to overlooking the PIREPs. If it's not been accepted for more than 36hrs, then please open a ticket regarding it!</p>
+</div>
+<div class="warning-box">
+<strong>Important:</strong> Avoid pinging STAFF members in DMs or in #general regarding accepting PIREPs for rank-ups.
+    </div>
+<div class="info-card">
+<h3>5. A320 Air India Express Routes</h3>
+<p>Must be flown with <span class="highlight">Air India Express callsign</span> but can be flown with <span class="highlight">Air India A320 livery</span>!</p>
+</div>
+<div class="info-card">
+<h3>6. B789/A320 flights with Vistara Livery</h3>
+<p>Must be flown with <span class="highlight">Air India callsign</span>, unless said otherwise.</p>
+</div>
+<div class="info-card">
+<h3>7. Can I fly ROTW routes on another day than specified?</h3>
+<p><strong>NO</strong>, you must/can fly the route on the date it is specified for.</p>
+</div>
+<div class="info-card">
+<h3>8. PIREP Filing Deadline</h3>
+<p>You must file your PIREP <span class="highlight">within 48hrs</span> of flying your flight.</p>
+</div>
+<div class="info-card">
+<h3>9. There is no airline livery present for the aircraft, what do I do?</h3>
+<p>Fly in the generic livery for aircraft that don't have the livery.</p>
+</div>
+</div>
+<div class="page" id="section-3-1">
+<div class="header-bar"><div class="header-icon">🛑</div>
+<h1><span class="section-number">3.1</span> IRL NOTAMs + Pakistani Airspace Closure</h1>
+</div>
+<div class="content-box">
+<p>While flying for INVA, pilots are expected to follow certain internal rules and regulations to maintain the integrity of the VA and create a conducive and professional environment for all pilots within Infinite Flight.</p>
+<p>Within INVA, you're expected to follow the real life NOTAMs as well as the NOTAMs and TFRs within Infinite Flight. NOTAMs are consistently updated within the <span class="highlight">announcements</span> channel in discord.</p>
+</div>
+<h2>NOTAMs within Indian Airspace</h2>
+<div class="info-card">
+<h3>1. NOTAM - RWY Closure @VOHS</h3>
+<p><strong>Message:</strong> Runway <span class="highlight">09L/27R</span> Closed. <span class="highlight">09L/27R</span> to be used as a taxiway only.</p>
+</div>
+<div class="info-card">
+<h3>2. NOTAM - Airspace Closure FOR INDIAN AIRCRAFTS + INDIAN AIRLINES ONLY</h3>
+<p><strong>Message:</strong> To pilots who fly <span class="highlight">INVA</span> operated flights (AI + AIX) need to avoid all <span class="highlight">Pakistani FIRs</span>. Make sure you fly the <span class="highlight">IRL planned route</span> of the route you want to execute in Infinite Flight. Any doubts or questions about <span class="highlight">generating an FPL</span> with <span class="highlight">avoidance of Pakistani Airspace</span>, open a <span class="highlight">ticket</span> in the discord server.</p>
+</div>
+<h2>NOTAMs Available in Infinite Flight</h2>
+<div class="content-box">
+<h3>How to identify NOTAMs:</h3>
+<p><strong>Step 1:</strong> Notice a <span class="highlight">red circle</span> in an airspace in the Infinite Flight Map.</p>
+<p><strong>Step 2:</strong> <span class="highlight">Zoom in</span> further, to see the airport which has a NOTAM issued.</p>
+<p><strong>Step 3:</strong> Click inside of the red circle to see the message announced in the <span class="highlight">NOTAM</span>.</p>
+<p><strong>Step 4:</strong> Read the <span class="highlight">message</span> and <span class="highlight">fly/plan accordingly to the airport</span>. It is important to follow the <span class="highlight">NOTAM issued</span>, or face penalties issued by the system.</p>
+</div>
+<div class="warning-box">
+<strong>Note:</strong> Executive Force ensures that NOTAMs are strictly followed when flying using the INVA identifier. Non-compliance to issued NOTAMs would result in deduction of flight hours from the crew center.
+    </div>
+</div>
+<div class="page" id="section-3-2">
+<div class="header-bar"><div class="header-icon">🚗</div>
+<h1><span class="section-number">3.2</span> How to Pushback and Taxi</h1>
+</div>
+<h2>Pushback</h2>
+<div class="content-box">
+<ul>
+<li>At airports with active Ground control, always request pushback and check the <span class="highlight">correct tail direction</span> for manual pushback.</li>
+<li>At uncontrolled airports, use the map to ensure no oncoming traffic before pushing back.</li>
+<li>Only initiate pushback when there is at least <span class="highlight">one gate's worth</span> of space clear behind and in front of your aircraft.</li>
+</ul>
+</div>
+<h2>Lights</h2>
+<div class="content-box">
+<ul>
+<li>Nav Lights should be set to <span class="highlight">"ON"</span> when ground preparations are ongoing. Beacon lights must be set to <span class="highlight">"ON"</span> before pushback has started.</li>
+</ul>
+</div>
+<h2>Controls Check</h2>
+<div class="content-box">
+<ul>
+<li>After pushback, perform a <span class="highlight">full flight controls check</span>, including yoke (ailerons, elevators) and rudder inputs to confirm control surface movement.</li>
+<li>Ensure autobrakes are set to <span class="highlight">"MAX"</span> and speedbrakes are armed before starting taxi.</li>
+</ul>
+</div>
+<h2>Taxi</h2>
+<div class="content-box">
+<ul>
+<li>Make sure you announce on unicom to the runway you intend to taxi to, if there is no ATC. If there is, request ATC to runway.</li>
+</ul>
+</div>
+</div>
+<div class="page" id="section-3-3">
+<div class="header-bar"><div class="header-icon">🚗</div>
+<h1><span class="section-number">3.3</span> Taxi Speeds and Regulations</h1>
+</div>
+<h2>Near Parking Gates</h2>
+<div class="content-box">
+<ul>
+<li>When near <span class="highlight">terminal parking</span>, taxi speed must not exceed <span class="highlight">10 knots ground speed</span>.</li>
+<li>Always <span class="highlight">anticipate oncoming traffic</span> at busy airports and adjust taxi speed accordingly.</li>
+<li>To maintain realism, avoid exceeding <span class="highlight">40% N1 thrust</span> while taxiing near terminals.</li>
+</ul>
+</div>
+<h2>When Taxiing Towards Runway</h2>
+<div class="content-box">
+<ul>
+<li>Taxi towards the active runway at a maximum speed of <span class="highlight">25 knots ground speed</span>.</li>
+<li><span class="highlight">Racing or overtaking other aircraft</span> to get ahead in line is strictly prohibited.</li>
+<li>Keep the aircraft <span class="highlight">within taxiway boundaries</span> and ensure the <span class="highlight">nose wheel remains aligned with the taxiway centerline</span>.</li>
+</ul>
+</div>
+<h2>While Making Turns</h2>
+<div class="content-box">
+<p>Maximum stipulated speeds for taxiing on airports:</p>
+<ul>
+<li><span class="highlight">Maximum 10 knots GS</span> during <span class="highlight">90-degree turns</span>.</li>
+<li><span class="highlight">Maximum 15 knots GS</span> during <span class="highlight">45-degree turns</span>.</li>
+<li><span class="highlight">Maximum 25 knots GS</span> on <span class="highlight">straight taxiways</span>.</li>
+</ul>
+</div>
+<h2>Crossing an Active Runway During Taxi</h2>
+<div class="content-box">
+<ul>
+<li>When instructed to <span class="highlight">cross an active runway</span>, switch <span class="highlight">strobe lights</span> and <span class="highlight">landing lights ON</span> <span class="highlight">before</span> crossing the hold-short line.</li>
+<li>Once the aircraft has <span class="highlight">fully cleared the runway</span> (past the hold-short line on the other side), switch <span class="highlight">strobe</span> and <span class="highlight">landing lights "OFF"</span>.</li>
+</ul>
+</div>
+<h2>Exiting the Runway After Landing</h2>
+<div class="content-box">
+<ul>
+<li>Ensure that appropriate speeds are followed while performing high speed exits after landing. Exceeding 35 kts beyond the hold short line is strictly prohibited. Make sure the aircraft is fully clear of the hold short line before contacting ground control.</li>
+</ul>
+</div>
+<h2>Other Regulations That Need to Be Followed</h2>
+<div class="content-box">
+<ul>
+<li>Always <span class="highlight">yield to aircraft approaching from your right</span> while taxiing.</li>
+<li><span class="highlight">Follow ATC instructions</span> at all times and maintain safe spacing.</li>
+<li>Leave at least an <span class="highlight">"A320-sized gap"</span> between your aircraft and the one ahead.</li>
+</ul>
+</div>
+</div>
+<div class="page" id="section-3-4">
+<div class="header-bar"><div class="header-icon">✈️</div>
+<h1><span class="section-number">3.4</span> Takeoff and Climb</h1>
+</div>
+<div class="content-box">
+<p>In this section, we will be giving a guideline on how to execute safe and secure takeoff. In Indian Virtual, we have a wide range of aircrafts to fly from, and each aircraft has a different weight range and takeoff speeds.</p>
+</div>
+<h2>Calculating Take-off Speeds</h2>
+<div class="info-card">
+<p>You can use Simbrief's in-built tool to calculate takeoff speeds. Once you click this option, scroll down the menu that appears and click "Calculate". You'll come across the appropriate rotation speeds and flap speeds for your flight with this tool.</p>
+</div>
+<h2>Pre-takeoff Checklists</h2>
+<div class="content-box">
+<ol>
+<li>Ensure the <span class="highlight">Flight Plan (FPL)</span> includes correct <span class="highlight">SIDs/STARs</span>, has no duplicate or overlapping waypoints, and avoids sharp (90°) turns between close waypoints.</li>
+<li>Set <span class="highlight">flaps according to aircraft load</span> and <span class="highlight">elevator trim to takeoff configuration</span>.</li>
+<li>Set <span class="highlight">autobrake to MAX</span> in case of a rejected takeoff.</li>
+<li>Turn <span class="highlight">strobe lights</span> and <span class="highlight">landing lights ON</span> before crossing the hold-short line.</li>
+<li>At <span class="highlight">uncontrolled airports</span>, always <span class="highlight">check the map for incoming traffic</span> and <span class="highlight">announce intentions on UNICOM</span> before entering the runway.</li>
+</ol>
+</div>
+<h2>Takeoff</h2>
+<div class="content-box">
+<ol>
+<li>On <span class="highlight">"Line Up and Wait"</span>, align properly with the runway centerline.</li>
+<li><span class="highlight">Rolling takeoffs are discouraged</span> unless instructed for expedited departure.</li>
+<li>Before applying takeoff thrust, stabilize at <span class="highlight">50% N1 for 2-3 seconds</span> to prevent asymmetric power.</li>
+<li>Avoid using <span class="highlight">100% N1</span>; use tools like <a href="https://flightsmart.github.io/" target="_blank">FlightSmart</a> to calculate appropriate N1 based on weight and balance.</li>
+<li>Rotate smoothly, not exceeding <span class="highlight">10-15° pitch</span> or <span class="highlight">3000 fpm</span>. Positive climb: <span class="highlight">gear up</span>.</li>
+<li>Climb at approximately <span class="highlight">2500 fpm</span> until <span class="highlight">10,000 ft AGL</span> at <span class="highlight">250 knots IAS</span>. Reduce thrust at <span class="highlight">1500 ft AGL</span> or as per SID to accelerate and retract flaps at proper speeds.</li>
+<li>Above <span class="highlight">10,000 ft AGL</span>, turn <span class="highlight">landing lights OFF</span>, <span class="highlight">seatbelt signs OFF</span>, and ensure a <span class="highlight">clean configuration</span>.</li>
+</ol>
+</div>
+<h2>After Takeoff Checklist</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gear</td>
+<td>UP</td>
+</tr>
+<tr>
+<td>Flaps</td>
+<td>RETRACTED</td>
+</tr>
+<tr>
+<td>Lights</td>
+<td>Landing lights: OFF</td>
+</tr>
+<tr>
+<td>Autopilot</td>
+<td>ON, LNAV SET</td>
+</tr>
+<tr>
+<td>Climb power</td>
+<td>SET</td>
+</tr>
+<tr>
+<td>Trim</td>
+<td>ADJUSTED</td>
+</tr>
+<tr>
+<td>Seatbelts</td>
+<td>OFF</td>
+</tr>
+</tbody>
+</table>
+<h2>Executing Crosswind Takeoffs</h2>
+<div class="info-card">
+<p>Taking-off in crosswinds is an art-form, and requires skills to execute properly. With the right amount of rudder and aileron deflection, you can safely take off from airports with high crosswind component.</p>
+<p>You can follow the following guide from Infinite Flight to learn the nuances: <a href="https://youtu.be/0NnEO-o2Sn8?si=AInKhE6CKJwWrVhE" target="_blank">Crosswind Landing - Airliner Tutorial</a></p>
+</div>
+<h2>Climb Phase</h2>
+<div class="content-box">
+<ol>
+<li>Use the <span class="highlight">#bot-commands</span> channel on our Discord to access aircraft climb profiles with the aircraft stats command. (These are for reference and can be tweaked depending upon aircraft weight and airspace operations)</li>
+<li>When handed off to <span class="highlight">Departure or Center</span>, simply <span class="highlight">"Check-In"</span> unless further instructions are given.</li>
+<li>Continuously monitor <span class="highlight">Vertical Speed (VS)</span> and <span class="highlight">Indicated Airspeed (IAS)</span> until reaching cruise altitude.</li>
+<li>For <span class="highlight">long-haul flights</span>, <span class="highlight">step-climbs are encouraged</span> and are covered in the <span class="highlight">Cruise Section</span> of this guide.</li>
+</ol>
+</div>
+<h2>Climb Profiles by Aircraft Category</h2>
+<h3>Heavy Jets</h3>
+<div class="content-box">
+<p><strong>Below FL100:</strong> 250 KIAS</p>
+<p><strong>FL100-FL280:</strong> 290-310 KIAS</p>
+<p><strong>Above FL280:</strong> Transition to cruise Mach speed</p>
+<p><strong>Vertical Speed:</strong> 2,000-2,500 fpm initially; reduce to 1200-1,500 fpm above FL280</p>
+</div>
+<h3>Narrowbodies</h3>
+<div class="content-box">
+<p><strong>Below FL100:</strong> 240-250 KIAS</p>
+<p><strong>FL100-FL280:</strong> 280-290 KIAS</p>
+<p><strong>Above FL280:</strong> M0.78 (M0.79 in case of 737-900/737MAX)</p>
+<p><strong>Vertical Speed:</strong> 2,000-2,500 fpm initially; 1,000-1,500 fpm above FL280</p>
+</div>
+<h3>Regional Jets</h3>
+<div class="content-box">
+<p><strong>Below FL100:</strong> 240-250 KIAS</p>
+<p><strong>FL100-FL280:</strong> 280 KIAS</p>
+<p><strong>Above FL280:</strong> M0.77-0.78</p>
+<p><strong>Vertical Speed:</strong> 1,500-2,000 fpm</p>
+</div>
+<div class="info-card">
+<p><em>Additional info: Climb profiles in detail can be obtained from this detailed guide on the <a href="https://community.infiniteflight.com/t/all-aircraft-takeoff-and-landing-profiles-version-20-1-wiki/441564" target="_blank">Infinite Flight Community page</a></em></p>
+</div>
+</div>
+<div class="page" id="section-3-5">
+<div class="header-bar"><div class="header-icon">☁️</div>
+<h1><span class="section-number">3.5</span> Cruise</h1>
+</div>
+<h2>Description</h2>
+<div class="content-box">
+<p>The cruise phase of flight begins once the aircraft has reached its initial cruising altitude and is flying level under stable conditions. This is typically the longest phase in a flight and is crucial for fuel efficiency and route adherence.</p>
+</div>
+<h2>Guidelines for Cruising</h2>
+<div class="content-box">
+<ul>
+<li>Maintain assigned cruise altitude (based on flight plan and flight direction).</li>
+<li>Monitor airspeed regularly. Adjust as needed to maintain fuel efficiency and aircraft performance.</li>
+<li>Verify <span class="highlight">LNAV is active</span> to ensure the aircraft continues to follow the flight plan.</li>
+<li>Cross-check the ground speed and wind conditions occasionally, especially on long hauls. Stay within fuel range and aircraft limitations to avoid mid-flight issues.</li>
+<li>If using AP+ (Autopilot Plus), ensure all <span class="highlight">AP+ conditions are met</span> before exiting the app.</li>
+</ul>
+</div>
+<h2>Standard Cruise Altitudes (based on direction)</h2>
+<div class="content-box">
+<ul>
+<li><strong>Eastbound (000°-179°):</strong> Odd flight levels (FL310, FL330, FL350, etc.)</li>
+<li><strong>Westbound (180°-359°):</strong> Even flight levels (FL320, FL340, FL360, etc.)</li>
+</ul>
+</div>
+<h2>Cruise Speeds by Aircraft Category</h2>
+<table>
+<thead>
+<tr>
+<th>Aircraft</th>
+<th>Cruise Speed (Mach)</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>Airbus A220</td><td>M0.80</td></tr>
+<tr><td>Airbus A318/A319/A320/A321</td><td>M0.78</td></tr>
+<tr><td>Airbus A330 family</td><td>M0.80-0.82</td></tr>
+<tr><td>Airbus A340</td><td>M0.84</td></tr>
+<tr><td>Airbus A350</td><td>M0.85</td></tr>
+<tr><td>Airbus A380</td><td>M0.85</td></tr>
+<tr><td>Boeing 717</td><td>M0.75-0.77</td></tr>
+<tr><td>Boeing 737 family</td><td>M0.78 (M0.79 for -900/MAX)</td></tr>
+<tr><td>Boeing 747 family</td><td>M0.84-0.85</td></tr>
+<tr><td>Boeing 757</td><td>M0.80</td></tr>
+<tr><td>Boeing 767</td><td>M0.81-0.83</td></tr>
+<tr><td>Boeing 777 family</td><td>M0.84</td></tr>
+<tr><td>Boeing 787 family</td><td>M0.85-0.86</td></tr>
+<tr><td>CRJ Family</td><td>M0.77-0.81</td></tr>
+<tr><td>Cessna 172</td><td>~100 KIAS (~97 KTAS @ FL100)</td></tr>
+</tbody>
+</table>
+<div class="info-card">
+<p><a href="https://infiniteflight.com/guide/flying-guide/take-off-to-cruise/step-climbs-and-cruising-altitudes" target="_blank">User Guide from Infinite Flight</a></p>
+</div>
+</div>
+<div class="page" id="section-3-6">
+<div class="header-bar"><div class="header-icon">📈</div>
+<h1><span class="section-number">3.6</span> Step Climb (For Long Haul Flights)</h1>
+</div>
+<h2>What is a Step Climb?</h2>
+<div class="content-box">
+<p>A step climb is a technique used during long-haul flights to gradually increase cruising altitude as fuel burns and the aircraft becomes lighter. This <span class="highlight">improves fuel efficiency</span> and ensures optimal engine performance over time.</p>
+</div>
+<h2>Why Use Step Climbs?</h2>
+<div class="content-box">
+<ul>
+<li>Reduces fuel consumption</li>
+<li>Keeps aircraft within safe performance margins</li>
+<li>Adapts to real-world operational practices for realism</li>
+</ul>
+</div>
+<h2>How to Perform a Step Climb</h2>
+<div class="content-box">
+<ul>
+<li>Start at an initial cruise altitude <span class="highlight">based on aircraft weight and weather</span>.</li>
+<li>Monitor fuel burn and aircraft weight during cruise.</li>
+<li>After a few hours (typically 2-4), when the aircraft is lighter, climb to the next optimal flight level (FL340 &gt; FL360 &gt; FL380, etc.).</li>
+<li>Always <span class="highlight">climb in accordance with flight direction rules</span> (odd/even levels).</li>
+<li>Adjust Mach number and autopilot settings as required after each climb.</li>
+</ul>
+</div>
+<h2>Best Practices</h2>
+<div class="content-box">
+<ul>
+<li>Step climbs are best used on flights 6+ hours in duration.</li>
+<li>Use <span class="highlight">SimBrief</span> or VA route planners to check optimal climb levels and estimated top-of-climb (TOC).</li>
+</ul>
+</div>
+<h2>SimBrief Guide</h2>
+<div class="info-card">
+<p>Additionally, you can find waypoints for step climb under the <span class="highlight">"Briefing Preview"</span> in SimBrief.</p>
+<p><a href="https://infiniteflight.com/guide/flying-guide/take-off-to-cruise/step-climbs-and-cruising-altitudes" target="_blank">User Guide from Infinite Flight</a></p>
+</div>
+</div>
+<div class="page" id="section-3-7">
+<div class="header-bar"><div class="header-icon">🛬</div>
+<h1><span class="section-number">3.7</span> Arrival</h1>
+</div>
+<h2>Use of STAR (Standard Terminal Arrival Route)</h2>
+<div class="content-box">
+<p>A STAR is a <span class="highlight">predefined arrival route</span> used to guide aircraft from cruise to approach. It provides lateral and vertical navigation down to the terminal area while avoiding restricted airspace and managing traffic flow.</p>
+</div>
+<h2>Guidelines</h2>
+<div class="content-box">
+<ul>
+<li>Always select a STAR that <span class="highlight">matches your arrival runway and flight direction</span>.</li>
+<li>Load STARs from the Procedures tab in the flight plan menu in Infinite Flight.</li>
+<li>Review <span class="highlight">altitude restrictions</span> and speeds - follow them as closely as possible.</li>
+<li>STARs often include waypoints that lead into the initial approach fix (IAF).</li>
+<li>Choose a <span class="highlight">STAR based on active runway and ATC instructions</span>, if available.</li>
+</ul>
+</div>
+<h2>Descent Profiles by Aircraft Category</h2>
+<div class="content-box">
+<p><strong>Cruise to TOD:</strong> Maintain cruise Mach (M0.78-0.85)</p>
+<p><strong>FL280 to FL150:</strong> 290-320 KIAS (Mach ≤ 0.75)</p>
+<p><strong>FL150 to FL100:</strong> 280-250 KIAS</p>
+<p><strong>Below FL100:</strong> 250 KIAS</p>
+<p><strong>Final Approach (~5 NM):</strong> 160-180 KIAS</p>
+<p><strong>Vertical Speed:</strong> 1,500-2,000 fpm standard, up to 3,000 fpm if required</p>
+<p><strong>TOD Formula:</strong> (Altitude to lose ÷ 1,000) × 3</p>
+</div>
+<h2>Summary Table</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Heavy Jet</th>
+<th>Narrowbody</th>
+<th>Regional Jet</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Climb ≤ FL100</td>
+<td>250 KIAS</td>
+<td>240-250 KIAS</td>
+<td>240-250 KIAS</td>
+</tr>
+<tr>
+<td>Climb FL100-FL280</td>
+<td>290-310 KIAS</td>
+<td>280-290 KIAS</td>
+<td>280 KIAS</td>
+</tr>
+<tr>
+<td>Climb ≥ FL280</td>
+<td>M0.84-0.85</td>
+<td>M0.78</td>
+<td>M0.77</td>
+</tr>
+<tr>
+<td>Cruise</td>
+<td>M0.84-0.85</td>
+<td>M0.78-0.79</td>
+<td>M0.77-0.78</td>
+</tr>
+<tr>
+<td>Descent FL280-150</td>
+<td>290-320 KIAS</td>
+<td>280-300 KIAS</td>
+<td>280 KIAS</td>
+</tr>
+<tr>
+<td>Descent FL150-FL100</td>
+<td>250-280 KIAS</td>
+<td>250-280 KIAS</td>
+<td>250-270 KIAS</td>
+</tr>
+<tr>
+<td>Below FL100</td>
+<td>250 KIAS</td>
+<td>250 KIAS</td>
+<td>250 KIAS</td>
+</tr>
+</tbody>
+</table>
+<div class="info-card">
+<p><a href="https://infiniteflight.com/guide/flying-guide/descent-to-landing/descent-planning" target="_blank">User Guide for Arrival from Infinite Flight</a></p>
+</div>
+</div>
+<div class="page" id="section-3-8">
+<div class="header-bar"><div class="header-icon">📡</div>
+<h1><span class="section-number">3.8</span> How to Request Approach to ATC</h1>
+</div>
+<div class="content-box">
+<p>In this section, we will explain how to request ATC for approach in different situations. For pilots who are newly starting out in grade 3, this section can act as rough guide. However, we strictly encourage you to go over the official Infinite Flight flying guide before you set out your VA journey.</p>
+</div>
+<h2>This Section is Divided into 3 Parts</h2>
+<div class="info-card">
+<ul>
+<li>3.8.1 - Visual Approach</li>
+<li>3.8.2 - GPS Approach</li>
+<li>3.8.3 - ILS Approach</li>
+</ul>
+</div>
+<h2>If You Approach into an Airport with Only an Approach Frequency</h2>
+<div class="content-box">
+<p>You tune into the approach Frequency. You <span class="highlight">DO NOT CHECK IN</span>, rather directly state your approach request.</p>
+<p>For example, If I tune into Mumbai Approach, I state, "Air India 001IN is 34 nautical miles north west of Mumbai at 12000ft requesting ILS approach at runway 27"</p>
+</div>
+<h3>You will receive 2 possible responses from ATC:</h3>
+<div class="content-box">
+<ol>
+<li><span class="highlight">Continue as Filed</span>, expect ILS approach at Runway 27.</li>
+<li><span class="highlight">Expect Vectors</span> for ILS Runway 27.</li>
+</ol>
+</div>
+<h3>If you are asked to continue as filed:</h3>
+<div class="content-box">
+<ul>
+<li>Follow your flight plan into the airport and the ATC would hand you off to tower when needed.</li>
+</ul>
+</div>
+<h3>If you are asked to expect vectors:</h3>
+<div class="content-box">
+<ul>
+<li>Be alert, since the ATC will assign you altitudes and headings until you approach the airport.</li>
+</ul>
+</div>
+</div>
+<div class="page" id="section-3-8-1">
+<div class="header-bar"><div class="header-icon">👁️</div>
+<h1><span class="section-number">3.8.1</span> Visual Approach</h1>
+</div>
+<h2>Conditions for Visual Approach</h2>
+<div class="content-box">
+<ul>
+<li>You can be cleared to a <span class="highlight">Visual Approach</span> if the pilot can visually locate the airport and the runway. For this to happen, <span class="highlight">Visual</span> approaches are only possible and allowed if the visibility is more than <span class="highlight">3sm (3 statute miles)</span>.</li>
+<li>You will be positioned in a recognizable position such as <span class="highlight">downwind</span>, <span class="highlight">base, or even straight in</span>. The Approach Controller must then ask the aircraft to <span class="highlight">"report airport in sight"</span></li>
+<li>Note that Controllers can still continue to issue vectors to the pilot after requesting the pilot to "report airport in sight"</li>
+</ul>
+</div>
+<h2>Official Infinite Flight Guide</h2>
+<div class="info-card">
+<p><a href="https://youtu.be/rP6GCu9ZJ14?si=6ka6zqqpLQtoEtnH" target="_blank">Visual Approach Pilot Tutorial</a></p>
+</div>
+</div>
+<div class="page" id="section-3-8-2">
+<div class="header-bar"><div class="header-icon">🛰️</div>
+<h1><span class="section-number">3.8.2</span> GPS Approach</h1>
+</div>
+<h2>What are GPS approaches?</h2>
+<div class="content-box">
+<p>(GPS) Approach is a non-precision approach within IF but is not commonly used as functionality is currently limited. If however, pilots request this type of approach, Controllers <strong>may</strong> try to accommodate this when traffic permits.</p>
+<p>When a pilot requests the <span class="highlight">GPS</span> Approach and this is approved by the Controller (or if the GPS Approach is issued by the Controller).</p>
+<p>Controllers <strong>will</strong> expect aircraft to continue on their FPL (or the new FPL if they had a different approach programmed previously). At an appropriate point (such as base), the Approach frequency will clear the aircraft for approach, but <strong>do not expect</strong> a final approach <strong>heading/altitude</strong> as the pilot is <strong>expected</strong> to follow their <strong>flight plan</strong> to the <strong>runway threshold</strong>.</p>
+</div>
+<h2>You may only receive an Altitude/Heading command/vectors under 3 circumstances:</h2>
+<div class="content-box">
+<ul>
+<li>if a <span class="highlight">STAR</span> does not lead <span class="highlight">aircraft onto the final approach</span></li>
+<li>if it would not be expeditious to allow aircraft to fly their entire flight plan with <span class="highlight">CURRENT</span> traffic levels</li>
+<li>or if the aircraft has <span class="highlight">declared a missed approach</span></li>
+</ul>
+</div>
+<div class="info-card">
+<p>More information here: <a href="https://www.youtube.com/watch?v=ZUTTLVhix8s" target="_blank">GPS Approach - Pilot Tutorial</a></p>
+</div>
+</div>
+<div class="page" id="section-3-8-3">
+<div class="header-bar"><div class="header-icon">📡</div>
+<h1><span class="section-number">3.8.3</span> ILS Approach</h1>
+</div>
+<h2>What is an ILS approach?</h2>
+<div class="content-box">
+<p>ILS approach is perhaps the most commonly used method of approach in Infinite Flight and one of the simplest.</p>
+<p>The ILS consists of two beams, the Localizer (<span class="highlight">LOC</span>), providing lateral guidance (left/right) and the Glideslope (<span class="highlight">G/S</span>) providing vertical guidance (up/down).</p>
+<p>To intercept the G/S of an ILS, Controllers <strong>will</strong> issue an altitude that is below the G/S path.</p>
+</div>
+<h2>Preparation before Approach:</h2>
+<div class="content-box">
+<ul>
+<li>Ensure your flight plan consists of the relevant ILS approach to the destination airport, and ensure the correct runway is selected.</li>
+<li>Pilots need to be tuned into the <span class="highlight">appropriate ILS frequency</span> of the arrival runway in the NAV1 tab.</li>
+<li>Alternatively, you can also tap the airport, then head over to the "RWY" menu to find the runway altitudes and headings.</li>
+<li>In case of an active approach frequency, you would be vectored into the ILS path by the controller.</li>
+<li>Once cleared for ILS approach, <span class="highlight">tune into NAV1 mode</span> from the GPS mode.</li>
+</ul>
+</div>
+<div class="warning-box">
+<strong>Note:</strong> Before commencing your base turn into the ILS path, ensure your speed is below 200 kts IAS, with the optimum speed being 180 kts IAS.
+    </div>
+<h2>Intercepting the localizer:</h2>
+<div class="content-box">
+<ul>
+<li>Slow down to the appropriate approach speed. Make sure your flaps are extended gradually.</li>
+<li>Continuously monitor the heading bug and the glideslope indicator (denoted by a green diamond). Once the <span class="highlight">glideslope indicator is in range</span> and you're aligned with the runway, arm "APPR" if it's available. Else, manually follow this path.</li>
+<li>Once <span class="highlight">glideslope has been captured</span>, make minimal changes to speed and flaps configuration. While not always necessary, it can sometimes be helpful to lower the landing gear <span class="highlight">before</span> APPR mode is armed. This ensures a stabilized approach onto the runway.</li>
+<li>Disconnect the autopilot (preferably before 200 ft AGL) and hand-fly into the runway while managing speed as well as pitch. Ensure the <span class="highlight">FPV</span> (flight path vector) is directly aimed at the runway centerline.</li>
+</ul>
+</div>
+<div class="info-card">
+<p><strong>Infinite Flight official guide:</strong> <a href="https://youtu.be/p4IsNaCRzbg?si=oPOxe-V6CG0HsUwV" target="_blank">Autoland (APPR) Tutorial</a></p>
+</div>
+</div>
+<div class="page" id="section-3-8-4">
+<div class="header-bar"><div class="header-icon">✓</div>
+<h1><span class="section-number">3.8.4</span> Stabilized Approach Criteria</h1>
+</div>
+<div class="content-box">
+<p>The following criteria should be satisfied when you're set up for landing.</p>
+</div>
+<h2>Correct Aircraft Configuration</h2>
+<div class="content-box">
+<ul>
+<li><strong>All aircraft must be fully configured for landing no later than 800 feet AGL.</strong> This includes landing gear down, flaps set to final landing position, spoilers armed, and landing checklist completed. 800 feet AGL is the absolute last point by which the aircraft must be in its final landing configuration.</li>
+<li>Below 800 feet AGL, <strong>no further changes to flaps or gear</strong> are permitted. If the pilot intends to land in <span class="highlight">Config 3</span>, that setting must be selected and stabilized <strong>prior to 800 feet AGL</strong>. Any flap selection or gear extension below 800 ft AGL is considered an <strong>unstabilized approach</strong> and must result in a <strong>go-around</strong>.</li>
+<li><strong>Autobrake setting is not restricted</strong> by altitude. It <strong>must be selected during the descent phase</strong>, but pilots may <strong>adjust or change it at any time during the approach</strong>, based on runway conditions, performance needs, or personal preference.</li>
+</ul>
+</div>
+<h2>Proper Speed Management</h2>
+<div class="content-box">
+<ol>
+<li>Flaps Approach Speed -- ~10 NM / 2000 ft AGL</li>
+<li>Final Approach Speed (Vref - 5 +15 kts) -- Achieved by <span class="highlight">1000 feet</span> AGL</li>
+</ol>
+<p>SimBrief's in-built tool would also help you with landing speeds calculations.</p>
+<p>Your desired approach speeds as well as flap settings are automatically calculated using this tool.</p>
+</div>
+</div>
+<div class="page" id="section-3-9">
+<div class="header-bar"><div class="header-icon">🎊</div>
+<h1><span class="section-number">3.9</span> Events Étiquettes</h1>
+</div>
+<h2>Introduction</h2>
+<div class="content-box">
+<p>INVA hosts exciting events that are scheduled every weekend. These events, or group flights garner significant levels of participation, and hence members are expected to follow certain guidelines while attending these events.</p>
+</div>
+<h2>Gate Assignment</h2>
+<div class="content-box">
+<p>Gates are assigned well in advance before these events, and in a particular order of hierarchy. When attending such events, INVA members are expected to <strong>NOT</strong> request for pushback clearance until told in the discord channel.</p>
+</div>
+<h2>Pushback Clearances</h2>
+<div class="content-box">
+<p>Pushback clearances will be given in the following order:</p>
+<ol>
+<li>INVA executives and Staff Team.</li>
+<li>Akashratha club members</li>
+<li>Rajamatya club members</li>
+<li>Rest of the attendees.</li>
+</ol>
+</div>
+<div class="warning-box">
+<strong>Note:</strong> We <strong>assign</strong> roles within the discord server prior to the event such as <strong>"round 1" and "round 2",</strong> hence members are expected to exercise caution and not pushback until pinged within the event channel.
+    </div>
+<h2>Flightplan, W&amp;B and Discord Rules</h2>
+<div class="content-box">
+<p>Weight &amp; Balance figures such as <span class="highlight">fuel</span>, <span class="highlight">passengers</span> and <span class="highlight">cargo</span> would be given well in advance within the server. Pilots <strong>should</strong> ensure they read the briefings within the server well in advance and avoid <strong>tagging</strong> the staff or other members.</p>
+<p>In addition to that, climb profiles as well as speeds would be specified too. Pilots are <strong>expected</strong> to load the flight plan from the <strong>event leader</strong> when <strong>notified</strong>.</p>
+<p>Pilots should ensure they maintain <span class="highlight">decorum</span> within the discord server when the event is in progress and refrain from transmitting <span class="highlight">unnecessary messages</span> until cruise level is achieved.</p>
+</div>
+<div class="warning-box">
+<strong>Note:</strong> We encourage you to turn on <strong>AP+ only after the initial cruise</strong> level is achieved and ensure that enough separation is maintained between other aircraft. For long haul flights, the event leader would ping pilots for step climb.
+    </div>
+<div class="content-box">
+<p>The decisions made by the event leader or the staff members <strong>will</strong> be considered final, to ensure realistic simulation integrity and avoid unnecessary differences in planning.</p>
+<p>INVA's IFATC staff would be handling ATC during internal events and hence pilots should ensure strict compliance to their instructions.</p>
+</div>
+</div>
+<div class="page" id="section-4-0">
+<div class="header-bar"><div class="header-icon">📊</div>
+<h1><span class="section-number">4.0</span> Crew Center Guide</h1>
+</div>
+<div class="content-box">
+<p>The Crew Center is the central hub for managing your flights, filing PIREPs, tracking your progress, and accessing route information within Indian Virtual. INVA's site hosts all of the necessary features. Once you are formally inducted into the VA, you are given access to the 
+  <a href="https://www.indianvirtual.site/crew" target="_blank">Crew Center</a>.</p>
+</div>
+</div>
+<div class="page" id="section-4-1">
+<div class="header-bar"><div class="header-icon">📄</div>
+<h1><span class="section-number">4.1</span> Guide to PIREPs</h1>
+</div>
+<div class="content-box">
+<p>In Indian Virtual, PIREPs are a way to keep a track and to check whether a pilot has really flown the route they have filed and see its legitimacy.</p>
+<p>PIREPs are filed by pilots and we at Indian Virtual also allow IFATC PIREPs and rules are different for each.</p>
+<p>In the subtabs below, we will show how it is to file a PIREP in Indian Virtual in different scenarios!</p>
+</div>
+</div>
+<div class="page" id="section-4-1-1">
+<div class="header-bar"><div class="header-icon">✏️</div>
+<h1><span class="section-number">4.1.1</span> Guide to PIREPs for Pilots</h1>
+</div>
+<div class="warning-box">
+<strong>Important:</strong> You must file a PIREP <strong>after</strong> a flight is <strong>complete</strong>. Do not file before the flight. Additionally, PIREPS need to be filed by 48 hours after the completion of the flight. If filed after that, they would be rejected without notice.
+    </div>
+<div class="content-box">
+<p>If you're asked to refile a particular PIREP, you have a 72 hour block to file it again, and if filed later, they would be rejected without any further explanation.</p>
+</div>
+<h2>There are 2 ways you can file a PIREP as a pilot in INVA</h2>
+<div class="info-card">
+<ol>
+<li><span class="highlight">Manual</span> PIREP filing</li>
+<li>Filing a PIREP by <span class="highlight">selecting</span> a route</li>
+</ol>
+</div>
+<h2>Manual PIREP Filling</h2>
+<div class="content-box">
+<ol>
+<li>Go to the <a href="https://www.indianvirtual.site/crew/pireps/file" target="_blank">PIREP submission page</a>.</li>
+<li>Manually add all the flight information - Flight Hours, DEP and Arrival ICAO, Flight Number of the flight that is available in the database. <strong>Not your VA callsign number.</strong></li>
+<li>Make sure to add the <strong>proper operator</strong>. In this case I flew Air India, so my operator must be Indian Virtual.</li>
+<li>If you are applicable to add a <strong>multiplier</strong>, make sure to select the right multiplier (For example, CEO Routes 1.5x)</li>
+<li>After selecting Multiplier from the multiplier tab, make sure to write in the comments of the reason/the multiplier you select. It is because we have too many 1.5x multipliers, we can only see the 1.5x selected but not the exact multiplier that you selected.</li>
+</ol>
+</div>
+<h2>PIREP Filing from Routes Section</h2>
+<div class="content-box">
+<ol>
+<li>Click on the Routes section in the Crew Center</li>
+<li>Enter the route you have flown/the flight number. For example I have flown VIDP-EHAM (AI155), I enter the Flight Number or the ICAO - ICAO or both and then press search.</li>
+<li>Press <span class="highlight">FILE PIREP button</span> which is present on the corresponding flight.</li>
+<li>It should redirect to this screen with the Flight Number/ICAO-ICAO filed already. You must now file the flight hours that you accumulated from flying and the aircraft used on this route.</li>
+<li>Just like in the <strong>Manual PIREP</strong> filing, you must follow the same rules as adding the multiplier. IF you don't have the multiplier availed, then just leave it blank, do not select a multiplier and keep the comments empty.</li>
+</ol>
+</div>
+</div>
+<div class="page" id="section-4-1-2">
+<div class="header-bar"><div class="header-icon">🎙️</div>
+<h1><span class="section-number">4.1.2</span> Guide to PIREPs for IFATC</h1>
+</div>
+<div class="content-box">
+<p>As a beneficiary to IFATC Members in Indian Virtual, we offer IFATC pilots in Indian Virtual to file their IFATC hours that they spend in an hub, that would contribute towards their flight hours account in Indian Virtual.</p>
+<p>As a result, IFATC members can file their IFATC PIREP but receive different amounts of time, depending on the criteria.</p>
+</div>
+<h2>How to File an IFATC PIREP</h2>
+<div class="content-box">
+<ol>
+<li>Go to the <a href="https://www.indianvirtual.site/crew/pireps/file" target="_blank">PIREP submission page</a>.</li>
+<li>You need to file the airport you controlled, the amount of time you controlled, you can just select any aircraft, it doesn't matter.</li>
+<li>In the place of a multiplier, there are different criteria to which you need to select a multiplier. <strong>FOR IFATC PIREPs, YOU NEED TO select a Multiplier.</strong></li>
+</ol>
+</div>
+<h2>CRITERIA OF THE MULTIPLIERS</h2>
+<div class="info-card">
+<h3>1. IFATC PIREP - ON SCHEDULE INDIAN AIRPORT (1.0x)</h3>
+<p>You may use this multiplier, the airport you control is on the schedule for that particular day on the IFATC Schedule.</p>
+<p>If I control VABB on the 15th, then I may select the <strong>ON SCHEDULE INDIAN AIRPORT (1.0x)</strong> Multiplier as the Indian airport is on schedule.</p>
+</div>
+<div class="info-card">
+<h3>2. IFATC PIREP - INVA EVENT NON INDIAN AIRPORT</h3>
+<p>You may use this multiplier, if you control an event/group flight hosted by <strong>executive</strong> members in Indian Virtual for an airport that is a <strong>NON Indian Airport</strong>. <strong>For example</strong>, Indian Virtual departs out of KJFK for VABB, you control KJFK GTS and provide your ATC service for INVA pilots, <strong>you are applicable for this multiplier</strong>.</p>
+</div>
+<div class="info-card">
+<h3>3. IFATC PIREP - NON SCHEDULE INDIAN AIRPORT</h3>
+<p>You may use this multiplier, if you open any Indian Airport on a day that airport isn't featured in the ATC Schedule.</p>
+<p><strong>For example</strong>, on June 12th, I open VABB GTS for 1h, I must use this multiplier "NON SCHEDULE INDIAN AIRPORT" As the airports featured for this day, isn't VABB.</p>
+</div>
+<div class="info-card">
+<h3>4. IFATC PIREP - SCHEDULE AIRPORT</h3>
+<p>You may use this multiplier if you open an airport in the schedule. I open LOWW GTS on 12th June, I must use this multiplier.</p>
+<p><strong>YOU</strong> <strong>must</strong> also use this multiplier if you open <strong>any airport</strong> that <strong>isn't on the schedule (Non Indian Airport)</strong>. For example, after I open KLAX GTS on the 12th June, I <strong>must</strong> use this multiplier while <strong>filing</strong> my <strong>PIREP</strong>.</p>
+</div>
+<div class="info-card">
+<h3>5. IFATC PIREP - INVA EVENT INDIAN AIRPORT</h3>
+<p>You may use this multiplier if you open an Indian Airport for <strong>Indian Virtual events/group flights which are hosted by the staff team.</strong></p>
+</div>
+</div>
+<div class="page" id="section-4-1-3">
+<div class="header-bar"><div class="header-icon">🏢</div>
+<h1><span class="section-number">4.1.3</span> PIREP Operator Guide</h1>
+</div>
+<div class="content-box">
+<p>There are several operators listed under the PIREP form. Each operator name resembles the respective codeshare we have.</p>
+<p>While flying a codeshare flight, pilots must ensure that they use the appropriate operator name while filing PIREPS.</p>
+</div>
+<h2>Some List of Operators:</h2>
+<div class="content-box">
+<ul>
+<li><span class="highlight">Dubai Virtual</span> - Dubai Virtual (Emirates and FlyDubai PIREPS)</li>
+<li><span class="highlight">Lion Air Group</span> - Lion Air group (All LionAir and Batik Air PIREPS)</li>
+<li><span class="highlight">IndiGo</span> - IndGo Virtual (All IndiGo PIREPS)</li>
+<li><span class="highlight">Lufty Virtual</span> - All Lufthansa PIREPS</li>
+</ul>
+</div>
+<div class="warning-box">
+<strong>Note:</strong> In case of any <strong>doubts regarding the operator</strong>, pilots are expected to open a ticket within the INVA discord server.
+    </div>
+</div>
+<div class="page" id="section-4-2">
+<div class="header-bar"><div class="header-icon">⭐</div>
+<h1><span class="section-number">4.2</span> Multipliers</h1>
+</div>
+<h2>Base of the Week (BOTW)</h2>
+<div class="content-box">
+<p>An operator selected by the staff team. All pilots flying for the chosen operator can avail a <span class="highlight">1.5x multiplier</span> under the following conditions:</p>
+<ul>
+<li><strong>Eligible Flights:</strong> Any route operated by the selected operator.</li>
+<li><strong>Bonus Sector Limit:</strong> Multiplier applicable only for flights <strong>from/to</strong> the listed eligible airports.</li>
+<li><strong>Roundtrip Allowed:</strong> Yes.</li>
+<li><strong>How to Claim:</strong> File the flight using <span class="highlight">BOTW 1.5</span> in the PIREP.</li>
+</ul>
+</div>
+<h2>ROTW – Route of the Week</h2>
+<div class="content-box">
+<p><strong>ROTW</strong> offers a <span class="highlight">1.5x multiplier</span> for select weekly routes based on INVA's schedule. Key conditions include:</p>
+<ul>
+<li><strong>Eligibility:</strong> All pilots, regardless of rank, can fly.</li>
+<li><strong>One-time Bonus:</strong> Multiplier is available <strong>once per route</strong>.</li>
+<li><strong>Aircraft Requirement:</strong> Aircraft must be <strong>unlocked per your rank</strong> to avail multiplier. Check ⁠#ranks-channel.</li>
+<li><strong>Time Restriction:</strong> You must <strong>arrive at the destination on the specified day</strong> to be eligible.</li>
+<li><strong>No Multiplier</strong> if you don't meet the aircraft eligibility – you will receive <strong>Executive Exemption</strong>.</li>
+<li><strong>Routes are One-Way Only.</strong></li>
+<li><strong>On multi-route days, choose only ONE route to fly</strong>.</li>
+</ul>
+</div>
+<div class="info-card">
+<p><em>Example:</em> If the route is VIDP–VABB for 31st May, you must <strong>arrive into VABB on 31st May</strong>.</p>
+</div>
+<h2>CEO Routes</h2>
+<div class="content-box">
+<p><strong>CEO Routes</strong> are <strong>exclusive flights chosen by the CEO</strong>, eligible for <span class="highlight">1.5x multipliers</span> under specific conditions:</p>
+<ul>
+<li><strong>Eligibility:</strong> Open to all pilots.</li>
+<li><strong>Aircraft Requirement:</strong> Must have the aircraft unlocked.</li>
+<li><strong>Date-Specific:</strong> You must <strong>complete the route within the mentioned time frame</strong>.</li>
+<li><strong>One-time Multiplier per route.</strong></li>
+<li><strong>Category:</strong> Use <span class="highlight">CEO 1.5</span> when filing the PIREP to claim multiplier.</li>
+</ul>
+</div>
+<h2>Event Multipliers</h2>
+<div class="content-box">
+<p>In case of <strong>INVA events</strong>, pilots are expected to follow the appropriate PIREP guide that will be posted in the events channel after the <strong>end</strong> of the event.</p>
+<p>For any doubts, it is <strong>recommended to open a ticket.</strong></p>
+</div>
+</div>
+<div class="page" id="section-4-3">
+<div class="header-bar"><div class="header-icon">📞</div>
+<h1><span class="section-number">4.3</span> Callsign Usage</h1>
+</div>
+<h2>Callsign Usage Format</h2>
+<div class="content-box">
+<p>At Indian Virtual, callsigns follow a standardized and simple format to maintain consistency across all flights.</p>
+<p>The format is: <span class="highlight">(Airline Name) XXXIN</span></p>
+<ul>
+<li>The prefix represents the airline name.</li>
+<li>XXX is your assigned or chosen flight number.</li>
+<li>IN stands for India November, which is our official suffix used in all callsigns.</li>
+</ul>
+<p>This format must be followed for all flights under Indian Virtual, regardless of the codeshare or operator flown.</p>
+</div>
+<h2>Callsign, Aircraft, and Livery Usage Guidelines</h2>
+<div class="content-box">
+<p>If a specific livery is not available in Infinite Flight, pilots must use the Generic livery for the aircraft.</p>
+<ul>
+<li>Following the merger of Vistara into Indian Virtual (effective 11 NOV 2024):
+                <ul>
+<li>All ex-Vistara flights operate under the callsign format AI2XXX.</li>
+<li>Any route in the database starting with AI222 must be flown using Vistara aircraft, livery but callsign should be <strong>Air India</strong>.</li>
+</ul>
+</li>
+<li>Standard Air India flights (callsigns beginning with AI but not followed by '2') must use Air India aircraft, livery, and callsign only.</li>
+</ul>
+<p>This ensures proper branding, realism, and consistency in all INVA operations.</p>
+</div>
+</div>
+<div class="page" id="section-4-4">
+<div class="header-bar"><div class="header-icon">🗺️</div>
+<h1><span class="section-number">4.4</span> How to Operate a Live Flight Map?</h1>
+</div>
+<div class="content-box">
+<p>Our internal Live Map at <a href="https://1ved.cloud/api" target="_blank">1ved.cloud/api</a> provides real-time tracking of all active Indian Virtual flights. It displays aircraft positions, flight details, and route progress, helping pilots and staff monitor operations efficiently. It's a vital tool for maintaining situational awareness and enhancing coordination across the virtual airline network. PLEASE NOTE THAT THE CC IS CURRENTLY BEING REBUILT AND MIGHT NOT PROVIDE THIS FEATURE AT ALL TIMES.</p>
+</div>
+</div>
+<div class="page" id="section-5-0">
+<div class="header-bar"><div class="header-icon">🤖</div>
+<h1><span class="section-number">5.0</span> AP+ Rules</h1>
+</div>
+<div class="content-box" id="rules-within-inva">
+<h2>Rules within Indian Virtual</h2>
+<p>All AP+ operations within Indian Virtual must follow the VA’s internal conduct and flight standards. Any deviation or misuse may result in XP or hour deduction by the Executive Force. Ensure compliance with both IF and INVA regulations.</p>
+</div>
+<h2>What is AP+?</h2>
+<div class="content-box">
+<p><strong>AutoPilot+ (AP+)</strong> is a feature in Infinite Flight that allows a pilot's aircraft to continue flying on autopilot <strong>after exiting the app</strong> during cruise. This ensures that <strong>long-haul flights</strong> can still be completed <strong>without keeping the device running</strong>.</p>
+<p>AP+ is especially useful for Virtual Airline pilots completing long routes, allowing more flexibility while maintaining professionalism and realism.</p>
+</div>
+<h2>When Does AP+ Activate?</h2>
+<div class="content-box">
+<p>AP+ activates <strong>automatically</strong> when the following conditions are met:</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Cruise Altitude</strong></td>
+<td>Jets at or above <strong>FL280</strong> (28,000 ft), Props at or above <strong>7,000 ft</strong></td>
+</tr>
+<tr>
+<td><strong>Level Flight</strong></td>
+<td>The aircraft must be stable at cruising altitude (no climb/descent)</td>
+</tr>
+<tr>
+<td><strong>Autopilot + LNAV Enabled</strong></td>
+<td>Autopilot with LNAV (lateral navigation) must be active</td>
+</tr>
+<tr>
+<td><strong>Filed Flight Plan</strong></td>
+<td>A complete route must be filed and being followed</td>
+</tr>
+<tr>
+<td><strong>More Than 30 Min Remaining</strong></td>
+<td>ETE (Estimated Time En Route) must show <strong>30+ minutes</strong> left in cruise</td>
+</tr>
+<tr>
+<td><strong>On-Track</strong></td>
+<td>Aircraft must be properly aligned with the flight plan route</td>
+</tr>
+</tbody>
+</table>
+<div class="content-box">
+<p>Once these conditions are met, <strong>exiting the flight</strong> from the main menu will automatically activate <strong>AP+</strong>.</p>
+</div>
+<h2>How Does AP+ Work?</h2>
+<div class="content-box">
+<ul>
+<li>The aircraft continues flying <strong>in the background</strong>, maintaining:
+                <ul>
+<li>Current <strong>altitude</strong></li>
+<li><strong>Track</strong> (LNAV route)</li>
+<li><strong>Ground speed</strong></li>
+</ul>
+</li>
+<li>It uses a <strong>snapshot</strong> of current flight conditions but <strong>does NOT adjust for changing winds or live weather</strong>.</li>
+<li><strong>Position is saved every 5 minutes</strong>, so the flight resumes close to where you left.</li>
+</ul>
+</div>
+<h2>AP+ Auto Pausing Before Arrival</h2>
+<div class="content-box">
+<ul>
+<li>AP+ will <strong>pause the flight automatically</strong> <strong>~30 minutes</strong> before Top of Descent.</li>
+<li>You'll be removed from the live server and can <strong>resume the flight within 48 hours</strong>.</li>
+</ul>
+</div>
+<h2>How to Resume a Flight</h2>
+<div class="content-box">
+<ol>
+<li>Open Infinite Flight</li>
+<li>Tap <span class="highlight">"Continue Flight"</span> on the main menu</li>
+<li>You'll rejoin the flight exactly where it paused</li>
+<li><span class="highlight">Manually resume control</span> for descent, approach, and landing</li>
+<li>ATC communication resumes if you're in an active airspace</li>
+</ol>
+</div>
+<div class="warning-box">
+<strong>Note:</strong> <strong>Always Mention AP+ while filing Pireps if you have flown using it.</strong>
+</div>
+<!-- PASTE SECTION 6.0 HTML HERE -->
+<!-- Copy everything from: <div class="page" id="section-6-0"> 
+                 to its closing: </div> -->
+<div class="page" id="section-6-0">
+<div class="header-bar">
+<h1><span class="section-number">6.0</span> Indian Virtual Routes</h1>
+</div>
+<div class="content-box">
+<p>Indian Virtual offers a rich and diverse routing system designed to balance realism and enjoyment for all pilots. This section outlines the main categories of routes, special schedules, and unique operations that form the backbone of our virtual airline experience.</p>
+</div>
+<div class="info-card">
+<p>All Routes of INVA including codeshare are available here: <a href="https://www.indianvirtual.site/crew/routes" target="_blank">https://www.digitalcrew.app/INVA/routes/</a></p>
+<p>The above link also has a random route generator that makes you feel lucky!</p>
+</div>
+</div>
+<!-- PASTE SECTION 6.1 HTML HERE -->
+<!-- Copy everything from: <div class="page" id="section-6-1"> 
+                 to its closing: </div> -->
+<div class="page" id="section-6-1">
+<div class="header-bar">
+<h1><span class="section-number">6.1</span> Routes of the Week (ROTW)</h1>
+</div>
+<div class="content-box">
+<p><strong>Routes of the Week (ROTW)</strong> are refreshed regularly to keep the network dynamic and engaging for our pilots. Each week features routes which are usually between 2 HUBs in the ATC schedule. These routes are available to be flown by all pilots, regardless if they have the aircraft unlocked and get multipliers (1.5x). Routes are one way.</p>
+</div>
+<h2>4 Routes Chosen by Top Pilots</h2>
+<div class="content-box">
+<p><strong>4 Routes</strong> in the schedule are selected by 4 pilots with the highest flight hours in the week under <strong>Rajamatya Club.</strong></p>
+<p>Rest Routes in the ROTW are chosen by a staff team, with the vision of giving pilots incentives and exciting routes within the ATC schedule.</p>
+</div>
+<div class="warning-box">
+<strong>RULES for ROTW:</strong> These routes are available to be flown by all pilots, regardless if they have the aircraft unlocked and get multipliers (1.5x). Routes are one way. Must fly on the day it's for.
+    </div>
+</div>
+<!-- PASTE SECTION 6.2 HTML HERE -->
+<!-- Copy everything from: <div class="page" id="section-6-2"> 
+                 to its closing: </div> -->
+<div class="page" id="section-6-2">
+<div class="header-bar">
+<h1><span class="section-number">6.2</span> Base of the Week (BOTW)</h1>
+</div>
+<div class="content-box">
+<p>Pilots can get <span class="highlight">1.5x</span> of every flight they fly <strong>inbound/outbound</strong> of the <strong>Base of the Week</strong> with the aircraft that is already <strong>unlocked</strong> for them within their rank.</p>
+<p>Base of the Week (<strong>BOTW</strong>) is strategically selected to act either as a neutral hub in the ATC schedule or promotes higher movement between hubs, encourages use of regional aircraft, and keeps flight planning exciting and accessible throughout the week.</p>
+</div>
+<h2>Featured Operators</h2>
+<div class="content-box">
+<p>Sometimes an operator is featured, which <strong>incentivises</strong> the pilots to fly a <strong>particular operator</strong> more often during the week.</p>
+</div>
+</div>
+<!-- PASTE SECTION 6.3 HTML HERE -->
+<!-- Copy everything from: <div class="page" id="section-6-3"> 
+                 to its closing: </div> -->
+<div class="page" id="section-6-3">
+<div class="header-bar">
+<h1><span class="section-number">6.3</span> CEO Routes</h1>
+</div>
+<div class="content-box">
+<p>CEO Routes are curated one-way flights that align with the <strong>weekly ATC schedule</strong> to incentivise flying more often under the Indian Virtual banner. These routes are curated with the idea to accommodate ATC in the arrival airport. The routes are based on the day of the week.</p>
+</div>
+<h2>Rules</h2>
+<div class="content-box">
+<ul>
+<li>If the aircraft mentioned in the route is <strong>not unlocked by your rank</strong>, you can still fly the route and get the hours you flew for [Executive Exemption]. This allows you to get virtual access to aircrafts that are outside of your rank and also increases your flying hours within Indian Virtual. However, multipliers are not applicable in this case.</li>
+<li>If the aircraft mentioned in the route is <strong>unlocked</strong>, you may fly and file a 1.5x Multiplier.</li>
+<li>The pilot must land into the arrival airport within the day the route is mentioned for. For example, <em>4th May, AI161 | VIDP - EGLL | 10h | A359</em> is featured. I can take off the day before on 3rd May or even on the daytime of 4th May if I wish. BUT I must land before the day of 4th May ends. However, we do offer a relaxation for up to 2 hours.</li>
+<li>As pilots in INVA are from different parts of the world, different timezones, we allow the pilot to land and file the PIREPs for their flights before their day ends in their respective timezones. For Example, <strong>2000z</strong> on 4th May in Amsterdam is 10pm CEST, but in India it is 1:30am 5th May.</li>
+<li>On days, where there are 2 routes mentioned, you can fly either 1 route and get a multiplier if you are eligible or you get Executive Exemption.</li>
+</ul>
+</div>
+</div>
+<!-- PASTE SECTION 6.4 HTML HERE -->
+<!-- Copy everything from: <div class="page" id="section-6-4"> 
+                 to its closing: </div> -->
+<div class="page" id="section-6-4">
+<div class="header-bar">
+<h1><span class="section-number">6.4</span> Indian Virtual Core Routes (AI + AIX)</h1>
+</div>
+<div class="content-box">
+<p>The Indian Virtual Core Routes represent the real-world network of Air India (AI) and Air India Express (AIX). These routes span both domestic and international destinations using aircraft appropriate to real operations. These routes also include <strong>ex Vistara Routes</strong> which have been merged into <strong>Indian Virtual</strong> under the flight number prefix <strong>AI2xxx</strong></p>
+</div>
+<div class="info-card">
+<p><strong>List of the Routes:</strong> <a href="https://www.indianvirtual.site/" target="_blank">https://www.indianvirtual.site/</a></p>
+</div>
+</div>
+<!-- PASTE SECTION 6.5 HTML HERE -->
+<!-- Copy everything from: <div class="page" id="section-6-5"> 
+                 to its closing: </div> -->
+<div class="page" id="section-6-5">
+<div class="header-bar">
+<h1><span class="section-number">6.5</span> Historic Core Routes (AI + AIX + UK)</h1>
+</div>
+<div class="content-box">
+<p>Historic Core Routes consist of legacy sectors that were previously operated by Air India and Air India Express and Vistara but are no longer in active real-world service.</p>
+<p>These routes are present in the database with the flight numbers of <strong>AIH</strong> (<strong>Air India Historic</strong>), <strong>UKH</strong> (<strong>Vistara Historic Routes</strong>, routes which ceased operations when Vistara existed as a separate company to Air India Limited). <strong>IXH</strong> (Air India Express Historic) are ex Air India Express Historic flights.</p>
+</div>
+<div class="info-card">
+<ul>
+<li><span class="highlight">AIH</span> = Air India Historic</li>
+<li><span class="highlight">IXH</span> = Air India Express Historic</li>
+<li><span class="highlight">UKH</span> = Vistara Historic</li>
+</ul>
+</div>
+<div class="warning-box">
+<strong>Important:</strong> <strong>AIH</strong>/<strong>IXH</strong>/<strong>UKH</strong> flights must be filed under the operator of <strong>Air India Historic</strong>
+</div>
+</div>
+</div>
+<div class="page" id="section-6-0">
+<div class="header-bar"><div class="header-icon">🛫</div>
+<h1><span class="section-number">6.0</span> Indian Virtual Routes</h1>
+</div>
+<div class="content-box">
+<p>Indian Virtual offers a rich and diverse routing system designed to balance realism and enjoyment for all pilots. This section outlines the main categories of routes, special schedules, and unique operations that form the backbone of our virtual airline experience.</p>
+</div>
+<div class="info-card">
+<p>All Routes of INVA including codeshare are available here: <a href="https://www.indianvirtual.site/crew/routes" target="_blank">https://www.digitalcrew.app/INVA/routes/</a></p>
+<p>The above link also has a random route generator that makes you feel lucky!</p>
+</div>
+</div>
+<div class="page" id="section-6-1">
+<div class="header-bar"><div class="header-icon">📅</div>
+<h1><span class="section-number">6.1</span> Routes of the Week (ROTW)</h1>
+</div>
+<div class="content-box">
+<p><strong>Routes of the Week (ROTW)</strong> are refreshed regularly to keep the network dynamic and engaging for our pilots. Each week features routes which are usually between 2 HUBs in the ATC schedule. These routes are available to be flown by all pilots, regardless if they have the aircraft unlocked and get multipliers (1.5x). Routes are one way.</p>
+</div>
+<h2>4 Routes Chosen by Top Pilots</h2>
+<div class="content-box">
+<p><strong>4 Routes</strong> in the schedule are selected by 4 pilots with the highest flight hours in the week under <strong>Rajamatya Club.</strong></p>
+<p>Rest Routes in the ROTW are chosen by a staff team, with the vision of giving pilots incentives and exciting routes within the ATC schedule.</p>
+</div>
+<div class="warning-box">
+<strong>RULES for ROTW:</strong> These routes are available to be flown by all pilots, regardless if they have the aircraft unlocked and get multipliers (1.5x). Routes are one way. Must fly on the day it's for.
+    </div>
+</div>
+<div class="page" id="section-6-2">
+<div class="header-bar"><div class="header-icon">🏠</div>
+<h1><span class="section-number">6.2</span> Base of the Week (BOTW)</h1>
+</div>
+<div class="content-box">
+<p>Pilots can get <span class="highlight">1.5x</span> of every flight they fly <strong>inbound/outbound</strong> of the <strong>Base of the Week</strong> with the aircraft that is already <strong>unlocked</strong> for them within their rank.</p>
+<p>Base of the Week (<strong>BOTW</strong>) is strategically selected to act either as a neutral hub in the ATC schedule or promotes higher movement between hubs, encourages use of regional aircraft, and keeps flight planning exciting and accessible throughout the week.</p>
+</div>
+<h2>Featured Operators</h2>
+<div class="content-box">
+<p>Sometimes an operator is featured, which <strong>incentivises</strong> the pilots to fly a <strong>particular operator</strong> more often during the week.</p>
+</div>
+</div>
+<div class="page" id="section-6-3">
+<div class="header-bar"><div class="header-icon">👔</div>
+<h1><span class="section-number">6.3</span> CEO Routes</h1>
+</div>
+<div class="content-box">
+<p>CEO Routes are curated one-way flights that align with the <strong>weekly ATC schedule</strong> to incentivise flying more often under the Indian Virtual banner. These routes are curated with the idea to accommodate ATC in the arrival airport. The routes are based on the day of the week.</p>
+</div>
+<h2>Rules</h2>
+<div class="content-box">
+<ul>
+<li>If the aircraft mentioned in the route is <strong>not unlocked by your rank</strong>, you can still fly the route and get the hours you flew for [Executive Exemption]. This allows you to get virtual access to aircrafts that are outside of your rank and also increases your flying hours within Indian Virtual. However, multipliers are not applicable in this case.</li>
+<li>If the aircraft mentioned in the route is <strong>unlocked</strong>, you may fly and file a 1.5x Multiplier.</li>
+<li>The pilot must land into the arrival airport within the day the route is mentioned for. For example, <em>4th May, AI161 | VIDP - EGLL | 10h | A359</em> is featured. I can take off the day before on 3rd May or even on the daytime of 4th May if I wish. BUT I must land before the day of 4th May ends. However, we do offer a relaxation for up to 2 hours.</li>
+<li>As pilots in INVA are from different parts of the world, different timezones, we allow the pilot to land and file the PIREPs for their flights before their day ends in their respective timezones. For Example, <strong>2000z</strong> on 4th May in Amsterdam is 10pm CEST, but in India it is 1:30am 5th May.</li>
+<li>On days, where there are 2 routes mentioned, you can fly either 1 route and get a multiplier if you are eligible or you get Executive Exemption.</li>
+</ul>
+</div>
+</div>
+<div class="page" id="section-6-4">
+<div class="header-bar"><div class="header-icon">🎯</div>
+<h1><span class="section-number">6.4</span> Indian Virtual Core Routes (AI + AIX)</h1>
+</div>
+<div class="content-box">
+<p>The Indian Virtual Core Routes represent the real-world network of Air India (AI) and Air India Express (AIX). These routes span both domestic and international destinations using aircraft appropriate to real operations. These routes also include <strong>ex Vistara Routes</strong> which have been merged into <strong>Indian Virtual</strong> under the flight number prefix <strong>AI2xxx</strong></p>
+</div>
+<div class="info-card">
+<p><strong>List of the Routes:</strong> <a href="https://www.indianvirtual.site/" target="_blank">https://www.indianvirtual.site/</a></p>
+</div>
+</div>
+<div class="page" id="section-6-5">
+<div class="header-bar"><div class="header-icon">📜</div>
+<h1><span class="section-number">6.5</span> Historic Core Routes (AI + AIX + UK)</h1>
+</div>
+<div class="content-box">
+<p>Historic Core Routes consist of legacy sectors that were previously operated by Air India and Air India Express and Vistara but are no longer in active real-world service.</p>
+<p>These routes are present in the database with the flight numbers of <strong>AIH</strong> (<strong>Air India Historic</strong>), <strong>UKH</strong> (<strong>Vistara Historic Routes</strong>, routes which ceased operations when Vistara existed as a separate company to Air India Limited). <strong>IXH</strong> (Air India Express Historic) are ex Air India Express Historic flights.</p>
+</div>
+<div class="info-card">
+<ul>
+<li><span class="highlight">AIH</span> = Air India Historic</li>
+<li><span class="highlight">IXH</span> = Air India Express Historic</li>
+<li><span class="highlight">UKH</span> = Vistara Historic</li>
+</ul>
+</div>
+<div class="warning-box">
+<strong>Important:</strong> <strong>AIH</strong>/<strong>IXH</strong>/<strong>UKH</strong> flights must be filed under the operator of <strong>Air India Historic</strong>
+</div>
+</div>
+<div class="page" id="section-7-0">
+<div class="header-bar"><div class="header-icon">🤝</div>
+<h1><span class="section-number">7.0</span> Indian Virtual Codeshares</h1>
+</div>
+<div class="content-box">
+<p>Indian Virtual has established partnerships with a number of virtual airlines through codeshare agreements. These partnerships allow our pilots to enjoy a wide range of international and domestic routes operated by our partners.</p>
+</div>
+<h2>List of Codeshare Airlines</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Codeshare Virtual</th>
+<th>Operator</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>Copa Virtual</td><td>Copa Airlines</td></tr>
+<tr><td>2</td><td>AirAsia Virtual</td><td>AirAsia</td></tr>
+<tr><td>3</td><td>ITA Airways Virtual</td><td>ITA Airways</td></tr>
+<tr><td>4</td><td>Etihad Virtual</td><td>Etihad Airways</td></tr>
+<tr><td>5</td><td>LOT Virtual</td><td>LOT Polish Airlines</td></tr>
+<tr><td>6</td><td>Dubai Virtual</td><td>Emirates</td></tr>
+<tr><td>7</td><td>Vietnam Virtual</td><td>Vietnam Airlines</td></tr>
+<tr><td>8</td><td>BRVA Virtual</td><td>EVA Air</td></tr>
+<tr><td>9</td><td>easyJet Virtual</td><td>easyJet</td></tr>
+<tr><td>10</td><td>Qatar Virtual</td><td>Qatar Airways</td></tr>
+<tr><td>11</td><td>Garuda Virtual Group</td><td>Garuda Indonesia</td></tr>
+<tr><td>12</td><td>Caribbean Virtual</td><td>Caribbean Airlines</td></tr>
+<tr><td>13</td><td>IndiGo Virtual</td><td>IndiGo</td></tr>
+<tr><td>14</td><td>Lufty Virtual</td><td>Lufthansa</td></tr>
+<tr><td>15</td><td>Korean Air Virtual</td><td>Korean Air</td></tr>
+<tr><td>16</td><td>Turkish Virtual</td><td>Turkish Airlines</td></tr>
+<tr><td>17</td><td>SWISS Virtual</td><td>SWISS</td></tr>
+<tr><td>18</td><td>Brussels Virtual</td><td>Brussels Airlines</td></tr>
+<tr><td>19</td><td>Virgin Australia Virtual</td><td>Virgin Australia</td></tr>
+<tr><td>20</td><td>Singapore Virtual</td><td>Singapore Airlines</td></tr>
+<tr><td>21</td><td>Saudia Virtual</td><td>Saudia</td></tr>
+<tr><td>22</td><td>Kenya Airways Virtual</td><td>Kenya Airways</td></tr>
+<tr><td>23</td><td>Croatia Virtual</td><td>Croatia Airlines</td></tr>
+<tr><td>24</td><td>Avianca Virtual</td><td>Avianca</td></tr>
+<tr><td>25</td><td>Thai Virtual</td><td>Thai Airways</td></tr>
+<tr><td>26</td><td>United Virtual</td><td>United Airlines</td></tr>
+<tr><td>27</td><td>Ryanair Virtual</td><td>Ryanair</td></tr>
+<tr><td>28</td><td>TAP Virtual</td><td>TAP Airways</td></tr>
+<tr><td>29</td><td>South African Virtual Airlines</td><td>SouthAfrica Airlines</td></tr>
+<tr><td>30</td><td>ANA Virtual</td><td>ANA</td></tr>
+<tr><td>31</td><td>Lion Air Virtual</td><td>LionAir</td></tr>
+<tr><td>32</td><td>Icelandic Virtual</td><td>Icelandic Airlines</td></tr>
+<tr><td>33</td><td>Srilankan Virtual</td><td>Srilankan Airlines</td></tr>
+<tr><td>34</td><td>Ethiopian Virtual</td><td>Ethiopian Airlines</td></tr>
+</tbody>
+</table>
+</div>
+<div class="page" id="section-7-1">
+<div class="header-bar"><div class="header-icon">🇺🇸</div>
+<h1><span class="section-number">7.1</span> United Codeshare</h1>
+</div>
+<div class="content-box">
+<p>Indian Virtual has a full codeshare agreement with <strong>United Virtual</strong>, allowing pilots to fly any real-world route operated by United Airlines.</p>
+</div>
+<h2>Key Information:</h2>
+<div class="content-box">
+<ul>
+<li><strong>Callsign:</strong> Use United XXX <strong>IN</strong> when flying United Airlines routes.</li>
+<li><strong>PIREP Filing:</strong>
+<ul>
+<li>Submit all United flights <strong>manually</strong>.</li>
+<li>Enter the <strong>real-life flight number</strong> in the flight number field.</li>
+<li>Select the <strong>correct aircraft type</strong> that matches the real-world route.</li>
+<li>All PIREPs will be reviewed against the flight number. Incorrect details may lead to <strong>rejection</strong>.</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="warning-box">
+<strong>Note:</strong> For assistance with filing United Virtual routes, please open a <strong>ticket</strong> through the support system.
+    </div>
+</div>
+<div class="page" id="section-7-2">
+<div class="header-bar"><div class="header-icon">🇮🇳</div>
+<h1><span class="section-number">7.2</span> IndGo Codeshare</h1>
+</div>
+<div class="content-box">
+<ul>
+<li><strong>Agreement:</strong> Pilots are allowed to fly <strong>Domestic routes</strong> only (within India). You can do this from FR24 or Flightaware. Make sure to only select routes which are active in IRL.</li>
+<li><strong>Callsign:</strong> Use <strong>Indigo</strong> XXX <strong>IN</strong> callsign while flying.</li>
+<li><strong>Flight Logging:</strong> Ensure accurate flight number and aircraft are selected when filing a PIREP. You need to manually file the Pirep so make sure you put the right flight number.</li>
+</ul>
+</div>
+</div>
+<div class="page" id="section-8-0">
+<div class="header-bar"><div class="header-icon">🏆</div>
+<h1><span class="section-number">8.0</span> Ranks</h1>
+</div>
+<div class="content-box">
+<p>As part of our Indian Virtual Airline, each pilot progresses through ranks based on the total flight hours logged. These ranks reflect your experience, dedication, and unlock various recognitions, benefits, and multiplier bonuses.</p>
+</div>
+</div>
+<div class="page" id="section-8-1">
+<div class="header-bar"><div class="header-icon">📊</div>
+<h1><span class="section-number">8.1</span> Pilot Rank Structure &amp; Rewards System</h1>
+</div>
+<h2>Rank Tiers</h2>
+<table>
+<thead>
+<tr>
+<th>Rank</th>
+<th>Hours</th>
+<th>Aircraft Access</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Yuvraj</strong></td>
+<td>0</td>
+<td>A220/A320/Q400/E175/E190/CRJ family</td>
+</tr>
+<tr>
+<td><strong>Rajkumar</strong></td>
+<td>80</td>
+<td>B38M/B737 Family/A321</td>
+</tr>
+<tr>
+<td><strong>Rajvanshi</strong></td>
+<td>160</td>
+<td>B767/757/A333/A339/B788</td>
+</tr>
+<tr>
+<td><strong>Rajdhiraj</strong></td>
+<td>450</td>
+<td>B789/B78X</td>
+</tr>
+<tr>
+<td><strong>Maharaja</strong></td>
+<td>900</td>
+<td>B777 family/B744/A340</td>
+</tr>
+<tr>
+<td><strong>Samrat</strong></td>
+<td>1500</td>
+<td>A359/B748</td>
+</tr>
+<tr>
+<td><strong>Chhatrapati</strong></td>
+<td>2000</td>
+<td>A380</td>
+</tr>
+</tbody>
+</table>
+<div class="info-card">
+<p><em>(Updated as of 15 June 2025)</em></p>
+<p><em>Note: Exclusive club perks are expanded in sections 8.2 and 8.3</em></p>
+</div>
+</div>
+<div class="page" id="section-8-2">
+<div class="header-bar"><div class="header-icon">👑</div>
+<h1><span class="section-number">8.2</span> Rajamatya Club – Exclusive Elite Pilot Circle</h1>
+</div>
+<h2>Introduction</h2>
+<div class="content-box">
+<p>The Rajamatya Club is an exclusive pilot tier created to recognize and reward our most dedicated members within Indian Virtual (INVA). It serves as a prestige program for pilots who have demonstrated consistent commitment, excellence in flying, and loyalty to the VA. Membership in this club provides special privileges and enhanced recognition within our community.</p>
+</div>
+<h2>Eligibility Criteria</h2>
+<div class="content-box">
+<p>To become a member of the Rajamatya Club, pilots must meet the following conditions:</p>
+<ul>
+<li>Minimum of 1500 total INVA hours</li>
+<li>Must be in good standing with the VA (no recent disciplinary actions)</li>
+<li>Active flying status (at least 1 flight in the last 30 days)</li>
+</ul>
+<p>Once the criteria are fulfilled, pilots are automatically inducted into the club by the staff team.</p>
+</div>
+<h2>Club Benefits</h2>
+<h3>1. Flight Hour Multiplier</h3>
+<div class="content-box">
+<ul>
+<li>1.25x Multiplier is applied to all eligible Air India (AI) and Air India Express (AIX) flights flown by Rajamatya Club members who are above 1500+ hours. This incentive isn't Applicable to the Top 3 Pilots of the week and the Pilot with most PIREPs filed.</li>
+<li><strong>Important Note:</strong> The multiplier is not applicable to:
+                <ul>
+<li>Route of the Week (ROTW)</li>
+<li>Bonus of the Week (BOTW)</li>
+<li>CEO Routes</li>
+<li>Event Flights</li>
+</ul>
+</li>
+</ul>
+<p>Only regular, approved AI/AIX scheduled flights (excluding the categories above) will qualify for the bonus multiplier.</p>
+</div>
+<h3>2. Event Gate Priority</h3>
+<div class="content-box">
+<ul>
+<li>Rajamatya members will receive priority gate assignment at all official VA events. This will include members who are the top 3 pilots with flight hours in the week and the Pilot with most PIREPs filed.</li>
+<li>This includes:
+                <ul>
+<li>First access to premium stands or hubs</li>
+<li>Ability to request specific gates (subject to availability)</li>
+<li>Highlighted names in event threads</li>
+</ul>
+</li>
+</ul>
+</div>
+<h2>Additional Incentives for All Pilots</h2>
+<div class="content-box">
+<p>To encourage inclusivity and maintain high pilot morale, INVA also provides special privileges for pilots not yet eligible for the Rajamatya Club:</p>
+</div>
+<h3>A. Route Selection Privileges</h3>
+<div class="content-box">
+<ul>
+<li>Pilots with Top 3 from the most hours for the week, along with the pilot who files the most PIREPs in a given week, will each get the opportunity to:
+                <ul>
+<li>Select 2 routes for the upcoming Route of the Week (ROTW)</li>
+<li>These routes will be highlighted as community-driven choices</li>
+<li>They will also get a Temporary gate priority at the events for that week.</li>
+</ul>
+</li>
+</ul>
+</div>
+<h3>B. Top Pilot Rewards</h3>
+<div class="content-box">
+<ul>
+<li>The top 3 pilots with the most flight hours logged in a week will each earn the right to:
+                <ul>
+<li>Select 1 ROTW route of their choice</li>
+<li>This offers more control over weekly flying and helps shape the community's route calendar</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="page" id="section-8-3">
+<div class="header-bar"><div class="header-icon">💎</div>
+<h1><span class="section-number">8.3</span> Akasharatha Club – Exclusive Elite Pilot Circle</h1>
+</div>
+<h2>Akasharatha Club 2500+ hours</h2>
+<div class="content-box">
+<ul>
+<li><strong>Eligibility:</strong> <span class="highlight">2500+</span> total hours</li>
+<li><strong>Condition:</strong> Applies only to flights operated under <strong>Air India (AI)</strong> or <strong>Air India Express (AIX)</strong> routes.</li>
+<li><strong>Bonus:</strong> AI and AIX route hours are multiplied by <span class="highlight">1.5x</span>.</li>
+<li><strong>Rajamatya Club Benefits will be included already.</strong></li>
+<li>Pilots can <strong>change</strong> their callsign, and <strong>choose</strong> a number from <span class="highlight">050-099</span>.</li>
+<li><strong>Top pilot in this club every week can choose one CEO route</strong></li>
+</ul>
+</div>
+<div class="warning-box">
+<strong>Note:</strong> <em>This club is created to reward pilots who regularly fly our core Indian carrier routes.</em>
+</div>
+</div>
+<div class="page" id="section-9-0">
+<div class="header-bar"><div class="header-icon">📋</div>
+<h1><span class="section-number">9.0</span> Recruitment Checklist/Guidelines (For Recruits only)</h1>
+</div>
+<div class="content-box">
+<p>INVA <strong>conducts 2 practical</strong> tests before a new pilot is selected. These practical tests ensure that recruits have a decent level of competency to fly on the expert server. The two tests are:</p>
+<ul>
+<li><strong>Pattern work test</strong></li>
+<li><strong>Flying between hubs of the day</strong></li>
+</ul>
+<p>Recruits are expected to read the official <a href="https://infiniteflight.com/guide/flying-guide" target="_blank">Infinite Flight flying manual</a> before attempting tests and in case of any doubts, they are free to ask doubts within the recruitment ticket channel itself.</p>
+</div>
+<h2>Some General Tips to Ace the Test:</h2>
+<div class="content-box">
+<ul>
+<li>Have a very good idea of <strong>pattern work</strong> within Infinite Flight. <a href="https://infiniteflight.com/guide/atc-guide/tower/pattern-work" target="_blank">Use the official guide to learn terms such as upwind, downwind, base and final.</a> Ensure you adhere to <strong>pattern altitudes and speeds</strong> as well. Additionally, you can find detailed guides on YouTube or IFC.</li>
+<li>Ensure that your takeoffs are well stabilized and do not exceed 15 degrees pitch. Use SimBrief's own takeoff and landing calculations to ensure realistic speeds. Refer to <strong>section 3.3</strong> for further information.</li>
+<li>A similar approach is to be followed while executing landings, ensuring that your approach speeds are not too high or low and is within acceptable range. Refer to <strong>section 3.7.4</strong> to learn what a "stabilized" approach criteria is.</li>
+<li>Ensure your downwind and base legs are not too wide/tight that makes your aircraft overshoot the approach path.</li>
+<li>Have a fair idea of <a href="https://youtu.be/p4IsNaCRzbg?si=HPWGnIAdFvX0Jnkf" target="_blank">ILS approaches</a> and <a href="https://youtu.be/rP6GCu9ZJ14?si=QQN9uLdOCp2vN6kn" target="_blank">Visual approaches</a> before attempting the test.</li>
+<li>Ensure you know how to use the <strong>unicom frequency</strong> as our flight instructors would closely monitor your ATC competency. Incorrect call-outs on the unicom frequency can be a cause of rejection in the recruitment test.</li>
+</ul>
+</div>
+<div class="warning-box">
+<strong>Note:</strong> If you are an IFATC member, you are automatically exempted from taking both the tests.
+    </div>
+</div>
+</div>
+<script>
+        const sections = [
+            { id: 'section-1-0', title: '1.0 Introduction to Indian Virtual', category: 'Introduction to Indian Virtual', icon: '📘' },
+            { id: 'section-1-1', title: '1.1 Meet Our Executives', category: 'Introduction to Indian Virtual', icon: '👥' },
+            { id: 'section-1-5', title: '1.5 Abbreviations Guide', category: 'Introduction to Indian Virtual', icon: '📝' },
+            { id: 'section-2-0', title: '2.0 Discord Rules and Regulations', category: 'Introduction to Indian Virtual', icon: '⚖️' },
+            { id: 'section-3-0', title: '3.0 Frequently Asked Questions', category: 'Flying Regulations', icon: '❓' },
+            { id: 'section-3-1', title: '3.1 IRL NOTAMs + Pakistani Airspace Closure', category: 'Flying Regulations', icon: '🛑' },
+            { id: 'section-3-2', title: '3.2 How to Pushback and Taxi', category: 'On The Ground', icon: '🚗' },
+            { id: 'section-3-3', title: '3.3 Taxi Speeds and Regulations', category: 'On The Ground', icon: '🚗' },
+            { id: 'section-3-4', title: '3.4 Takeoff and Climb', category: 'Take-Off To Cruise', icon: '✈️' },
+            { id: 'section-3-5', title: '3.5 Cruise', category: 'Take-Off To Cruise', icon: '☁️' },
+            { id: 'section-3-6', title: '3.6 Step Climb', category: 'Take-Off To Cruise', icon: '📈' },
+            { id: 'section-3-7', title: '3.7 Arrival', category: 'Descent To Landing', icon: '🛬' },
+            { id: 'section-3-8', title: '3.8 How to Request Approach to ATC', category: 'Descent To Landing', icon: '📡' },
+            { id: 'section-3-8-1', title: '3.8.1 Visual Approach', category: 'Descent To Landing', icon: '👁️' },
+            { id: 'section-3-8-2', title: '3.8.2 GPS Approach', category: 'Descent To Landing', icon: '🛰️' },
+            { id: 'section-3-8-3', title: '3.8.3 ILS Approach', category: 'Descent To Landing', icon: '📡' },
+            { id: 'section-3-8-4', title: '3.8.4 Stabilized Approach Criteria', category: 'Descent To Landing', icon: '✓' },
+            { id: 'section-3-9', title: '3.9 Events Étiquettes', category: 'Flying Regulations', icon: '🎊' },
+            { id: 'section-4-0', title: '4.0 Crew Center Guide', category: 'Crew Center', icon: '📊' },
+            { id: 'section-4-1', title: '4.1 Guide to PIREPs', category: 'Crew Center', icon: '📄' },
+            { id: 'section-4-1-1', title: '4.1.1 PIREPs for Pilots', category: 'Crew Center', icon: '✏️' },
+            { id: 'section-4-1-2', title: '4.1.2 PIREPs for IFATC', category: 'Crew Center', icon: '🎙️' },
+            { id: 'section-4-1-3', title: '4.1.3 PIREP Operator Guide', category: 'Crew Center', icon: '🏢' },
+            { id: 'section-4-2', title: '4.2 Multipliers', category: 'Crew Center', icon: '⭐' },
+            { id: 'section-4-3', title: '4.3 Callsign Usage', category: 'Crew Center', icon: '📞' },
+            { id: 'section-4-4', title: '4.4 Live Flight Map', category: 'Crew Center', icon: '🗺️' },
+            { id: 'section-5-0', title: '5.0 AP+ Rules', category: 'Routes', icon: '🤖' },
+            { id: 'section-6-0', title: '6.0 Indian Virtual Routes', category: 'Routes', icon: '🛫' },
+            { id: 'section-6-1', title: '6.1 Routes of the Week (ROTW)', category: 'Routes', icon: '📅' },
+            { id: 'section-6-2', title: '6.2 Base of the Week (BOTW)', category: 'Routes', icon: '🏠' },
+            { id: 'section-6-3', title: '6.3 CEO Routes', category: 'Routes', icon: '👔' },
+            { id: 'section-6-4', title: '6.4 Core Routes (AI + AIX)', category: 'Routes', icon: '🎯' },
+            { id: 'section-6-5', title: '6.5 Historic Core Routes', category: 'Routes', icon: '📜' },
+            { id: 'section-7-0', title: '7.0 Indian Virtual Codeshares', category: 'Codeshares', icon: '🤝' },
+            { id: 'section-7-1', title: '7.1 United Codeshare', category: 'Codeshares', icon: '🇺🇸' },
+            { id: 'section-7-2', title: '7.2 IndGo Codeshare', category: 'Codeshares', icon: '🇮🇳' },
+            { id: 'section-8-0', title: '8.0 Ranks', category: 'Ranks & Clubs', icon: '🏆' },
+            { id: 'section-8-1', title: '8.1 Rank Structure', category: 'Ranks & Clubs', icon: '📊' },
+            { id: 'section-8-2', title: '8.2 Rajamatya Club', category: 'Ranks & Clubs', icon: '👑' },
+            { id: 'section-8-3', title: '8.3 Akasharatha Club', category: 'Ranks & Clubs', icon: '💎' },
+            { id: 'section-9-0', title: '9.0 Recruitment Checklist', category: 'Recruitment', icon: '📋' }
+        ];
+
+
+        let currentPageIndex = 0;
+
+
+        document.addEventListener('DOMContentLoaded', function() {
+            buildSidebar();
+            loadPage(0);
+            setupHamburger();
+        });
+
+
+        function buildSidebar() {
+            const sidebarNav = document.getElementById('sidebarNav');
+            const categories = {};
+
+
+            sections.forEach((section, index) => {
+                if (!categories[section.category]) {
+                    categories[section.category] = [];
+                }
+                categories[section.category].push({ ...section, index });
+            });
+
+
+            Object.keys(categories).forEach(categoryName => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'nav-category';
+
+
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'nav-category-title';
+                titleDiv.innerHTML = `<span class="arrow">▶</span> ${categoryName}`;
+
+
+                const itemsList = document.createElement('ul');
+                itemsList.className = 'nav-items';
+
+
+                categories[categoryName].forEach(section => {
+                    const li = document.createElement('li');
+                    li.className = 'nav-item';
+                    const a = document.createElement('a');
+                    a.href = '#';
+                    a.textContent = section.title;
+                    a.dataset.index = section.index;
+                    a.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        loadPage(section.index);
+                        document.getElementById('sidebar').classList.add('collapsed');
+                    });
+                    li.appendChild(a);
+                    itemsList.appendChild(li);
+                });
+
+
+                titleDiv.addEventListener('click', () => {
+                    titleDiv.classList.toggle('collapsed');
+                    itemsList.classList.toggle('collapsed');
+                });
+
+
+                categoryDiv.appendChild(titleDiv);
+                categoryDiv.appendChild(itemsList);
+                sidebarNav.appendChild(categoryDiv);
+            });
+        }
+
+
+        function setupHamburger() {
+            const hamburger = document.getElementById('hamburger');
+            const sidebar = document.getElementById('sidebar');
+            hamburger.addEventListener('click', function() {
+                sidebar.classList.toggle('collapsed');
+            });
+        }
+
+
+        function loadPage(index) {
+            if (index < 0 || index >= sections.length) return;
+
+
+            currentPageIndex = index;
+            const section = sections[index];
+            const contentContainer = document.getElementById('contentContainer');
+
+
+            const pageElement = document.getElementById(section.id);
+            if (!pageElement) {
+                contentContainer.innerHTML = '<p>Page not found</p>';
+                return;
+            }
+
+
+            const clonedPage = pageElement.cloneNode(true);
+            clonedPage.classList.add('active');
+
+
+            const navHTML = `
+                <div class="page-navigation">
+                    <button class="nav-button" id="prevBtn" ${index === 0 ? 'disabled' : ''}>← Previous</button>
+                    <span class="page-counter">${index + 1} / ${sections.length}</span>
+                    <button class="nav-button" id="nextBtn" ${index === sections.length - 1 ? 'disabled' : ''}>Next →</button>
+                </div>
+            `;
+
+
+            contentContainer.innerHTML = clonedPage.innerHTML + navHTML;
+
+
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+
+            prevBtn.addEventListener('click', () => loadPage(currentPageIndex - 1));
+            nextBtn.addEventListener('click', () => loadPage(currentPageIndex + 1));
+
+
+            // Update active sidebar link
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            const activeLink = document.querySelector(`.nav-item a[data-index="${index}"]`);
+            if (activeLink) {
+                activeLink.closest('.nav-item').classList.add('active');
+            }
+
+
+            contentContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    </script>
+<!-- Replace BOTH script sections at the bottom (before </body>) with just this one: -->
+
+<script>
+// Store menu state separately
+let menuState = {
+  isCollapsed: false
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  const hamburger = document.getElementById("hamburger");
+  const sidebar = document.getElementById("sidebar");
+  const content = document.getElementById("contentContainer");
+
+  // Hamburger menu toggle - only toggle classes, don't reload
+  hamburger.addEventListener("click", () => {
+    menuState.isCollapsed = !menuState.isCollapsed;
+    
+    if (menuState.isCollapsed) {
+      sidebar.classList.add("collapsed");
+      content.classList.add("expanded");
+    } else {
+      sidebar.classList.remove("collapsed");
+      content.classList.remove("expanded");
+    }
+  });
+
+  // When clicking a sidebar item, collapse it
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.nav-item a')) {
+      sidebar.classList.add("collapsed");
+      content.classList.add("expanded");
+      menuState.isCollapsed = true;
+    }
+  });
+
+  // Responsive resize handler
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 1024) {
+      sidebar.classList.remove("collapsed");
+      content.classList.remove("expanded");
+      menuState.isCollapsed = false;
+    }
+  });
+});
+</script>
+
+
+</body>
+</html>
