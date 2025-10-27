@@ -98,7 +98,7 @@ export default async function ProfileContainer({ user }) {
         <Notams notams={notamsData.data} />
       </Grid>
       {/* Promotional box above PIREPs */}
-      <Container maxW="100%" py="8" px="4">
+      {/* <Container maxW="100%" py="8" px="4">
         <Box
           borderRadius="xl"
           overflow="hidden"
@@ -110,7 +110,6 @@ export default async function ProfileContainer({ user }) {
           backgroundPosition="center"
           boxShadow="lg"
         >
-          {/* Dark overlay for contrast */}
           <Box position="absolute" inset={0} bg="linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.25))" />
 
           <Box position="relative" py={{ base: 4, md: 8 }} pl={{ base: 6, md: 12 }} pr={{ base: 4, md: 8 }} color="white">
@@ -132,7 +131,6 @@ export default async function ProfileContainer({ user }) {
                   KMLU-KMEM
                 </Badge>
               </Box>
-              {/* badges moved to bottom-right corner */}
 
               <HStack spacing={4} align="center">
                 <Box textAlign="center">
@@ -144,16 +142,15 @@ export default async function ProfileContainer({ user }) {
 
                 <SignupOrFileButton
                   pushbackIso={'2025-10-25T20:45:00+05:30'}
-                  flightNumber={'Mail Run to the Hub'}
+                  flightNumber={'N720FX'}
                   departureIcao={'KMLU'}
                   arrivalIcao={'KMEM'}
-                  aircraft={'Cessna 208 Caravan (FedEx)'}
+                  aircraft={'C208'}
                   signupUrl={'https://discord.gg/ketMu3B3rf?event=1430179836135211068'}
                 />
               </HStack>
             </Stack>
           </Box>
-          {/* Bottom-right badges (aircraft/time & pushback) */}
           <Box position="absolute" bottom={{ base: 2, md: 6 }} right={{ base: 2, md: 6 }} zIndex={3} display="flex" flexDirection="column" gap={1} alignItems="flex-end">
             <Badge
               colorPalette="purple"
@@ -189,7 +186,7 @@ export default async function ProfileContainer({ user }) {
           </Box>
 
         </Box>
-      </Container>
+      </Container> */}
       <PirepsTable pireps={userData.pireps} />
     </>
   )

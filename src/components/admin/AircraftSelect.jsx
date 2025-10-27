@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Portal, Select, createListCollection, Spinner, Box, useSelectContext } from "@chakra-ui/react";
+import { Portal, Select, createListCollection, Spinner, Box, useSelectContext, Center } from "@chakra-ui/react";
 // Custom ValueText for multi-select: comma-separated ICAOs
 function CommaSeparatedValueText({ placeholder }) {
     const select = useSelectContext();
@@ -95,9 +95,10 @@ export default function AircraftSelect({ value, onChange, placeholder = "Aircraf
             onValueChange={handleValueChange}
             size="sm"
             width="100%"
+            positionAnchor="bottom"
         >
             <Select.HiddenSelect />
-            <Select.Label>Select Aircraft</Select.Label>
+            <Select.Label>Aircraft</Select.Label>
             <Select.Control>
                 <Select.Trigger>
                     <CommaSeparatedValueText placeholder={placeholder} />
@@ -106,7 +107,6 @@ export default function AircraftSelect({ value, onChange, placeholder = "Aircraf
                     <Select.Indicator />
                 </Select.IndicatorGroup>
             </Select.Control>
-            <Select.Positioner>
                 <Select.Content>
                     {aircraftCollection.items.map((aircraft, idx) => (
                         aircraft.value ? (
@@ -117,7 +117,6 @@ export default function AircraftSelect({ value, onChange, placeholder = "Aircraf
                         ) : null
                     ))}
                 </Select.Content>
-            </Select.Positioner>
         </Select.Root>
     );
 }

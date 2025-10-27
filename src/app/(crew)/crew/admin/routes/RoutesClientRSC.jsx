@@ -72,13 +72,24 @@ export default function AdminRoutesClient({ initialFleet }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
-            if (!res.ok) throw new Error('Failed to update route');
-            toaster.success('Route updated');
-            const updated = await fetch('/api/routes');
-            setRoutes(await updated.json());
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to update route');
+            }
+            toaster.create({
+                title: 'Success',
+                description: 'Route updated successfully',
+                type: 'success',
+            });
+            // Update the route in state without refetching
+            setRoutes(prev => prev.map(route => route.flightNumber === editRoute.flightNumber ? { ...route, ...editRoute } : route));
             setEditDialogOpen(false);
         } catch (err) {
-            toaster.error('Error updating route');
+            toaster.create({
+                title: 'Error',
+                description: err.message,
+                type: 'error',
+            });
         }
     };
 
@@ -95,13 +106,24 @@ export default function AdminRoutesClient({ initialFleet }) {
             const res = await fetch(`/api/routes?flightNumber=${encodeURIComponent(route.flightNumber)}`, {
                 method: 'DELETE',
             });
-            if (!res.ok) throw new Error('Failed to delete route');
-            toaster.success('Route deleted');
-            const updated = await fetch('/api/routes');
-            setRoutes(await updated.json());
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to delete route');
+            }
+            toaster.create({
+                title: 'Success',
+                description: 'Route deleted successfully',
+                type: 'success',
+            });
+            // Remove the route from state without refetching
+            setRoutes(prev => prev.filter(route => route.flightNumber !== paginatedData[ deleteIndex ].flightNumber));
             setDeleteDialogOpen(false);
         } catch (err) {
-            toaster.error('Error deleting route');
+            toaster.create({
+                title: 'Error',
+                description: err.message,
+                type: 'error',
+            });
         }
     };
     // Submit new routes to the API
@@ -117,16 +139,30 @@ export default function AdminRoutesClient({ initialFleet }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
-            if (!res.ok) throw new Error('Failed to add routes');
-            // Optionally show a success message
-            toaster.success('Routes added successfully');
-            // Refresh the routes list
-            const updated = await fetch('/api/routes');
-            setRoutes(await updated.json());
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to add routes');
+            }
+            const createdRoutes = await res.json();
+            // Update routes state by appending the new routes to avoid refetching
+            setRoutes(prev => [ ...prev, ...createdRoutes ].sort((a, b) => b.flightNumber.localeCompare(a.flightNumber)));
+            toaster.create({
+                title: 'Success',
+                description: 'Routes added nigga',
+                type: 'success',
+            });
+            // Clear search fields to show all routes including the new one
+            setSearchTerm('');
+            setDepartureSearch('');
+            setArrivalSearch('');
             setDialogOpen(false);
             setNewRoutes([ { flightNumber: '', departureIcao: '', arrivalIcao: '', flightTime: '', aircraft: [] } ]);
         } catch (err) {
-            toaster.error('Error adding routes');
+            toaster.create({
+                title: 'Error',
+                description: err.message,
+                type: 'error',
+            });
         }
     };
     // Add a new empty route row in the dialog
@@ -135,6 +171,11 @@ export default function AdminRoutesClient({ initialFleet }) {
             ...prev,
             { flightNumber: '', departureIcao: '', arrivalIcao: '', flightTime: '', aircraft: [] }
         ]));
+    };
+
+    // Remove a route row in the dialog
+    const handleRemoveRouteRow = (index) => {
+        setNewRoutes(prev => prev.filter((_, i) => i !== index));
     };
     // Helper to format time
     const formatTime = (timeString) => {
@@ -178,7 +219,7 @@ export default function AdminRoutesClient({ initialFleet }) {
                 const res = await fetch('/api/routes');
                 if (!res.ok) throw new Error('Failed to fetch routes');
                 const data = await res.json();
-                setRoutes(Array.isArray(data) ? data : []);
+                setRoutes(Array.isArray(data) ? data.sort((a, b) => b.flightNumber.localeCompare(a.flightNumber)) : []);
             } catch (err) {
                 setRoutes([]);
             } finally {
@@ -188,8 +229,23 @@ export default function AdminRoutesClient({ initialFleet }) {
         fetchRoutes();
     }, []);
 
+    // Filtering logic
+    const filteredRoutes = useMemo(() => {
+        if (filterType === 'flightNumber') {
+            return routes.filter(route =>
+                route.flightNumber.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        } else if (filterType === 'route') {
+            return routes.filter(route =>
+                route.departureIcao.toLowerCase().includes(departureSearch.toLowerCase()) &&
+                route.arrivalIcao.toLowerCase().includes(arrivalSearch.toLowerCase())
+            );
+        }
+        return routes;
+    }, [ routes, filterType, searchTerm, departureSearch, arrivalSearch ]);
+
     // Pagination logic
-    const { currentPage, totalPages, paginatedData, goToPage } = usePaginatedData(routes, 10);
+    const { currentPage, totalPages, paginatedData, goToPage } = usePaginatedData(filteredRoutes, 10);
 
     if (loading) {
         return (
@@ -432,7 +488,6 @@ export default function AdminRoutesClient({ initialFleet }) {
                                                         />
                                                     </Field.Root>
                                                     <Field.Root required flex={1}>
-                                                        <Field.Label>Aircraft</Field.Label>
                                                         <AircraftSelect
                                                             value={typeof route.aircraft === 'string' ? route.aircraft.split(',').map(s => s.trim()).filter(Boolean) : (route.aircraft || [])}
                                                             onChange={(value) => handleInputChange(index, 'aircraft', value)}

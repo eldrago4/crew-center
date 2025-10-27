@@ -1,11 +1,14 @@
 'use client'
 
-import { Box } from '@chakra-ui/react'
-import { useState, useEffect } from 'react'
+import { Box, Button } from '@chakra-ui/react'
+import { useState, useEffect, useRef } from 'react'
+import { MdFullscreen, MdFullscreenExit } from 'react-icons/md'
 
 export default function FlyingManualContainer() {
     const [ htmlContent, setHtmlContent ] = useState('')
     const [ loading, setLoading ] = useState(true)
+    const [ isFullscreen, setIsFullscreen ] = useState(false)
+    const containerRef = useRef(null)
 
     useEffect(() => {
         fetch('https://raw.githubusercontent.com/eldrago4/flying-manual/refs/heads/main/cooked%20manual.html')
@@ -20,9 +23,28 @@ export default function FlyingManualContainer() {
             })
     }, [])
 
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement)
+        }
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange)
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }, [])
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            containerRef.current?.requestFullscreen()
+        } else {
+            document.exitFullscreen()
+        }
+    }
+
     return (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" p={1}>
             <Box
+                ref={containerRef}
+                position="relative"
                 width="100%"
                 maxWidth="95%"
                 height="80vh"
@@ -33,6 +55,21 @@ export default function FlyingManualContainer() {
                 overflow="auto"
                 p={4}
             >
+                <Button
+                    aria-label="Toggle fullscreen"
+                    position="absolute"
+                    top={2}
+                    right={2}
+                    zIndex={10}
+                    onClick={toggleFullscreen}
+                    size="sm"
+                    variant="solid"
+                    bg="white"
+                    color="black"
+                    _hover={{ bg: 'gray.200' }}
+                >
+                    {isFullscreen ? <MdFullscreenExit /> : <MdFullscreen />}
+                </Button>
                 {loading ? (
                     <div>Loading...</div>
                 ) : (

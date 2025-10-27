@@ -43,15 +43,23 @@ export async function POST(request) {
     } catch (error) {
         console.error('Error adding routes:', error);
 
-        if (error.code === '23505') {
-            return NextResponse.json(
-                { error: 'Flight number already exists' },
-                { status: 409 }
-            );
+        let errorMessage = 'Failed to add routes';
+        const actualError = error.cause || error;
+
+        if (actualError.code === '23505') {
+            errorMessage = 'Flight number already exists';
+        } else if (actualError.code === '23502') {
+            errorMessage = 'Missing required fields';
+        } else if (actualError.code === '23514') {
+            errorMessage = 'Invalid data provided';
+        } else if (actualError.code === '23503') {
+            errorMessage = 'Invalid reference data';
+        } else if (actualError.message && !actualError.message.includes('insert into')) {
+            errorMessage = actualError.message;
         }
 
         return NextResponse.json(
-            { error: 'Failed to add routes' },
+            { error: errorMessage },
             { status: 500 }
         );
     }
@@ -85,8 +93,15 @@ export async function DELETE(request) {
         return NextResponse.json({ message: 'Route deleted successfully' });
     } catch (error) {
         console.error('Error deleting route:', error);
+        let errorMessage = 'Failed to delete route';
+        const actualError = error.cause || error;
+        if (actualError.code === '23503') {
+            errorMessage = 'Cannot delete route as it is referenced by other data';
+        } else if (actualError.message && !actualError.message.includes('delete from')) {
+            errorMessage = actualError.message;
+        }
         return NextResponse.json(
-            { error: 'Failed to delete route' },
+            { error: errorMessage },
             { status: 500 }
         );
     }
@@ -129,8 +144,21 @@ export async function PATCH(request) {
         return NextResponse.json(result[ 0 ]);
     } catch (error) {
         console.error('Error updating route:', error);
+        let errorMessage = 'Failed to update route';
+        const actualError = error.cause || error;
+        if (actualError.code === '23505') {
+            errorMessage = 'Flight number already exists';
+        } else if (actualError.code === '23502') {
+            errorMessage = 'Missing required fields';
+        } else if (actualError.code === '23514') {
+            errorMessage = 'Invalid data provided';
+        } else if (actualError.code === '23503') {
+            errorMessage = 'Invalid reference data';
+        } else if (actualError.message && !actualError.message.includes('update')) {
+            errorMessage = actualError.message;
+        }
         return NextResponse.json(
-            { error: 'Failed to update route' },
+            { error: errorMessage },
             { status: 500 }
         );
     }
