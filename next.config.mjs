@@ -7,13 +7,5 @@ const nextConfig = {
     return [
     ];
   },
-  async rewrites() {
-    return [
-      {
-        source: '/crew/:path*',
-        destination: '/maintenance',
-      },
-    ];
-  },
 };
 

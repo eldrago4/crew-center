@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 import {
     Box,
@@ -40,7 +42,7 @@ export default function MaintenancePage() {
                     backdropBlur="xl"
                     mt="37px"
                     w="full"
-                    maxW="md"
+                    maxW="lg"
                 >
                     <VStack spacing={6} w="full">
                         <Heading size="lg" textAlign="center">
@@ -49,6 +51,32 @@ export default function MaintenancePage() {
                         <Text fontSize="md" textAlign="center" color="whiteAlpha.800">
                             We're currently performing maintenance on our crew center. Please check back later.
                         </Text>
+                        <Box
+                            as="pre"
+                            fontFamily="monospace"
+                            fontSize="10px"
+                            textAlign="left"
+                            color="whiteAlpha.900"
+                            lineHeight="1"
+                            margin="0 auto"
+                            whiteSpace="pre-wrap"
+                            wordWrap="break-word"
+                        >
+                            {`   \\----------------------------------\\
+   \\                                  \\        __
+    \\                                  \\       | \\
+     >  we will be back soon            >------|  \\       ______
+    /                                  /       --- \\_____/**|_|_\\____  |
+   /                                  /          \\_______ --------- __>-}
+  /----------------------------------/              /  \\_____|_____/   |
+                                                    *         |
+                                                             {O}
+       /*\\       /*\\       /*\\       /*\\       /*\\       /*\\       /*\\
+      |***|     |***|     |***|     |***|     |***|     |***|     |***|
+       \\*/       \\*/ ____  \\*/       \\*/       \\*/       \\*/       \\*/
+        |         |  |  |   |         |         |         |         |
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-dr`}
+                        </Box>
                     </VStack>
                 </Box>
             </Center>
