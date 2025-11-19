@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import AircraftSelect from '@/components/admin/AircraftSelect';
 import {
-    Box, Button, ButtonGroup, Center, Container, CloseButton, Dialog, HStack, Heading, Input, InputGroup, Portal, Select, Spinner, Stack, Text, createListCollection, Field, Pagination, Table,
+    Box, Button, ButtonGroup, Center, Checkbox, Container, CloseButton, Dialog, HStack, Heading, Input, InputGroup, Portal, Select, Spinner, Stack, Text, createListCollection, Field, Pagination, Table,
 } from '@chakra-ui/react';
 import { FiPlus, FiSearch } from 'react-icons/fi';
 import { Toaster, toaster } from '@/components/ui/toaster';
@@ -47,6 +47,47 @@ export default function AdminRoutesClient({ initialFleet }) {
     const [ isEditDialogOpen, setEditDialogOpen ] = useState(false);
     const [ deleteIndex, setDeleteIndex ] = useState(null);
     const [ isDeleteDialogOpen, setDeleteDialogOpen ] = useState(false);
+    // Bulk delete logic
+    const [ selectedRoutes, setSelectedRoutes ] = useState([]);
+    const [ isBulkDeleteDialogOpen, setBulkDeleteDialogOpen ] = useState(false);
+
+    // Handle bulk delete
+    const handleBulkDelete = () => {
+        setBulkDeleteDialogOpen(true);
+    };
+
+    // Confirm bulk delete
+    const handleConfirmBulkDelete = async () => {
+        try {
+            const deletePromises = selectedRoutes.map(flightNumber =>
+                fetch(`/api/routes?flightNumber=${encodeURIComponent(flightNumber)}`, {
+                    method: 'DELETE',
+                }).then(res => {
+                    if (!res.ok) {
+                        const errorData = res.json().catch(() => ({}));
+                        throw new Error(errorData.error || `Failed to delete route ${flightNumber}`);
+                    }
+                    return res;
+                })
+            );
+            await Promise.all(deletePromises);
+            toaster.create({
+                title: 'Success',
+                description: `${selectedRoutes.length} routes deleted successfully`,
+                type: 'success',
+            });
+            // Remove the routes from state without refetching
+            setRoutes(prev => prev.filter(route => !selectedRoutes.includes(route.flightNumber)));
+            setSelectedRoutes([]);
+            setBulkDeleteDialogOpen(false);
+        } catch (err) {
+            toaster.create({
+                title: 'Error',
+                description: err.message,
+                type: 'error',
+            });
+        }
+    };
 
     // Open edit dialog
     const handleEditRoute = (route, idx) => {
@@ -264,6 +305,9 @@ export default function AdminRoutesClient({ initialFleet }) {
                             <Heading size="xl" color="gray.800">Route Management</Heading>
                             <HStack justify="space-between" wrap="wrap" gap={4}>
                                 <HStack flex="1" gap={4} wrap="wrap">
+                                    {selectedRoutes.length > 0 && (
+                                        <Button colorPalette="red" onClick={handleBulkDelete}>Delete Selected ({selectedRoutes.length})</Button>
+                                    )}
                                     <Select.Root
                                         collection={filterOptions}
                                         value={[ filterType ]}
@@ -329,7 +373,22 @@ export default function AdminRoutesClient({ initialFleet }) {
                                             {paginatedData.length > 0 ? (
                                                 paginatedData.map((route, idx) => (
                                                     <Table.Row key={route.id || route.flightNumber}>
-                                                        <Table.Cell fontWeight="medium">{route.flightNumber}</Table.Cell>
+                                                        <Table.Cell fontWeight="medium">
+                                                            <Checkbox.Root
+                                                                checked={selectedRoutes.includes(route.flightNumber)}
+                                                                mr="10px"
+                                                                onCheckedChange={(e) => {
+                                                                    if (e.checked) {
+                                                                        setSelectedRoutes(prev => [ ...prev, route.flightNumber ]);
+                                                                    } else {
+                                                                        setSelectedRoutes(prev => prev.filter(fn => fn !== route.flightNumber));
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Checkbox.HiddenInput />
+                                                                <Checkbox.Control />
+                                                            </Checkbox.Root>
+                                                         {route.flightNumber}</Table.Cell>
                                                         <Table.Cell>{route.departureIcao}</Table.Cell>
                                                         <Table.Cell>{route.arrivalIcao}</Table.Cell>
                                                         <Table.Cell>{formatTime(route.flightTime)}</Table.Cell>
@@ -342,7 +401,7 @@ export default function AdminRoutesClient({ initialFleet }) {
                                                 ))
                                             ) : (
                                                 <Table.Row>
-                                                    <Table.Cell colSpan={6} textAlign="center" py={10}>
+                                                    <Table.Cell colSpan={7} textAlign="center" py={10}>
                                                         <Text color="gray.500">No routes found.</Text>
                                                     </Table.Cell>
                                                 </Table.Row>

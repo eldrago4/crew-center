@@ -17,9 +17,10 @@ import {
   FiUserPlus, FiUsers, FiEdit, FiCheckSquare, FiBarChart2, FiServer
 } from 'react-icons/fi';
 import RoleSelectorSegmentGroup from '@/components/RoleSelectorSegmentGroup';
+import { useSidebar } from '@/components/SidebarContext';
 
 const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) => {
-  const [ currentValue, setCurrentValue ] = useState("pilot");
+  const { sidebarMode: currentValue, updateSidebarMode } = useSidebar();
   const [ isMobileNavVisible, setIsMobileNavVisible ] = useState(true);
   const lastScrollY = useRef(0);
 
@@ -93,7 +94,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
   };
 
   const handleValueChange = (value) => {
-    setCurrentValue(value);
+    updateSidebarMode(value);
   };
 
   const renderDesktopButtons = (buttons) => (
@@ -133,7 +134,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
                 <RoleSelectorSegmentGroup
                   orientation="vertical"
                   onChange={handleValueChange}
-                  defaultValue={currentValue}
+                  value={currentValue}
                 />
               </Box>
             );
@@ -209,7 +210,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
           )}
 
           {isAdmin && (
-            <RoleSelectorSegmentGroup onChange={handleValueChange} defaultValue={currentValue} />
+            <RoleSelectorSegmentGroup onChange={handleValueChange} value={currentValue} />
           )}
 
           {currentValue === "admin" && (

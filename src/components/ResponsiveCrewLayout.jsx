@@ -4,13 +4,13 @@ import { Box } from '@chakra-ui/react'
 import DashNav from "@/components/DashNav";
 import SidebarComponent from "@/components/SideBar";
 
-export default function ResponsiveCrewLayout({ 
-  children, 
-  callsign, 
-  isAdmin = false, 
-  careerMode = false, 
+export default function ResponsiveCrewLayout({
+  children,
+  callsign,
+  isAdmin = false,
+  careerMode = false,
   ceo = false,
-  showSidebar = true 
+  showSidebar = true
 }) {
   return (
     <Box minH="100vh">
@@ -27,7 +27,7 @@ export default function ResponsiveCrewLayout({
 
       {/* Sidebar - renders both desktop and mobile versions */}
       {showSidebar && (
-        <Box 
+        <Box
           position="fixed"
           top="50px"
           left="0"
@@ -41,12 +41,12 @@ export default function ResponsiveCrewLayout({
       {/* Main content area */}
       <Box
         // Add left padding only on desktop when sidebar is shown
-        pl={{ 
-          base: 0, 
-          md: showSidebar ? "250px" : 0 
+        pl={{
+          base: 0,
+          md: showSidebar ? "250px" : 0
         }}
         // Add top padding for DashNav and mobile sidebar
-        pt={{ 
+        pt={{
           base: "170px",  // 60px for DashNav + ~70px for mobile sidebar
           md: "60px"      // Only DashNav on desktop
         }}

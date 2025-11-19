@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import db from '@/db/client';
 import { routes } from '@/db/schema';
-import { sql } from 'drizzle-orm';
+import { sql, inArray } from 'drizzle-orm';
 
 const routesCache = new Map();
 
@@ -22,12 +22,16 @@ export async function GET() {
             }
         }
 
-        // Fetch missing routes from DB
+        // Fetch missing routes from DB in batches to avoid PostgreSQL IN limit
         if (missingFlightNumbers.length > 0) {
-            const missingRoutes = await db.select().from(routes).where(sql`${routes.flightNumber} IN (${missingFlightNumbers})`);
-            for (const route of missingRoutes) {
-                routesCache.set(route.flightNumber, route);
-                cachedRoutes.push(route);
+            const batchSize = 1000;
+            for (let i = 0; i < missingFlightNumbers.length; i += batchSize) {
+                const batch = missingFlightNumbers.slice(i, i + batchSize);
+                const missingRoutes = await db.select().from(routes).where(inArray(routes.flightNumber, batch));
+                for (const route of missingRoutes) {
+                    routesCache.set(route.flightNumber, route);
+                    cachedRoutes.push(route);
+                }
             }
         }
 
@@ -94,35 +98,59 @@ export async function POST(request) {
     }
 }
 
-// DELETE route
+// DELETE route(s)
 export async function DELETE(request) {
     try {
-        const { searchParams } = new URL(request.url);
-        const flightNumber = searchParams.get('flightNumber');
+        const body = await request.json().catch(() => ({}));
+        const flightNumbers = body.flightNumbers;
 
-        if (!flightNumber) {
-            return NextResponse.json(
-                { error: 'Flight number is required' },
-                { status: 400 }
-            );
+        if (flightNumbers && Array.isArray(flightNumbers) && flightNumbers.length > 0) {
+            // Bulk delete
+            const result = await db
+                .delete(routes)
+                .where(inArray(routes.flightNumber, flightNumbers))
+                .returning();
+
+            if (result.length === 0) {
+                return NextResponse.json(
+                    { error: 'No routes found to delete' },
+                    { status: 404 }
+                );
+            }
+
+            // Remove from cache
+            flightNumbers.forEach(fn => routesCache.delete(fn));
+
+            return NextResponse.json({ message: `${result.length} routes deleted successfully` });
+        } else {
+            // Single delete (existing logic)
+            const { searchParams } = new URL(request.url);
+            const flightNumber = searchParams.get('flightNumber');
+
+            if (!flightNumber) {
+                return NextResponse.json(
+                    { error: 'Flight number is required' },
+                    { status: 400 }
+                );
+            }
+
+            const result = await db
+                .delete(routes)
+                .where(sql`${routes.flightNumber} = ${sql.placeholder('flightNumber')}`)
+                .returning();
+
+            if (result.length === 0) {
+                return NextResponse.json(
+                    { error: 'Route not found' },
+                    { status: 404 }
+                );
+            }
+
+            // Remove from cache
+            routesCache.delete(flightNumber);
+
+            return NextResponse.json({ message: 'Route deleted successfully' });
         }
-
-        const result = await db
-            .delete(routes)
-            .where(sql`${routes.flightNumber} = ${flightNumber}`)
-            .returning();
-
-        if (result.length === 0) {
-            return NextResponse.json(
-                { error: 'Route not found' },
-                { status: 404 }
-            );
-        }
-
-        // Remove from cache
-        routesCache.delete(flightNumber);
-
-        return NextResponse.json({ message: 'Route deleted successfully' });
     } catch (error) {
         console.error('Error deleting route:', error);
         let errorMessage = 'Failed to delete route';

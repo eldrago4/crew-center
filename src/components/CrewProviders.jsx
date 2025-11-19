@@ -1,4 +1,3 @@
-
 import { Provider as ChakraProvider } from "@/components/ui/provider"
 import { SessionProvider } from 'next-auth/react'
 import { Toaster } from "@/components/ui/toaster"
