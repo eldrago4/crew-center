@@ -44,6 +44,7 @@ export default function AdminRoutesClient({ initialFleet }) {
     // Edit and delete logic
     const [ editIndex, setEditIndex ] = useState(null);
     const [ editRoute, setEditRoute ] = useState(null);
+    const [ originalFlightNumber, setOriginalFlightNumber ] = useState(null);
     const [ isEditDialogOpen, setEditDialogOpen ] = useState(false);
     const [ deleteIndex, setDeleteIndex ] = useState(null);
     const [ isDeleteDialogOpen, setDeleteDialogOpen ] = useState(false);
@@ -96,6 +97,7 @@ export default function AdminRoutesClient({ initialFleet }) {
             ...route,
             aircraft: typeof route.aircraft === 'string' ? route.aircraft.split(',').map(s => s.trim()).filter(Boolean) : (route.aircraft || [])
         });
+        setOriginalFlightNumber(route.flightNumber);
         setEditIndex(idx);
         setEditDialogOpen(true);
     };
@@ -388,7 +390,7 @@ export default function AdminRoutesClient({ initialFleet }) {
                                                                 <Checkbox.HiddenInput />
                                                                 <Checkbox.Control />
                                                             </Checkbox.Root>
-                                                         {route.flightNumber}</Table.Cell>
+                                                            {route.flightNumber}</Table.Cell>
                                                         <Table.Cell>{route.departureIcao}</Table.Cell>
                                                         <Table.Cell>{route.arrivalIcao}</Table.Cell>
                                                         <Table.Cell>{formatTime(route.flightTime)}</Table.Cell>
@@ -409,7 +411,7 @@ export default function AdminRoutesClient({ initialFleet }) {
                                         </Table.Body>
                                         {/* Edit Route Dialog */}
                                         <Portal>
-                                            <Dialog.Root open={isEditDialogOpen} onOpenChange={(e) => setEditDialogOpen(e.open)}>
+                                            <Dialog.Root open={isEditDialogOpen} onOpenChange={(e) => { setEditDialogOpen(e.open); if (!e.open) setOriginalFlightNumber(null); }}>
                                                 <Dialog.Backdrop />
                                                 <Dialog.Positioner>
                                                     <Dialog.Content size="lg">

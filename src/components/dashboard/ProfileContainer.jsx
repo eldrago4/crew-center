@@ -98,7 +98,7 @@ export default async function ProfileContainer({ user }) {
         <Notams notams={notamsData.data} />
       </Grid>
       {/* Promotional box above PIREPs */}
-      {/* <Container maxW="100%" py="8" px="4">
+      <Container maxW="100%" py="8" px="4">
         <Box
           borderRadius="xl"
           overflow="hidden"
@@ -115,7 +115,7 @@ export default async function ProfileContainer({ user }) {
           <Box position="relative" py={{ base: 4, md: 8 }} pl={{ base: 6, md: 12 }} pr={{ base: 4, md: 8 }} color="white">
             <Stack spacing={3} maxW={{ base: 'full', md: '60%' }}>
               <Heading as="h3" size="md" lineHeight={1.05} letterSpacing="tight">
-                Mail Run to the Hub
+                Journey Home
               </Heading>
               <Box pb={11}>
                 <Badge
@@ -128,7 +128,7 @@ export default async function ProfileContainer({ user }) {
                   colorPalette="rgba(204, 47, 47, 1)"
                   display="inline-flex"
                 >
-                  KMLU-KMEM
+                  EDDF-VIDP
                 </Badge>
               </Box>
 
@@ -136,17 +136,17 @@ export default async function ProfileContainer({ user }) {
                 <Box textAlign="center">
                   <Text fontSize="xs" opacity={0.85}>Multiplier</Text>
                   <Text fontSize={{ base: 'xl', md: '3xl' }} fontWeight="800" lineHeight={1}>
-                    3x
+                    2.5x
                   </Text>
                 </Box>
 
                 <SignupOrFileButton
-                  pushbackIso={'2025-10-25T20:45:00+05:30'}
-                  flightNumber={'N720FX'}
-                  departureIcao={'KMLU'}
-                  arrivalIcao={'KMEM'}
-                  aircraft={'C208'}
-                  signupUrl={'https://discord.gg/ketMu3B3rf?event=1430179836135211068'}
+                  pushbackIso={'2025-11-22T11:30:00+05:30'}
+                  flightNumber={'AIH120'}
+                  departureIcao={'EDDF'}
+                  arrivalIcao={'VIDP'}
+                  aircraft={'B737-8'}
+                  signupUrl={'https://discord.com/events/1246895842581938276/1440347596135731330'}
                 />
               </HStack>
             </Stack>
@@ -165,7 +165,7 @@ export default async function ProfileContainer({ user }) {
               textOverflow="ellipsis"
               maxW="max-content"
             >
-              Cessna 208 Caravan (FedEx) · 1 hour
+              Boeing 737-8 (Express India) · 8 hours
             </Badge>
 
             <Badge
@@ -181,12 +181,12 @@ export default async function ProfileContainer({ user }) {
               textOverflow="ellipsis"
               maxW="max-content"
             >
-              Pushback: Sat, Oct 25 · 8:45 PM IST
+              Pushback: Sat, Nov 22 · 11:40 AM IST
             </Badge>
           </Box>
 
         </Box>
-      </Container> */}
+      </Container>
       <PirepsTable pireps={userData.pireps} />
     </>
   )
