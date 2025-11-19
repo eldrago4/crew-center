@@ -5,13 +5,10 @@ export default async function RootLayout({ children }) {
     const session = await auth();
 
     if (!session) {
-      redirect('/crew');
+        redirect('/crew');
     }
 
     const isAdmin = session.user.permissions?.length > 0 || false;
-
-
-    const isAdmin = false;
 
     return (
         <ResponsiveCrewLayout
