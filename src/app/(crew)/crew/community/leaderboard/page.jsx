@@ -196,12 +196,12 @@ export default function LeaderboardPage() {
 
     if (error) {
         return (
-            <Alert status="error">
+            <Alert.Root status="error">
                 <Box>
-                    <Text fontWeight="bold">Error</Text>
-                    <Text>{error}</Text>
+                    <Alert.Title>Error</Alert.Title>
+                    <Alert.Description>{error}</Alert.Description>
                 </Box>
-            </Alert>
+            </Alert.Root>
         );
     }
 

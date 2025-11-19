@@ -1,4 +1,6 @@
 import React from 'react';
+import { redirect } from 'next/navigation';
+import { auth } from "@/auth";
 import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
 
 export default async function RootLayout({ children }) {
