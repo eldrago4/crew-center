@@ -14,7 +14,7 @@
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@neondatabase/serverless": "^1.0.1",
-    "@upstash/redis": "^1.35.0",
+    "@upstash/redis": "^1.35.6",
     "bufferutil": "^4.0.9",
     "cookie": "^1.0.2",
     "dotenv-cli": "^8.0.0",

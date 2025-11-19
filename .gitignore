@@ -12,7 +12,7 @@
 *.csv
 # testing
 /coverage
-
+/Career-Mode-Portal
 # next.js
 /.next/
 /out/

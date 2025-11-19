@@ -1,0 +1,10 @@
+{
+    "chat.mcp.serverSampling": {
+        "crew-center/.vscode/mcp.json: chakra-ui": {
+            "allowedModels": [
+                "copilot/gpt-5-mini",
+                "copilot/auto"
+            ]
+        }
+    }
+}

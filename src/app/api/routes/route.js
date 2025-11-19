@@ -3,11 +3,35 @@ import db from '@/db/client';
 import { routes } from '@/db/schema';
 import { sql } from 'drizzle-orm';
 
+const routesCache = new Map();
+
 // GET all routes
 export async function GET() {
     try {
-        const allRoutes = await db.select().from(routes);
-        return NextResponse.json(allRoutes);
+        // Check if all routes are cached
+        const allFlightNumbers = await db.select({ flightNumber: routes.flightNumber }).from(routes);
+        const flightNumbers = allFlightNumbers.map(r => r.flightNumber);
+        const cachedRoutes = [];
+        const missingFlightNumbers = [];
+
+        for (const fn of flightNumbers) {
+            if (routesCache.has(fn)) {
+                cachedRoutes.push(routesCache.get(fn));
+            } else {
+                missingFlightNumbers.push(fn);
+            }
+        }
+
+        // Fetch missing routes from DB
+        if (missingFlightNumbers.length > 0) {
+            const missingRoutes = await db.select().from(routes).where(sql`${routes.flightNumber} IN (${missingFlightNumbers})`);
+            for (const route of missingRoutes) {
+                routesCache.set(route.flightNumber, route);
+                cachedRoutes.push(route);
+            }
+        }
+
+        return NextResponse.json(cachedRoutes);
     } catch (error) {
         console.error('Error fetching routes:', error);
         return NextResponse.json(
@@ -38,6 +62,11 @@ export async function POST(request) {
             .insert(routes)
             .values(routesToAdd)
             .returning();
+
+        // Update cache with new routes
+        for (const route of insertedRoutes) {
+            routesCache.set(route.flightNumber, route);
+        }
 
         return NextResponse.json(insertedRoutes, { status: 201 });
     } catch (error) {
@@ -90,6 +119,9 @@ export async function DELETE(request) {
             );
         }
 
+        // Remove from cache
+        routesCache.delete(flightNumber);
+
         return NextResponse.json({ message: 'Route deleted successfully' });
     } catch (error) {
         console.error('Error deleting route:', error);
@@ -141,6 +173,10 @@ export async function PATCH(request) {
                 { status: 404 }
             );
         }
+
+        // Update cache with the updated route
+        routesCache.set(flightNumber, result[ 0 ]);
+
         return NextResponse.json(result[ 0 ]);
     } catch (error) {
         console.error('Error updating route:', error);

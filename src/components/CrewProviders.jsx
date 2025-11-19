@@ -8,12 +8,15 @@ export async function Providers({ children }) {
   const session = await auth();
 
   return (
-    
-    <SessionProvider session={session} refetchWhenOffline={false} refetchOnWindowFocus={false}>
-        <ChakraProvider>
-          {children}
-          <Toaster />
-        </ChakraProvider>
-    </SessionProvider>
+    <html lang="en">
+      <body>
+        <SessionProvider session={session} refetchWhenOffline={false} refetchOnWindowFocus={false}>
+          <ChakraProvider>
+            {children}
+            <Toaster />
+          </ChakraProvider>
+        </SessionProvider>
+      </body>
+    </html>
   )
 }
