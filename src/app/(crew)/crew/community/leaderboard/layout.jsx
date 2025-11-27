@@ -2,7 +2,7 @@ import React from 'react';
 import { redirect } from 'next/navigation';
 import { auth } from "@/auth";
 import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
-
+import { SidebarProvider } from '@/components/SidebarContext';
 export default async function RootLayout({ children }) {
     const session = await auth();
 
@@ -12,7 +12,7 @@ export default async function RootLayout({ children }) {
 
     const isAdmin = session.user.permissions?.length > 0 || false;
 
-    return (
+    return (<SidebarProvider>
         <ResponsiveCrewLayout
             callsign={session.user.callsign}
             isAdmin={isAdmin}
@@ -21,5 +21,5 @@ export default async function RootLayout({ children }) {
                 React.cloneElement(child, { session })
             )}
         </ResponsiveCrewLayout>
-    );
+    </SidebarProvider>);
 }

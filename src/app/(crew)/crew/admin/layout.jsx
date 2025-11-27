@@ -1,7 +1,7 @@
 import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
 import { auth } from '@/auth';
 import { redirect } from "next/navigation";
-
+import { SidebarProvider } from '@/components/SidebarContext';
 export default async function RootLayout({ children }) {
   const session = await auth();
   const isCEO = session.user.permissions?.includes("ceo") || false;
@@ -9,9 +9,9 @@ export default async function RootLayout({ children }) {
     redirect('/crew');
   }
 
-  return (
+  return (<SidebarProvider>
     <ResponsiveCrewLayout isAdmin={true} callsign={session.user.callsign} ceo={isCEO}>
       {children}
-    </ResponsiveCrewLayout>
+    </ResponsiveCrewLayout></SidebarProvider>
   );
 }

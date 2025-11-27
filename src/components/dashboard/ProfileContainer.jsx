@@ -115,7 +115,7 @@ export default async function ProfileContainer({ user }) {
           <Box position="relative" py={{ base: 4, md: 8 }} pl={{ base: 6, md: 12 }} pr={{ base: 4, md: 8 }} color="white">
             <Stack spacing={3} maxW={{ base: 'full', md: '60%' }}>
               <Heading as="h3" size="md" lineHeight={1.05} letterSpacing="tight">
-                Journey Home
+                INVA Mid-Marathon Hop
               </Heading>
               <Box pb={11}>
                 <Badge
@@ -128,7 +128,7 @@ export default async function ProfileContainer({ user }) {
                   colorPalette="rgba(204, 47, 47, 1)"
                   display="inline-flex"
                 >
-                  EDDF-VIDP
+                  VECC-VTBS
                 </Badge>
               </Box>
 
@@ -136,17 +136,17 @@ export default async function ProfileContainer({ user }) {
                 <Box textAlign="center">
                   <Text fontSize="xs" opacity={0.85}>Multiplier</Text>
                   <Text fontSize={{ base: 'xl', md: '3xl' }} fontWeight="800" lineHeight={1}>
-                    2.5x
+                    4.5x
                   </Text>
                 </Box>
 
                 <SignupOrFileButton
-                  pushbackIso={'2025-11-22T11:30:00+05:30'}
-                  flightNumber={'AIH120'}
-                  departureIcao={'EDDF'}
-                  arrivalIcao={'VIDP'}
-                  aircraft={'B737-8'}
-                  signupUrl={'https://discord.com/events/1246895842581938276/1440347596135731330'}
+                  pushbackIso={'2025-11-29T18:30:00+05:30'}
+                  flightNumber={'AIH322'}
+                  departureIcao={'VECC'}
+                  arrivalIcao={'VTBS'}
+                  aircraft={'A320'}
+                  signupUrl={'https://discord.com/events/1246895842581938276/1442932626049466418'}
                 />
               </HStack>
             </Stack>
@@ -165,7 +165,7 @@ export default async function ProfileContainer({ user }) {
               textOverflow="ellipsis"
               maxW="max-content"
             >
-              Boeing 737-8 (Express India) · 8 hours
+              A320 (Air India) · 2.4 hours
             </Badge>
 
             <Badge
@@ -181,7 +181,7 @@ export default async function ProfileContainer({ user }) {
               textOverflow="ellipsis"
               maxW="max-content"
             >
-              Pushback: Sat, Nov 22 · 11:40 AM IST
+              Pushback: Sat, Nov 29 · 18:30 PM IST
             </Badge>
           </Box>
 
