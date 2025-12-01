@@ -9,8 +9,8 @@ export function proxy(request) {
      //    return NextResponse.rewrite(new URL('/maintenance', request.url))
   //   }
 
-  //  return NextResponse.next()
-// }
+    return NextResponse.next()
+ }
 
 export const config = {
     matcher: '/crew/:path*',

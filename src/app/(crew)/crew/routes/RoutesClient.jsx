@@ -294,7 +294,7 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
       {/* Results Count */}
       <Box textAlign="center">
         <Text fontSize="sm" color="gray.500">
-          Showing {filtered.length} of {data.length} routes
+          Showing {(page - 1) * ITEMS_PER_PAGE + 1}-{(page - 1) * ITEMS_PER_PAGE + paginatedData.length} of {filtered.length} routes
         </Text>
       </Box>
 
