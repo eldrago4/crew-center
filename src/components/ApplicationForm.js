@@ -17,9 +17,9 @@ export default function ApplicationForm({ state, handleInputChange, handleApplic
                 <Fieldset.HelperText>Please fill out the form below to apply.</Fieldset.HelperText>
             </Stack>
             <Box my="8">
-                <Collapsible.Root open={showRequirements} onOpenChange={setShowRequirements}>
+                <Collapsible.Root open={showRequirements}>
                     <Collapsible.Trigger asChild>
-                        <Button w="full" display="flex" alignItems="center" justifyContent="space-between" bgGradient="to-r" gradientFrom="orange.50" gradientTo="orange.100" p="4" rounded="xl" border="1px solid" borderColor="orange.200" _hover={{ bgGradient: 'linear(to-r, orange.100, #f8e5d3)' }} transition="all 0.3s">
+                        <Button onClick={() => setShowRequirements(!showRequirements)} w="full" display="flex" alignItems="center" justifyContent="space-between" bgGradient="to-r" gradientFrom="orange.50" gradientTo="orange.100" p="4" rounded="xl" border="1px solid" borderColor="orange.200" _hover={{ bgGradient: 'linear(to-r, orange.100, #f8e5d3)' }} transition="all 0.3s">
                             <Text fontSize="lg" fontWeight="bold" color="gray.800" fontFamily="Playfair Display, serif">Requirements</Text>
                             <Icon as={showRequirements ? MdKeyboardArrowUp : MdKeyboardArrowDown} w="5" h="5" color="orange.600" />
                         </Button>

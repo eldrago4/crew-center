@@ -16,7 +16,7 @@ export default async function RootLayout({ children }) {
     }).toString();
     redirect(`/ifc-name?${params}`);
   }
-  const career = session.user.rank !== 'Yuvraj' && session.user.rank !== 'Rajkumar' && session.user.rank !== null;
+  const career = !['Yuvraj', 'Rajkumar', null].includes(session.user.rank);
   const isCEO = session.user.permissions?.includes("ceo") || false;
   const isAdmin = session.user.permissions?.length > 0 || false;
 

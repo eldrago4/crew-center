@@ -4,7 +4,7 @@ import { getDummyData, getStaff } from "./app/shared/users.js"
 import { parse } from 'cookie'
 import { cookies as nextCookies } from 'next/headers'
 import db from './db/client'
-import { applicants } from './db/schema'
+import { applicants, users } from './db/schema'
 import { eq } from 'drizzle-orm'
 
 
@@ -165,8 +165,14 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           session.user.permissions = [];
         }
 
-        // Add rank property, defaulting to null
-        session.user.rank = null;
+        // Add rank property, fetched from DB
+        try {
+          const userData = await db.select({ rank: users.rank }).from(users).where(eq(users.id, token.callsign)).limit(1);
+          session.user.rank = userData.length > 0 ? userData[ 0 ].rank : null;
+        } catch (error) {
+          console.error('Error fetching user rank:', error);
+          session.user.rank = null;
+        }
       }
       return session;
     }

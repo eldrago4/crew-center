@@ -105,7 +105,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
           {...desktopButtonProps}
           as={href && !disabled ? "a" : "button"}
           href={href}
-          disabled={disabled}
+          {...(disabled ? { disabled: true } : {})}
         >
           {label}
         </Button>
