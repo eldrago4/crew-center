@@ -46,3 +46,4 @@ drizzle/meta/_journal.json
 drizzle/meta/20250606101452_snapshot.json
 src/llms-full.txt
 .blackboxrules
+.env*.local

@@ -39,9 +39,12 @@ async function fetchFleetModule(module) {
 
 async function updateModuleValue(moduleName, newValue) {
   try {
-    await db.update(crewcenter)
-      .set({ value: JSON.stringify(newValue) })
-      .where(eq(crewcenter.module, moduleName));
+    await db.insert(crewcenter)
+      .values({ module: moduleName, value: newValue })
+      .onConflictDoUpdate({
+        target: crewcenter.module,
+        set: { value: newValue }
+      });
 
     cache.set(moduleName, { value: newValue });
     console.log(`Module '${moduleName}' updated successfully.`);

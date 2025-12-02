@@ -55,6 +55,8 @@ export async function POST(req) {
   try {
     const { moduleName, newValue } = await req.json();
 
+    console.log('POST request received:', { moduleName, newValue });
+
     if (!moduleName || newValue === undefined) {
       return NextResponse.json({ error: 'Module name and new value are required.' }, { status: 400 });
     }

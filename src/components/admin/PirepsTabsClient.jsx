@@ -50,7 +50,7 @@ export default function PirepsTabsClient() {
         } finally {
             setLoading(false);
         }
-    }, [pagination.pageSize]);
+    }, [ pagination.pageSize ]);
 
     useEffect(() => {
         fetchPireps(tabToValid[ tab ], 1);
@@ -69,7 +69,7 @@ export default function PirepsTabsClient() {
         const maxVisiblePages = 5;
         let startPage = Math.max(1, pagination.page - Math.floor(maxVisiblePages / 2));
         let endPage = Math.min(pagination.totalPages, startPage + maxVisiblePages - 1);
-        
+
         if (endPage - startPage + 1 < maxVisiblePages) {
             startPage = Math.max(1, endPage - maxVisiblePages + 1);
         }
@@ -150,7 +150,7 @@ export default function PirepsTabsClient() {
                         <AdminPirepsTable pireps={pireps} />
                         <Box textAlign="center" mt={4}>
                             <Text fontSize="sm" color="gray.600" mb={2}>
-                                Showing {pireps.length} of {pagination.total} PIREPs
+                                Showing {(pagination.page - 1) * pagination.pageSize + 1}-{(pagination.page - 1) * pagination.pageSize + pireps.length} of {pagination.total} PIREPs
                             </Text>
                             {renderPagination()}
                         </Box>
