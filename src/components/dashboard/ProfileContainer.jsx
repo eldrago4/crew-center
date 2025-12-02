@@ -5,7 +5,7 @@ import Notams from './Notams'
 import { Grid, Box, Stack, Heading, Text, Button, Link, Badge, HStack, Container } from '@chakra-ui/react'
 import SignupOrFileButton from './SignupOrFileButton'
 import db from '@/db/client'
-import { users, pireps, notams } from '@/db/schema'
+import { users, pireps, notams, crewcenter } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
 
 async function getUserData(callsign) {
@@ -76,12 +76,28 @@ async function getNotams() {
   }
 }
 
+async function getPromotedEvent() {
+  try {
+    const result = await db.select().from(crewcenter).where(eq(crewcenter.module, 'events'));
+    if (result.length === 0) {
+      return null;
+    }
+    const events = result[ 0 ].value;
+    const promotedEvent = events.find(event => event.promoted);
+    return promotedEvent || null;
+  } catch (error) {
+    console.error('Error fetching promoted event:', error);
+    return null;
+  }
+}
+
 export default async function ProfileContainer({ user }) {
   if (!user) return null
 
-  const [ userData, notamsData ] = await Promise.all([
+  const [ userData, notamsData, promotedEvent ] = await Promise.all([
     getUserData(user.callsign),
-    getNotams()
+    getNotams(),
+    getPromotedEvent()
   ])
 
   if (!userData) return null
@@ -98,95 +114,97 @@ export default async function ProfileContainer({ user }) {
         <Notams notams={notamsData.data} />
       </Grid>
       {/* Promotional box above PIREPs */}
-      <Container maxW="100%" py="8" px="4">
-        <Box
-          borderRadius="xl"
-          overflow="hidden"
-          position="relative"
-          minH={{ base: '220px', md: '160px' }}
-          bgGradient={user.image ? undefined : 'linear-gradient(135deg, rgba(99,102,241,0.9), rgba(139,92,246,0.85))'}
-          backgroundImage={`url(/fedex.png)`}
-          backgroundSize="cover"
-          backgroundPosition="center"
-          boxShadow="lg"
-        >
-          <Box position="absolute" inset={0} bg="linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.25))" />
+      {promotedEvent && (
+        <Container maxW="100%" py="8" px="4">
+          <Box
+            borderRadius="xl"
+            overflow="hidden"
+            position="relative"
+            minH={{ base: '220px', md: '160px' }}
+            bgGradient={user.image ? undefined : 'linear-gradient(135deg, rgba(99,102,241,0.9), rgba(139,92,246,0.85))'}
+            backgroundImage={promotedEvent.banner ? `url(${promotedEvent.banner})` : `url(/fedex.png)`}
+            backgroundSize="cover"
+            backgroundPosition="center"
+            boxShadow="lg"
+          >
+            <Box position="absolute" inset={0} bg="linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.25))" />
 
-          <Box position="relative" py={{ base: 4, md: 8 }} pl={{ base: 6, md: 12 }} pr={{ base: 4, md: 8 }} color="white">
-            <Stack spacing={3} maxW={{ base: 'full', md: '60%' }}>
-              <Heading as="h3" size="md" lineHeight={1.05} letterSpacing="tight">
-                INVA Mid-Marathon Hop
-              </Heading>
-              <Box pb={11}>
-                <Badge
-                  variant="surface"
-                  px={3}
-                  py={2}
-                  fontSize="sm"
-                  borderRadius="md"
-                  borderColor="rgba(204, 47, 47, 1)"
-                  colorPalette="rgba(204, 47, 47, 1)"
-                  display="inline-flex"
-                >
-                  VECC-VTBS
-                </Badge>
-              </Box>
-
-              <HStack spacing={4} align="center">
-                <Box textAlign="center">
-                  <Text fontSize="xs" opacity={0.85}>Multiplier</Text>
-                  <Text fontSize={{ base: 'xl', md: '3xl' }} fontWeight="800" lineHeight={1}>
-                    4.5x
-                  </Text>
+            <Box position="relative" py={{ base: 4, md: 8 }} pl={{ base: 6, md: 12 }} pr={{ base: 4, md: 8 }} color="white">
+              <Stack spacing={3} maxW={{ base: 'full', md: '60%' }}>
+                <Heading as="h3" size="md" lineHeight={1.05} letterSpacing="tight">
+                  {promotedEvent.title}
+                </Heading>
+                <Box pb={11}>
+                  <Badge
+                    variant="surface"
+                    px={3}
+                    py={2}
+                    fontSize="sm"
+                    borderRadius="md"
+                    borderColor="rgba(204, 47, 47, 1)"
+                    colorPalette="rgba(204, 47, 47, 1)"
+                    display="inline-flex"
+                  >
+                    {promotedEvent.route}
+                  </Badge>
                 </Box>
 
-                <SignupOrFileButton
-                  pushbackIso={'2025-11-29T18:30:00+05:30'}
-                  flightNumber={'AIH322'}
-                  departureIcao={'VECC'}
-                  arrivalIcao={'VTBS'}
-                  aircraft={'A320'}
-                  signupUrl={'https://discord.com/events/1246895842581938276/1442932626049466418'}
-                />
-              </HStack>
-            </Stack>
-          </Box>
-          <Box position="absolute" bottom={{ base: 2, md: 6 }} right={{ base: 2, md: 6 }} zIndex={3} display="flex" flexDirection="column" gap={1} alignItems="flex-end">
-            <Badge
-              colorPalette="purple"
-              variant="subtle"
-              px={{ base: 1, md: 3 }}
-              py={{ base: 0.5, md: 2 }}
-              fontSize={{ base: '2xs', md: 'sm' }}
-              borderRadius="md"
-              display="inline-flex"
-              whiteSpace="nowrap"
-              overflow="hidden"
-              textOverflow="ellipsis"
-              maxW="max-content"
-            >
-              A320 (Air India) · 2.4 hours
-            </Badge>
+                <HStack spacing={4} align="center">
+                  <Box textAlign="center">
+                    <Text fontSize="xs" opacity={0.85}>Multiplier</Text>
+                    <Text fontSize={{ base: 'xl', md: '3xl' }} fontWeight="800" lineHeight={1}>
+                      {promotedEvent.multiplier}x
+                    </Text>
+                  </Box>
 
-            <Badge
-              colorPalette="purple"
-              variant="subtle"
-              px={{ base: 1, md: 3 }}
-              py={{ base: 0.5, md: 2 }}
-              fontSize={{ base: '2xs', md: 'sm' }}
-              borderRadius="md"
-              display="inline-flex"
-              whiteSpace="nowrap"
-              overflow="hidden"
-              textOverflow="ellipsis"
-              maxW="max-content"
-            >
-              Pushback: Sat, Nov 29 · 18:30 PM IST
-            </Badge>
-          </Box>
+                  <SignupOrFileButton
+                    pushbackIso={promotedEvent.pushbackIso}
+                    flightNumber={promotedEvent.flightNumber}
+                    departureIcao={promotedEvent.departureIcao}
+                    arrivalIcao={promotedEvent.arrivalIcao}
+                    aircraft={promotedEvent.aircraft}
+                    signupUrl={promotedEvent.signupUrl}
+                  />
+                </HStack>
+              </Stack>
+            </Box>
+            <Box position="absolute" bottom={{ base: 2, md: 6 }} right={{ base: 2, md: 6 }} zIndex={3} display="flex" flexDirection="column" gap={1} alignItems="flex-end">
+              <Badge
+                colorPalette="purple"
+                variant="subtle"
+                px={{ base: 1, md: 3 }}
+                py={{ base: 0.5, md: 2 }}
+                fontSize={{ base: '2xs', md: 'sm' }}
+                borderRadius="md"
+                display="inline-flex"
+                whiteSpace="nowrap"
+                overflow="hidden"
+                textOverflow="ellipsis"
+                maxW="max-content"
+              >
+                {promotedEvent.aircraft} · {promotedEvent.flightTime ? `${promotedEvent.flightTime} hours` : 'TBD'}
+              </Badge>
 
-        </Box>
-      </Container>
+              <Badge
+                colorPalette="purple"
+                variant="subtle"
+                px={{ base: 1, md: 3 }}
+                py={{ base: 0.5, md: 2 }}
+                fontSize={{ base: '2xs', md: 'sm' }}
+                borderRadius="md"
+                display="inline-flex"
+                whiteSpace="nowrap"
+                overflow="hidden"
+                textOverflow="ellipsis"
+                maxW="max-content"
+              >
+                Pushback: {promotedEvent.pushbackIso ? new Date(promotedEvent.pushbackIso.replace('+5:30', '')).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'TBD'} · {promotedEvent.pushbackIso ? new Date(promotedEvent.pushbackIso.replace('+5:30', '')).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'TBD'} IST
+              </Badge>
+            </Box>
+
+          </Box>
+        </Container>
+      )}
       <PirepsTable pireps={userData.pireps} />
     </>
   )
