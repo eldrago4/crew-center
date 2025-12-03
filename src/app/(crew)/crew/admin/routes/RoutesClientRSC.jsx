@@ -60,18 +60,15 @@ export default function AdminRoutesClient({ initialFleet }) {
     // Confirm bulk delete
     const handleConfirmBulkDelete = async () => {
         try {
-            const deletePromises = selectedRoutes.map(flightNumber =>
-                fetch(`/api/routes?flightNumber=${encodeURIComponent(flightNumber)}`, {
-                    method: 'DELETE',
-                }).then(res => {
-                    if (!res.ok) {
-                        const errorData = res.json().catch(() => ({}));
-                        throw new Error(errorData.error || `Failed to delete route ${flightNumber}`);
-                    }
-                    return res;
-                })
-            );
-            await Promise.all(deletePromises);
+            const res = await fetch('/api/routes', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ flightNumbers: selectedRoutes }),
+            });
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to delete routes');
+            }
             toaster.create({
                 title: 'Success',
                 description: `${selectedRoutes.length} routes deleted successfully`,
@@ -409,83 +406,108 @@ export default function AdminRoutesClient({ initialFleet }) {
                                                 </Table.Row>
                                             )}
                                         </Table.Body>
-                                        {/* Edit Route Dialog */}
-                                        <Portal>
-                                            <Dialog.Root open={isEditDialogOpen} onOpenChange={(e) => { setEditDialogOpen(e.open); if (!e.open) setOriginalFlightNumber(null); }}>
-                                                <Dialog.Backdrop />
-                                                <Dialog.Positioner>
-                                                    <Dialog.Content size="lg">
-                                                        <Dialog.Header>
-                                                            <Dialog.CloseTrigger asChild position="absolute" top="4" right="4"><CloseButton size="sm" /></Dialog.CloseTrigger>
-                                                        </Dialog.Header>
-                                                        <Dialog.Body>
-                                                            {editRoute && (
-                                                                <Stack spacing={4}>
-                                                                    <Field.Root required>
-                                                                        <Field.Label>Flight Number</Field.Label>
-                                                                        <Input value={editRoute.flightNumber} onChange={e => setEditRoute({ ...editRoute, flightNumber: e.target.value })} />
-                                                                    </Field.Root>
-                                                                    <Field.Root required>
-                                                                        <Field.Label>Departure ICAO</Field.Label>
-                                                                        <Input value={editRoute.departureIcao} onChange={e => setEditRoute({ ...editRoute, departureIcao: e.target.value.toUpperCase() })} />
-                                                                    </Field.Root>
-                                                                    <Field.Root required>
-                                                                        <Field.Label>Arrival ICAO</Field.Label>
-                                                                        <Input value={editRoute.arrivalIcao} onChange={e => setEditRoute({ ...editRoute, arrivalIcao: e.target.value.toUpperCase() })} />
-                                                                    </Field.Root>
-                                                                    <Field.Root>
-                                                                        <Field.Label>Flight Time (HH:MM)</Field.Label>
-                                                                        <Input value={editRoute.flightTime} onChange={e => setEditRoute({ ...editRoute, flightTime: e.target.value })} />
-                                                                    </Field.Root>
-                                                                    <Field.Root required>
-                                                                        <AircraftSelect
-                                                                            value={
-                                                                                Array.isArray(editRoute?.aircraft)
-                                                                                    ? editRoute.aircraft.filter(val => typeof val === 'string' && val.length > 0 && aircraftList.some(opt => opt.value === val))
-                                                                                    : []
-                                                                            }
-                                                                            onChange={value => setEditRoute({ ...editRoute, aircraft: value })}
-                                                                            placeholder="Select aircraft..."
-                                                                            aircraftList={aircraftList}
-                                                                        />
-                                                                    </Field.Root>
-                                                                </Stack>
-                                                            )}
-                                                        </Dialog.Body>
-                                                        <Dialog.Footer>
-                                                            <ButtonGroup>
-                                                                <Button colorPalette="green" onClick={handleSaveEditRoute}>Save</Button>
-                                                            </ButtonGroup>
-                                                        </Dialog.Footer>
-                                                    </Dialog.Content>
-                                                </Dialog.Positioner>
-                                            </Dialog.Root>
-                                        </Portal>
 
-                                        {/* Delete Route Dialog */}
-                                        <Portal>
-                                            <Dialog.Root open={isDeleteDialogOpen} onOpenChange={(e) => setDeleteDialogOpen(e.open)}>
-                                                <Dialog.Backdrop />
-                                                <Dialog.Positioner>
-                                                    <Dialog.Content size="sm">
-                                                        <Dialog.Header>
-                                                            <Dialog.CloseTrigger asChild position="absolute" top="4" right="4"><CloseButton size="sm" /></Dialog.CloseTrigger>
-                                                        </Dialog.Header>
-                                                        <Dialog.Body>
-                                                            <Text>Are you sure you want to delete this route?</Text>
-                                                        </Dialog.Body>
-                                                        <Dialog.Footer>
-                                                            <ButtonGroup>
-                                                                <Dialog.CloseTrigger asChild><Button variant="ghost">Cancel</Button></Dialog.CloseTrigger>
-                                                                <Button colorPalette="red" onClick={handleConfirmDelete}>Delete</Button>
-                                                            </ButtonGroup>
-                                                        </Dialog.Footer>
-                                                    </Dialog.Content>
-                                                </Dialog.Positioner>
-                                            </Dialog.Root>
-                                        </Portal>
                                     </Table.Root>
                                 </Table.ScrollArea>
+
+                                {/* Edit Route Dialog */}
+                                <Portal>
+                                    <Dialog.Root open={isEditDialogOpen} onOpenChange={(e) => { setEditDialogOpen(e.open); if (!e.open) setOriginalFlightNumber(null); }}>
+                                        <Dialog.Backdrop />
+                                        <Dialog.Positioner>
+                                            <Dialog.Content size="lg">
+                                                <Dialog.Header>
+                                                    <Dialog.CloseTrigger asChild position="absolute" top="4" right="4"><CloseButton size="sm" /></Dialog.CloseTrigger>
+                                                </Dialog.Header>
+                                                <Dialog.Body>
+                                                    {editRoute && (
+                                                        <Stack spacing={4}>
+                                                            <Field.Root required>
+                                                                <Field.Label>Flight Number</Field.Label>
+                                                                <Input value={editRoute.flightNumber} onChange={e => setEditRoute({ ...editRoute, flightNumber: e.target.value })} />
+                                                            </Field.Root>
+                                                            <Field.Root required>
+                                                                <Field.Label>Departure ICAO</Field.Label>
+                                                                <Input value={editRoute.departureIcao} onChange={e => setEditRoute({ ...editRoute, departureIcao: e.target.value.toUpperCase() })} />
+                                                            </Field.Root>
+                                                            <Field.Root required>
+                                                                <Field.Label>Arrival ICAO</Field.Label>
+                                                                <Input value={editRoute.arrivalIcao} onChange={e => setEditRoute({ ...editRoute, arrivalIcao: e.target.value.toUpperCase() })} />
+                                                            </Field.Root>
+                                                            <Field.Root>
+                                                                <Field.Label>Flight Time (HH:MM)</Field.Label>
+                                                                <Input value={editRoute.flightTime} onChange={e => setEditRoute({ ...editRoute, flightTime: e.target.value })} />
+                                                            </Field.Root>
+                                                            <Field.Root required>
+                                                                <AircraftSelect
+                                                                    value={
+                                                                        Array.isArray(editRoute?.aircraft)
+                                                                            ? editRoute.aircraft.filter(val => typeof val === 'string' && val.length > 0 && aircraftList.some(opt => opt.value === val))
+                                                                            : []
+                                                                    }
+                                                                    onChange={value => setEditRoute({ ...editRoute, aircraft: value })}
+                                                                    placeholder="Select aircraft..."
+                                                                    aircraftList={aircraftList}
+                                                                />
+                                                            </Field.Root>
+                                                        </Stack>
+                                                    )}
+                                                </Dialog.Body>
+                                                <Dialog.Footer>
+                                                    <ButtonGroup>
+                                                        <Button colorPalette="green" onClick={handleSaveEditRoute}>Save</Button>
+                                                    </ButtonGroup>
+                                                </Dialog.Footer>
+                                            </Dialog.Content>
+                                        </Dialog.Positioner>
+                                    </Dialog.Root>
+                                </Portal>
+
+                                {/* Delete Route Dialog */}
+                                <Portal>
+                                    <Dialog.Root open={isDeleteDialogOpen} onOpenChange={(e) => setDeleteDialogOpen(e.open)}>
+                                        <Dialog.Backdrop />
+                                        <Dialog.Positioner>
+                                            <Dialog.Content size="sm">
+                                                <Dialog.Header>
+                                                    <Dialog.CloseTrigger asChild position="absolute" top="4" right="4"><CloseButton size="sm" /></Dialog.CloseTrigger>
+                                                </Dialog.Header>
+                                                <Dialog.Body>
+                                                    <Text>Are you sure you want to delete this route?</Text>
+                                                </Dialog.Body>
+                                                <Dialog.Footer>
+                                                    <ButtonGroup>
+                                                        <Dialog.CloseTrigger asChild><Button variant="ghost">Cancel</Button></Dialog.CloseTrigger>
+                                                        <Button colorPalette="red" onClick={handleConfirmDelete}>Delete</Button>
+                                                    </ButtonGroup>
+                                                </Dialog.Footer>
+                                            </Dialog.Content>
+                                        </Dialog.Positioner>
+                                    </Dialog.Root>
+                                </Portal>
+
+                                {/* Bulk Delete Route Dialog */}
+                                <Portal>
+                                    <Dialog.Root open={isBulkDeleteDialogOpen} onOpenChange={(e) => setBulkDeleteDialogOpen(e.open)}>
+                                        <Dialog.Backdrop />
+                                        <Dialog.Positioner>
+                                            <Dialog.Content size="sm">
+                                                <Dialog.Header>
+                                                    <Dialog.CloseTrigger asChild position="absolute" top="4" right="4"><CloseButton size="sm" /></Dialog.CloseTrigger>
+                                                </Dialog.Header>
+                                                <Dialog.Body>
+                                                    <Text>Are you sure you want to delete {selectedRoutes.length} routes?</Text>
+                                                </Dialog.Body>
+                                                <Dialog.Footer>
+                                                    <ButtonGroup>
+                                                        <Dialog.CloseTrigger asChild><Button variant="ghost">Cancel</Button></Dialog.CloseTrigger>
+                                                        <Button colorPalette="red" onClick={handleConfirmBulkDelete}>Delete</Button>
+                                                    </ButtonGroup>
+                                                </Dialog.Footer>
+                                            </Dialog.Content>
+                                        </Dialog.Positioner>
+                                    </Dialog.Root>
+                                </Portal>
                                 {totalPages > 1 && (
                                     <Center p={4}>
                                         <Pagination.Root count={totalPages} page={currentPage} onPageChange={(details) => goToPage(details.page)}>

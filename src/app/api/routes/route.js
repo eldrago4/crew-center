@@ -136,7 +136,7 @@ export async function DELETE(request) {
 
             const result = await db
                 .delete(routes)
-                .where(sql`${routes.flightNumber} = ${sql.placeholder('flightNumber')}`)
+                .where(sql`${routes.flightNumber} = ${flightNumber}`)
                 .returning();
 
             if (result.length === 0) {
