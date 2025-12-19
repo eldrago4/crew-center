@@ -17,6 +17,9 @@ import {
 import { Plane, Globe, Award } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { enrollInCareer } from '@/app/actions';
 
 const fadeInKeyframes = `
     @keyframes fadeIn {
@@ -94,15 +97,39 @@ const typeRatings = createListCollection({
 });
 
 export default function CareerPage() {
+    const { data: session } = useSession();
+    const router = useRouter();
     const [ showForm, setShowForm ] = useState(false);
     const [ showWalkthrough, setShowWalkthrough ] = useState(false);
+    const [ selectedBase, setSelectedBase ] = useState('VIDP');
+    const [ selectedAircraft, setSelectedAircraft ] = useState('A320');
+    const [ isLoading, setIsLoading ] = useState(false);
 
     const handleBeginJourney = () => {
         setShowForm(true);
     };
 
-    const handleEnroll = () => {
-        setShowWalkthrough(true);
+    const handleEnroll = async () => {
+        if (!session?.user?.callsign) {
+            alert('Please log in to enroll');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const result = await enrollInCareer(session.user.callsign, selectedBase, selectedAircraft);
+
+            if (result.success) {
+                setShowWalkthrough(true);
+            } else {
+                alert(result.error || 'An error occurred');
+            }
+        } catch (error) {
+            console.error('Error enrolling:', error);
+            alert('An error occurred while enrolling');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -431,7 +458,8 @@ export default function CareerPage() {
                                     size="lg"
                                     variant="outline"
                                     w="full"
-                                    defaultValue="A320"
+                                    value={selectedAircraft}
+                                    onValueChange={(details) => setSelectedAircraft(details.value)}
                                 >
                                     <Select.HiddenSelect />
                                     <Select.Label color="gray.300" textAlign="left" w="full" fontSize="lg" mb={2}>Type Rating</Select.Label>
@@ -576,7 +604,7 @@ export default function CareerPage() {
                                     allowFullScreen
                                     style={{ borderRadius: '1.5rem' }}
                                 ></iframe>
-
+                                {/* towards career dashboard */}
                                 <Box
                                     position="absolute"
                                     right="-120px"
