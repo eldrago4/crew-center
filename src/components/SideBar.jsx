@@ -48,7 +48,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     plan: [
       { label: "Routes", href: "/crew/routes", icon: FiMap },
       { label: "Simbrief", href: "/crew/plan/simbrief", icon: FiBriefcase },
-      { label: "Career Mode", href: "/crew/plan/career-mode", disabled: !careerMode, icon: FiTrendingUp }
+      { label: "Career Mode", href: "/crew/career", disabled: !careerMode, icon: FiTrendingUp }
     ],
     community: [
       { label: "Events", href: "/crew/community/events", icon: FiCalendar },

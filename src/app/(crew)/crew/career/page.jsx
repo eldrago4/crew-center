@@ -17,6 +17,8 @@ import {
 import { Plane, Globe, Award } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { toaster } from '@/components/ui/toaster';
 
 const fadeInKeyframes = `
     @keyframes fadeIn {
@@ -25,84 +27,106 @@ const fadeInKeyframes = `
     }
 `;
 
-const baseAirports = createListCollection({
-    items: [
-        {
-            "label": "Indira Gandhi International Airport",
-            "value": "VIDP"
-        },
-        {
-            "label": "Chhatrapati Shivaji Maharaj International Airport",
-            "value": "VABB"
-        },
-        {
-            "label": "Kempegowda International Airport",
-            "value": "VOBL"
-        },
-        {
-            "label": "Cochin International Airport",
-            "value": "VOCI"
-        },
-        {
-            "label": "Rajiv Gandhi International Airport",
-            "value": "VOHY"
-        },
-        {
-            "label": "Netaji Subhas Chandra Bose International Airport",
-            "value": "VECC"
-        },
-        {
-            "label": "Chennai International Airport",
-            "value": "VOMM"
-        },
-        {
-            "label": "Pune Airport",
-            "value": "VAPO"
-        },
-        {
-            "label": "Sardar Vallabhbhai Patel International Airport",
-            "value": "VAAH"
-        },
-        {
-            "label": "Trivandrum International Airport",
-            "value": "VOTV"
-        },
-        {
-            "label": "Calicut International Airport",
-            "value": "VOCL"
-        },
-        {
-            "label": "Mangalore International Airport",
-            "value": "VOML"
-        },
-        {
-            "label": "Kannur International Airport",
-            "value": "VOKN"
-        },
-        {
-            "label": "Tiruchirappalli International Airport",
-            "value": "VOTR"
-        }
-    ],
-});
+const baseAirportsData = [
+    { label: "Indira Gandhi International Airport", value: "VIDP" },
+    { label: "Chhatrapati Shivaji Maharaj International Airport", value: "VABB" },
+    { label: "Kempegowda International Airport", value: "VOBL" },
+    { label: "Cochin International Airport", value: "VOCI" },
+    { label: "Rajiv Gandhi International Airport", value: "VOHY" },
+    { label: "Netaji Subhas Chandra Bose International Airport", value: "VECC" },
+    { label: "Chennai International Airport", value: "VOMM" },
+    { label: "Pune Airport", value: "VAPO" },
+    { label: "Sardar Vallabhbhai Patel International Airport", value: "VAAH" },
+    { label: "Trivandrum International Airport", value: "VOTV" },
+    { label: "Calicut International Airport", value: "VOCL" },
+    { label: "Mangalore International Airport", value: "VOML" },
+    { label: "Kannur International Airport", value: "VOKN" },
+    { label: "Tiruchirappalli International Airport", value: "VOTR" }
+];
 
-const typeRatings = createListCollection({
-    items: [
-        { label: "Airbus A320", value: "A320" },
-        { label: "Boeing 737-800", value: "B738" }
-    ],
-});
+const baseAirports = createListCollection({ items: baseAirportsData });
+
+const typeRatingsData = [
+    { label: "Airbus A320", value: "A320" },
+    { label: "Boeing 737-800", value: "B738" }
+];
+
+const typeRatings = createListCollection({ items: typeRatingsData });
 
 export default function CareerPage() {
     const [ showForm, setShowForm ] = useState(false);
     const [ showWalkthrough, setShowWalkthrough ] = useState(false);
+    const [ selectedBaseAirport, setSelectedBaseAirport ] = useState('VIDP');
+    const [ selectedTypeRating, setSelectedTypeRating ] = useState('A320');
+    const [ isEnrolling, setIsEnrolling ] = useState(false);
+
+    const { data: session } = useSession();
 
     const handleBeginJourney = () => {
         setShowForm(true);
     };
 
-    const handleEnroll = () => {
-        setShowWalkthrough(true);
+    const handleEnroll = async () => {
+        if (!session?.user?.callsign) {
+            toaster.create({
+                title: "Authentication Error",
+                description: "Please log in to continue",
+                type: "error",
+                duration: 5000,
+            });
+            return;
+        }
+
+        setIsEnrolling(true);
+
+        try {
+            const response = await fetch('/api/crewcareer/enroll', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    baseAirport: selectedBaseAirport,
+                    typeRating: selectedTypeRating
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Enrollment failed');
+            }
+
+            if (result.alreadyEnrolled) {
+                // User already enrolled, redirect to walkthrough
+                setShowWalkthrough(true);
+                toaster.create({
+                    title: "Welcome back!",
+                    description: "You've already enrolled. Proceeding to walkthrough.",
+                    type: "info",
+                    duration: 3000,
+                });
+            } else {
+                // Success, redirect to walkthrough
+                setShowWalkthrough(true);
+                toaster.create({
+                    title: "Enrollment Successful!",
+                    description: "Welcome to your career journey!",
+                    type: "success",
+                    duration: 3000,
+                });
+            }
+        } catch (error) {
+            console.error('Enrollment error:', error);
+            toaster.create({
+                title: "Enrollment Failed",
+                description: error.message || "An error occurred during enrollment",
+                type: "error",
+                duration: 5000,
+            });
+        } finally {
+            setIsEnrolling(false);
+        }
     };
 
     return (
@@ -352,15 +376,18 @@ export default function CareerPage() {
                     >
                         <VStack gap={8} w="full" maxW="2xl">
                             <Box w="full">
+                                <Box mb={2}>
+                                    <Text color="gray.300" fontSize="lg">Base Airport</Text>
+                                </Box>
                                 <Select.Root
                                     collection={baseAirports}
+                                    value={[ selectedBaseAirport ]}
+                                    onValueChange={(e) => setSelectedBaseAirport(e.value[ 0 ])}
                                     size="lg"
                                     variant="outline"
                                     w="full"
-                                    defaultValue="VIDP"
                                 >
                                     <Select.HiddenSelect />
-                                    <Select.Label color="gray.300" textAlign="left" w="full" fontSize="lg" mb={2}>Base Airport</Select.Label>
                                     <Select.Control>
                                         <Select.Trigger
                                             bg="gray.800"
@@ -426,15 +453,18 @@ export default function CareerPage() {
                             </Box>
 
                             <Box w="full">
+                                <Box mb={2}>
+                                    <Text color="gray.300" fontSize="lg">Type Rating</Text>
+                                </Box>
                                 <Select.Root
                                     collection={typeRatings}
+                                    value={[ selectedTypeRating ]}
+                                    onValueChange={(e) => setSelectedTypeRating(e.value[ 0 ])}
                                     size="lg"
                                     variant="outline"
                                     w="full"
-                                    defaultValue="A320"
                                 >
                                     <Select.HiddenSelect />
-                                    <Select.Label color="gray.300" textAlign="left" w="full" fontSize="lg" mb={2}>Type Rating</Select.Label>
                                     <Select.Control>
                                         <Select.Trigger
                                             bg="gray.800"
@@ -514,8 +544,9 @@ export default function CareerPage() {
                                 }}
                                 transition="all 0.3s ease-in-out"
                                 onClick={handleEnroll}
+                                disabled={isEnrolling}
                             >
-                                Enroll
+                                {isEnrolling ? 'Enrolling...' : 'Enroll'}
                             </Button>
                         </VStack>
                     </Flex>
@@ -541,7 +572,7 @@ export default function CareerPage() {
                             animation: 'fadeIn 0.5s ease-in-out 0.5s forwards'
                         }}
                     >
-                        <VStack gap={4} w="full" maxW="6xl">
+                        <VStack gap={6} w="full" maxW="6xl">
                             <Text
                                 fontSize={{ base: "xl", md: "2xl", lg: "3xl" }}
                                 fontWeight="extralight"
@@ -552,7 +583,6 @@ export default function CareerPage() {
                             </Text>
 
                             <Box
-                                position="relative"
                                 w="full"
                                 maxW="5xl"
                                 h="calc(80vh - 100px)"
@@ -561,10 +591,8 @@ export default function CareerPage() {
                                 borderRadius="3xl"
                                 border="2px solid"
                                 borderColor="gray.600"
-                                display="flex"
-                                alignItems="center"
-                                justifyContent="center"
                                 mx="auto"
+                                overflow="hidden"
                             >
                                 <iframe
                                     width="100%"
@@ -576,39 +604,31 @@ export default function CareerPage() {
                                     allowFullScreen
                                     style={{ borderRadius: '1.5rem' }}
                                 ></iframe>
-
-                                <Box
-                                    position="absolute"
-                                    right="-120px"
-                                    top="50%"
-                                    transform="translateY(-50%)"
-                                    zIndex={10}
-                                >
-                                    <Link href="/crew/career/dashboard" style={{ textDecoration: 'none' }}>
-                                        <Button
-                                            size="lg"
-                                            bg="white"
-                                            color="black"
-                                            fontSize="2xl"
-                                            fontWeight="bold"
-                                            px={8}
-                                            py={6}
-                                            borderRadius="3xl"
-                                            shadow="lg"
-                                            _hover={{
-                                                shadow: "2xl",
-                                                bg: "gray.100"
-                                            }}
-                                            transition="all 0.3s ease-in-out"
-                                            display="flex"
-                                            alignItems="center"
-                                            gap={3}
-                                        >
-                                            →
-                                        </Button>
-                                    </Link>
-                                </Box>
                             </Box>
+
+                            <Link href="/crew/career/dashboard" style={{ textDecoration: 'none' }}>
+                                <Button
+                                    size="lg"
+                                    bg="white"
+                                    color="black"
+                                    fontSize={{ base: "xl", md: "2xl" }}
+                                    fontWeight="bold"
+                                    px={{ base: 8, md: 12 }}
+                                    py={6}
+                                    borderRadius="3xl"
+                                    shadow="lg"
+                                    _hover={{
+                                        shadow: "2xl",
+                                        bg: "gray.100"
+                                    }}
+                                    transition="all 0.3s ease-in-out"
+                                    display="flex"
+                                    alignItems="center"
+                                    gap={3}
+                                >
+                                    →
+                                </Button>
+                            </Link>
                         </VStack>
                     </Flex>
                 )}
