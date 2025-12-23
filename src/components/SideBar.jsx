@@ -52,7 +52,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     ],
     community: [
       { label: "Events", href: "/crew/community/events", icon: FiCalendar },
-      { label: "Routes of the Week", href: "/crew/community/rotw", icon: FiStar },
+      { label: "Routes of the Week", href: "https://discord.com/channels/1246895842581938276/1270078880576966666", icon: FiStar },
       { label: "Leaderboard", href: "/crew/community/leaderboard", icon: FiAward },
       { label: "Live Map", href: "/crew/community/live-map", icon: FiGlobe }
     ],

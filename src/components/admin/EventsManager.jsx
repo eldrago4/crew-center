@@ -17,18 +17,26 @@ import {
 import { useState } from "react";
 
 export default function EventsManager({ initialEventsData, moduleName = "events" }) {
+
     const [ events, setEvents ] = useState(() => {
+        console.log("Initial events data:", initialEventsData, "Type:", typeof initialEventsData);
+        
+        // Handle array data (from API response)
         if (Array.isArray(initialEventsData)) {
             return initialEventsData;
         }
+        
+        // Handle string data that needs parsing
         if (typeof initialEventsData === "string" && initialEventsData.trim() !== "" && initialEventsData !== "Error loading events data.") {
             try {
-                return JSON.parse(initialEventsData);
+                const parsed = JSON.parse(initialEventsData);
+                return Array.isArray(parsed) ? parsed : [];
             } catch (error) {
                 console.error("Error parsing initial events data:", error);
                 return [];
             }
         }
+        
         return [];
     });
     const [ editingEvent, setEditingEvent ] = useState(null);
@@ -36,16 +44,17 @@ export default function EventsManager({ initialEventsData, moduleName = "events"
     const [ isUpdating, setIsUpdating ] = useState(false);
     const [ timeInputValue, setTimeInputValue ] = useState("");
 
+
     const handleSave = async () => {
         setIsUpdating(true);
         try {
             console.log("Saving events:", events);
-            const response = await fetch("/api/events", {
+            const response = await fetch("/api/crewcenter", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(events),
+                body: JSON.stringify({ moduleName, newValue: events }),
             });
 
             console.log("Save response status:", response.status);
@@ -94,17 +103,18 @@ export default function EventsManager({ initialEventsData, moduleName = "events"
         setIsAdding(false);
     };
 
+
     const handleDelete = async (index) => {
         const newEvents = events.filter((_, i) => i !== index);
         setEvents(newEvents);
 
         try {
-            const response = await fetch("/api/events", {
+            const response = await fetch("/api/crewcenter", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(newEvents),
+                body: JSON.stringify({ moduleName, newValue: newEvents }),
             });
 
             if (response.ok) {
@@ -124,6 +134,7 @@ export default function EventsManager({ initialEventsData, moduleName = "events"
         }
     };
 
+
     const handlePromote = async (index) => {
         // Only allow promotion if the event is not already promoted
         if (events[ index ].promoted) {
@@ -138,12 +149,12 @@ export default function EventsManager({ initialEventsData, moduleName = "events"
         setEvents(newEvents);
 
         try {
-            const response = await fetch("/api/events", {
+            const response = await fetch("/api/crewcenter", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(newEvents),
+                body: JSON.stringify({ moduleName, newValue: newEvents }),
             });
 
             if (response.ok) {

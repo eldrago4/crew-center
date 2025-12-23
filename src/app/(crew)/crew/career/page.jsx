@@ -54,6 +54,8 @@ const typeRatingsData = [
 const typeRatings = createListCollection({ items: typeRatingsData });
 
 export default function CareerPage() {
+    const { data: session } = useSession();
+    const router = useRouter();
     const [ showForm, setShowForm ] = useState(false);
     const [ showWalkthrough, setShowWalkthrough ] = useState(false);
     const [ selectedBaseAirport, setSelectedBaseAirport ] = useState('VIDP');

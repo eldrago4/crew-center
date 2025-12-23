@@ -15,11 +15,15 @@ export default async function FleetDatabasePage() {
         initialFleetData = 'Error loading multipliers data.';
     }
 
+
     let initialEventsData = [];
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/events`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/crewcenter?module=events`);
         if (response.ok) {
-            initialEventsData = await response.json();
+            const data = await response.json();
+            // Check if data is an array, if not, set to empty array
+            initialEventsData = Array.isArray(data) ? data : [];
+            console.log("Initial events data fetched:", initialEventsData.length, "events");
         } else {
             console.error("Error fetching initial events data on server:", response.status);
             initialEventsData = [];
@@ -34,7 +38,7 @@ export default async function FleetDatabasePage() {
             <Container maxW="100%" py={{ base: 4, md: 8 }}>
                 <VStack spacing={6} align="stretch">
                     <Heading size="xl" color="fg">
-                        Multipliers, Rotw & Events
+                        Multipliers - Regular Flying
                     </Heading>
                     <DatabaseViewer initialModuleData={initialFleetData} moduleName="multipliers" />
                     <EventsManager initialEventsData={initialEventsData} moduleName="events" />
