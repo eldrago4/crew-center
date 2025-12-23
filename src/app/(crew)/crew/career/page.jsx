@@ -62,8 +62,6 @@ export default function CareerPage() {
     const [ selectedTypeRating, setSelectedTypeRating ] = useState('A320');
     const [ isEnrolling, setIsEnrolling ] = useState(false);
 
-    const { data: session } = useSession();
-
     const handleBeginJourney = () => {
         setShowForm(true);
     };
