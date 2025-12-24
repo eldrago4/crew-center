@@ -2,7 +2,7 @@ import { Box, Heading, Container, VStack } from '@chakra-ui/react';
 
 import DatabaseViewer from '@/components/admin/DatabaseViewer';
 import EventsManager from '@/components/admin/EventsManager';
-import { fetchFleetModule } from '../../pireps/file/fleetModule';
+import { fetchFleetModule, fetchModuleValue } from '../../pireps/file/fleetModule';
 
 
 export default async function FleetDatabasePage() {
@@ -18,16 +18,10 @@ export default async function FleetDatabasePage() {
 
     let initialEventsData = [];
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/crewcenter?module=events`);
-        if (response.ok) {
-            const data = await response.json();
-            // Check if data is an array, if not, set to empty array
-            initialEventsData = Array.isArray(data) ? data : [];
-            console.log("Initial events data fetched:", initialEventsData.length, "events");
-        } else {
-            console.error("Error fetching initial events data on server:", response.status);
-            initialEventsData = [];
-        }
+        initialEventsData = await fetchModuleValue('events');
+        // Ensure it's an array, if not, set to empty array
+        initialEventsData = Array.isArray(initialEventsData) ? initialEventsData : [];
+        console.log("Initial events data fetched:", initialEventsData.length, "events");
     } catch (error) {
         console.error("Error fetching initial events data on server:", error);
         initialEventsData = [];
