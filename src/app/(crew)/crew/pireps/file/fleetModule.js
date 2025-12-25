@@ -3,11 +3,20 @@ import { crewcenter } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 const cache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
 
-async function fetchModuleValue(moduleName) {
-  if (cache.has(moduleName)) {
-    return cache.get(moduleName).value;
+async function fetchModuleValue(moduleName, forceRefresh = false) {
+  console.log(`[CACHE] Checking cache for module: ${moduleName}, forceRefresh: ${forceRefresh}`);
+
+  const now = Date.now();
+  const cached = cache.get(moduleName);
+
+  if (!forceRefresh && cached && (now - cached.timestamp < CACHE_TTL)) {
+    console.log(`[CACHE] Cache hit for ${moduleName}:`, cached.value);
+    return cached.value;
   }
+
+  console.log(`[CACHE] Cache miss/stale for ${moduleName}, fetching from database`);
 
   try {
     const result = await db.select().from(crewcenter).where(eq(crewcenter.module, moduleName));
@@ -20,7 +29,8 @@ async function fetchModuleValue(moduleName) {
     // No need for JSON.parse here.
     const value = result[ 0 ].value;
 
-    cache.set(moduleName, { value: value });
+    cache.set(moduleName, { value: value, timestamp: now });
+    console.log(`[CACHE] Stored in cache for ${moduleName}:`, value);
 
     return value;
   } catch (error) {
@@ -46,16 +56,28 @@ async function updateModuleValue(moduleName, newValue) {
         set: { value: newValue }
       });
 
-    cache.set(moduleName, { value: newValue });
-    console.log(`Module '${moduleName}' updated successfully.`);
+    // Invalidate cache for the updated module to ensure fresh data on next fetch
+    invalidateCache(moduleName);
+    console.log(`[CACHE] Module '${moduleName}' updated successfully.`);
   } catch (error) {
     console.error(`Error updating module '${moduleName}':`, error);
     throw error;
   }
 }
 
+function invalidateCache(moduleName) {
+  if (moduleName) {
+    cache.delete(moduleName);
+    console.log(`[CACHE] Cache invalidated for module: ${moduleName}`);
+  } else {
+    cache.clear();
+    console.log('[CACHE] All module caches invalidated');
+  }
+}
+
 export {
   fetchModuleValue,
   fetchFleetModule,
-  updateModuleValue
+  updateModuleValue,
+  invalidateCache
 };

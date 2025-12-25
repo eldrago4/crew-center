@@ -1,6 +1,7 @@
 import { Box, Heading, Container, VStack } from '@chakra-ui/react';
 
 import DatabaseViewer from '@/components/admin/DatabaseViewer';
+import MultipliersManager from '@/components/admin/MultipliersManager';
 import EventsManager from '@/components/admin/EventsManager';
 import { fetchFleetModule, fetchModuleValue } from '../../pireps/file/fleetModule';
 
@@ -34,7 +35,7 @@ export default async function FleetDatabasePage() {
                     <Heading size="xl" color="fg">
                         Multipliers - Regular Flying
                     </Heading>
-                    <DatabaseViewer initialModuleData={initialFleetData} moduleName="multipliers" />
+                    <MultipliersManager initialModuleData={initialFleetData} moduleName="multipliers" />
                     <EventsManager initialEventsData={initialEventsData} moduleName="events" />
                 </VStack>
             </Container>

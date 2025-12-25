@@ -4,14 +4,14 @@ import { fetchFleetModule } from '@/app/(crew)/crew/pireps/file/fleetModule.js'
 import { auth } from '@/auth';
 
 export default async function FilePirepPage() {
-const session = await auth();
+    const session = await auth();
     let fleetData, operatorsData, multipliersData, ifatcMultipliersData;
 
     try {
         [ fleetData, operatorsData, multipliersData, ifatcMultipliersData ] = await Promise.all([
             fetchFleetModule('fleet'),
             fetchFleetModule('operators'),
-            fetchFleetModule('multipliers'),
+            fetchFleetModule('multipliers', true), // Force refresh multipliers
             fetchFleetModule('ifatcMultipliers')
         ]);
     } catch (error) {
