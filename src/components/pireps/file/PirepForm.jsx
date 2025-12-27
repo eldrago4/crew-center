@@ -18,7 +18,27 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 // The component receives pre-fetched data and the session object as props from its parent Server Component.
-export function PirepForm({ userId, session, initialAircraft, initialOperators, initialMultipliers, initialIfatcMultipliers }) {
+export function PirepForm({ userId, session, initialAircraft, initialOperators, initialMultipliers, initialIfatcMultipliers, cacheTimestamp }) {
+    // Debug logging to check what data is being received
+    console.log('[PIREP FORM] Props received:', {
+        userId,
+        session,
+        initialAircraft: initialAircraft?.length || 0,
+        initialOperators: initialOperators?.length || 0,
+        initialMultipliers: initialMultipliers?.length || 0,
+        initialIfatcMultipliers: initialIfatcMultipliers?.length || 0,
+        multiplierSample: initialMultipliers?.[ 0 ],
+        cacheTimestamp
+    });
+
+    // Force component to re-render when cacheTimestamp changes
+    const [ forceUpdate, setForceUpdate ] = useState(cacheTimestamp);
+
+    useEffect(() => {
+        console.log('[PIREP FORM] Cache timestamp changed, forcing update');
+        setForceUpdate(cacheTimestamp);
+    }, [ cacheTimestamp ]);
+
     // Get today's date in YYYY-MM-DD format for default input values.
     const today = new Date().toISOString().split('T')[ 0 ];
 
@@ -73,12 +93,12 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
         const urlArrivalIcao = searchParams.get('arrivalIcao');
         const urlAircraft = searchParams.get('aircraft');
 
-        if (urlFlightNumber) setFlightNumber(urlFlightNumber);
-        if (urlDepartureIcao) setDepartureIcao(urlDepartureIcao);
-        if (urlArrivalIcao) setArrivalIcao(urlArrivalIcao);
+        if (urlFlightNumber && !flightNumber) setFlightNumber(urlFlightNumber);
+        if (urlDepartureIcao && !departureIcao) setDepartureIcao(urlDepartureIcao);
+        if (urlArrivalIcao && !arrivalIcao) setArrivalIcao(urlArrivalIcao);
 
         // Handle aircraft selection from URL
-        if (urlAircraft) {
+        if (urlAircraft && !aircraft) {
             const exactMatch = aircraftOptions.find(ac =>
                 ac.value.toLowerCase() === urlAircraft.toLowerCase()
             );
@@ -95,7 +115,7 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                 }
             }
         }
-    }, [ searchParams, aircraftOptions ]);
+    }, [ searchParams, aircraftOptions, flightNumber, departureIcao, arrivalIcao, aircraft ]);
 
     // --- State for IFATC form fields ---
     const [ ifatcDate, setIfatcDate ] = useState(today);
@@ -163,8 +183,8 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                     alert('Flight hours must be between 0-23');
                     return;
                 }
-                if (parseInt(flightTime.mm) < 0 || parseInt(flightTime.mm) > 59) {
-                    alert('Flight minutes must be between 0-59');
+                if (parseInt(flightTime.mm) < 0 || parseInt(flightTime.mm) > 60) {
+                    alert('Flight minutes must be between 0-60');
                     return;
                 }
 
@@ -300,7 +320,7 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                                     <Input
                                         placeholder="e.g., VOMM"
                                         value={departureIcao}
-                                        onChange={(e) => setDepartureIcao(e.target.value.toUpperCase().slice(0, 4))}
+                                        onChange={(e) => setDepartureIcao(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4))}
                                         maxLength={4}
                                     />
                                 </Field.Root>
@@ -309,7 +329,7 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                                     <Input
                                         placeholder="e.g., VECC"
                                         value={arrivalIcao}
-                                        onChange={(e) => setArrivalIcao(e.target.value.toUpperCase().slice(0, 4))}
+                                        onChange={(e) => setArrivalIcao(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4))}
                                         maxLength={4}
                                     />
                                 </Field.Root>
@@ -386,14 +406,14 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                                         w="70px"
                                         maxLength={2}
                                         value={flightTime.hh}
-                                        onChange={(e) => setFlightTime({ ...flightTime, hh: e.target.value.slice(0, 2) })}
+                                        onChange={(e) => setFlightTime({ ...flightTime, hh: e.target.value.replace(/[^0-9]/g, '').slice(0, 2) })}
                                     />
                                     <Input
                                         placeholder="MM"
                                         w="70px"
                                         maxLength={2}
                                         value={flightTime.mm}
-                                        onChange={(e) => setFlightTime({ ...flightTime, mm: e.target.value.slice(0, 2) })}
+                                        onChange={(e) => setFlightTime({ ...flightTime, mm: e.target.value.replace(/[^0-9]/g, '').slice(0, 2) })}
                                     />
                                 </HStack>
                             </Field.Root>
@@ -456,7 +476,12 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                                 </Field.Root>
                                 <Field.Root required>
                                     <Field.Label>Airport (ICAO)<Field.RequiredIndicator /></Field.Label>
-                                    <Input placeholder="e.g., VIDP" value={airportIcao} onChange={(e) => setAirportIcao(e.target.value)} />
+                                    <Input
+                                        placeholder="e.g., VECC"
+                                        value={airportIcao}
+                                        onChange={(e) => setAirportIcao(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4))}
+                                        maxLength={4}
+                                    />
                                 </Field.Root>
                                 <Field.Root required>
                                     <Field.Label>Open Time (Local)<Field.RequiredIndicator /></Field.Label>

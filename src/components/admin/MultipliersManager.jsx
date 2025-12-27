@@ -595,7 +595,7 @@ export default function MultipliersManager({ initialModuleData, moduleName }) {
                     {activeMultiplier ? (
                         <Card.Root p={4} bg="white" shadow="lg" opacity={0.8}>
                             <HStack spacing={3}>
-                                <DragHandleIcon />
+                                <GripVertical width={16} height={16} fill="currentColor" />
                                 <Text fontWeight="bold">{activeMultiplier.label}</Text>
                                 <Badge colorPalette="blue">{activeMultiplier.value}x</Badge>
                             </HStack>

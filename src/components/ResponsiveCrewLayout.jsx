@@ -29,7 +29,6 @@ export default function ResponsiveCrewLayout({
       {showSidebar && (
         <Box
           position="fixed"
-          top="50px"
           left="0"
           height="calc(100vh - 60px)"
           zIndex={10}
@@ -47,7 +46,7 @@ export default function ResponsiveCrewLayout({
         }}
         // Add top padding for DashNav and mobile sidebar
         pt={{
-          md: "60px"      // Only DashNav on desktop
+          base:"4.5em",md: "60px"      // Only DashNav on desktop
         }}
         pr={{ base: 0, md: 4 }}
         pb={8}

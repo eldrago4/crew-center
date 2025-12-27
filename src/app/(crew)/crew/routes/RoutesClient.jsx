@@ -26,13 +26,34 @@ import {
 
 // Constants
 const aircraftList = [
-  "A318", "A319", "A320", "A321", "A220-300", "A333", "A339", "A359", "A388",
-  "Boeing 737-700", "Boeing 737-800", "Boeing 737-900", "Boeing 737MAX",
-  "Boeing 747-400", "Boeing 747-8", "Boeing 757-200", "Boeing 767-300",
-  "Boeing 767-300ER", "Boeing 777-200ER", "Boeing 777-200LR", "Boeing 777-300ER",
-  "Boeing 777F", "Boeing 787-8", "Boeing 787-9", "Boeing 787-10",
-  "Bombardier Dash 8 Q-400", "CRJ-700", "CRJ-900", "CRJ-1000", "DC-10",
-  "DC-10F", "ERJ-175", "ERJ-190", "E190", "E195", "MD-11", "MD-11F", "TBM-930"
+  'A220-300',
+  'A319',
+  'A320',
+  'A321',
+  'A333',
+  'A339',
+  'A346',
+  'A359',
+  'A388',
+  'Boeing 737-800',
+  'Boeing 737-900',
+  'Boeing 737MAX',
+  'Boeing 747-400',
+  'Boeing 747-8',
+  'Boeing 757-200',
+  'Boeing 767-300',
+  'Boeing 777-200ER',
+  'Boeing 777-200LR',
+  'Boeing 777-300ER',
+  'Boeing 777F',
+  'Boeing 787-10',
+  'Boeing 787-8',
+  'Boeing 787-9',
+  'Bombardier Dash 8-Q400',
+  'CRJ-900',
+  'ERJ-175',
+  'ERJ-190',
+  'MD-11'
 ];
 
 const aircraftOptions = createListCollection({
@@ -53,7 +74,7 @@ const aircraftICAOCodes = aircraftList.reduce((acc, ac) => {
 }, {});
 
 const rankAircraftMap = {
-  Yuvraj: [ "A220-300", "A320", "Boeing 737-800", "Bombardier Dash 8 Q-400", "Boeing 737MAX", "ERJ-175", "ERJ-190", "A318" ],
+  Yuvraj: [ "A220-300", "A320", "Boeing 737-800", "Bombardier Dash 8-Q400", "Boeing 737MAX", "ERJ-175", "ERJ-190", "A318" ],
   Rajkumar: [ "A321", "Boeing 737-900", "Boeing 757-200", "A333" ],
   Rajvanshi: [ "Boeing 787-8", "Boeing 767-300", "Boeing 787-9" ],
   Rajdhiraj: [ "Boeing 777-200LR", "Boeing 777F" ],

@@ -1,6 +1,7 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
+import { SidebarProvider } from '@/components/SidebarContext';
 
 export default async function RootLayout({ children }) {
   const session = await auth();
@@ -21,13 +22,15 @@ export default async function RootLayout({ children }) {
   const isAdmin = session.user.permissions?.length > 0 || false;
 
   return (
-    <ResponsiveCrewLayout 
-      callsign={session.user.callsign}
-      isAdmin={isAdmin}
-      ceo={isCEO}
-      careerMode={career}
-    >
-      {children}
-    </ResponsiveCrewLayout>
+    <SidebarProvider>
+      <ResponsiveCrewLayout
+        callsign={session.user.callsign}
+        isAdmin={isAdmin}
+        ceo={isCEO}
+        careerMode={career}
+      >
+        {children}
+      </ResponsiveCrewLayout>
+    </SidebarProvider>
   );
 }

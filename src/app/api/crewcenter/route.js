@@ -8,14 +8,19 @@ import { NextResponse } from 'next/server';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const moduleName = searchParams.get('module');
+    const moduleName = searchParams.get('module') || searchParams.get('moduleName');
 
     if (!moduleName) {
       return new Response(
         JSON.stringify({ error: 'Module parameter is required' }),
         {
           status: 400,
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
         }
       );
     }
@@ -30,14 +35,24 @@ export async function GET(request) {
         JSON.stringify({ error: `Module '${moduleName}' not found` }),
         {
           status: 404,
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
         }
       );
     }
 
     return new Response(JSON.stringify(result[ 0 ].value), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      },
     });
   } catch (error) {
     console.error('Error fetching crewcenter data:', error);
@@ -45,7 +60,12 @@ export async function GET(request) {
       JSON.stringify({ error: 'Internal server error' }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
       }
     );
   }
