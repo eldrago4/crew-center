@@ -82,13 +82,13 @@ export default function LeaderboardPage() {
                     {/* Header - render directly */}
                     <HStack spacing={3}>
                         <Icon as={FiAward} boxSize={8} color="blue.500" />
-                        <Heading size="lg" color="gray.800">
+                        <Heading size="lg" color="fg">
                             Pilot Leaderboard
                         </Heading>
                     </HStack>
 
                     {/* Description - render directly */}
-                    <Text color="gray.600" fontSize="md">
+                    <Text color="fg.muted" fontSize="md">
                         Top 10 pilots ranked by total flight time
                     </Text>
 
@@ -96,7 +96,7 @@ export default function LeaderboardPage() {
                     <Box display="flex" justifyContent="center" alignItems="end" gap="1.5rem" mb={8}>
                         {/* #2 - Left skeleton */}
                         <Box
-                            bg="gray.50"
+                            bg="bg.subtle"
                             borderRadius="lg"
                             p={4}
                             textAlign="center"
@@ -112,7 +112,7 @@ export default function LeaderboardPage() {
 
                         {/* #1 - Middle skeleton */}
                         <Box
-                            bg="yellow.50"
+                            bg="bg.subtle"
                             borderRadius="lg"
                             p={4}
                             textAlign="center"
@@ -128,7 +128,7 @@ export default function LeaderboardPage() {
 
                         {/* #3 - Right skeleton */}
                         <Box
-                            bg="orange.50"
+                            bg="bg.subtle"
                             borderRadius="lg"
                             p={4}
                             textAlign="center"
@@ -145,15 +145,15 @@ export default function LeaderboardPage() {
 
                     {/* Table skeleton */}
                     <Box
-                        bg="white"
+                        bg="bg.subtle"
                         borderRadius="lg"
                         boxShadow="sm"
                         border="1px"
-                        borderColor="gray.200"
+                        borderColor="border"
                         overflow="hidden"
                     >
                         <Table.Root size="sm" variant="outline">
-                            <Table.Header bg="gray.50">
+                            <Table.Header bg="bg.muted">
                                 <Table.Row>
                                     <Table.ColumnHeader textAlign="center" width="80px">
                                         <Skeleton height="4" width="12" />
@@ -210,12 +210,12 @@ export default function LeaderboardPage() {
             <VStack spacing={6} align="stretch">
                 <HStack spacing={3}>
                     <Icon as={FiAward} boxSize={8} color="blue.500" />
-                    <Heading size="lg" color="gray.800">
+                    <Heading size="lg" color="fg">
                         Pilot Leaderboard
                     </Heading>
                 </HStack>
 
-                <Text color="gray.600" fontSize="md">
+                <Text color="fg.muted" fontSize="md">
                     Top 10 pilots ranked by total flight time
                 </Text>
 
@@ -224,7 +224,7 @@ export default function LeaderboardPage() {
                     <Box display="flex" justifyContent="center" alignItems="end" gap="1.5rem" mb={8}>
                         {/* #2 - Left */}
                         <Box
-                            bg="gray.100"
+                            bg="bg.subtle"
                             borderRadius="lg"
                             p={4}
                             textAlign="center"
@@ -233,14 +233,15 @@ export default function LeaderboardPage() {
                             boxShadow="md"
                         >
                             <DiscordAvatar userId={leaderboard[ 1 ]?.discordId} size="lg" mb={2} />
-                            <Text fontSize="sm" color="blue.600">{leaderboard[ 1 ]?.id}</Text>
-                            <Text fontSize="sm">{leaderboard[ 1 ]?.ifcName}</Text>
-                            <Text fontSize="xs" fontFamily="mono">{formatFlightTime(leaderboard[ 1 ]?.flightTime)}</Text>
+                            <Text fontSize="sm" color="blue.500">{leaderboard[ 1 ]?.id}</Text>
+                            <Text fontSize="sm" color="fg">{leaderboard[ 1 ]?.ifcName}</Text>
+                            <Text fontSize="xs" fontFamily="mono" color="fg.muted">{formatFlightTime(leaderboard[ 1 ]?.flightTime)}</Text>
                         </Box>
 
                         {/* #1 - Middle (Tallest) */}
                         <Box
                             bg="yellow.100"
+                            _dark={{ bg: "yellow.900" }}
                             borderRadius="lg"
                             p={4}
                             textAlign="center"
@@ -249,14 +250,14 @@ export default function LeaderboardPage() {
                             boxShadow="md"
                         >
                             <DiscordAvatar userId={leaderboard[ 0 ]?.discordId} size="xl" mb={2} />
-                            <Text fontSize="sm" color="blue.600">{leaderboard[ 0 ]?.id}</Text>
-                            <Text fontSize="sm">{leaderboard[ 0 ]?.ifcName}</Text>
-                            <Text fontSize="xs" fontFamily="mono">{formatFlightTime(leaderboard[ 0 ]?.flightTime)}</Text>
+                            <Text fontSize="sm" color="blue.500">{leaderboard[ 0 ]?.id}</Text>
+                            <Text fontSize="sm" color="fg">{leaderboard[ 0 ]?.ifcName}</Text>
+                            <Text fontSize="xs" fontFamily="mono" color="fg.muted">{formatFlightTime(leaderboard[ 0 ]?.flightTime)}</Text>
                         </Box>
 
                         {/* #3 - Right */}
                         <Box
-                            bg="orange.100"
+                            bg="bg.subtle"
                             borderRadius="lg"
                             p={4}
                             textAlign="center"
@@ -265,32 +266,32 @@ export default function LeaderboardPage() {
                             boxShadow="md"
                         >
                             <DiscordAvatar userId={leaderboard[ 2 ]?.discordId} size="md" mb={2} />
-                            <Text fontSize="sm" color="blue.600">{leaderboard[ 2 ]?.id}</Text>
-                            <Text fontSize="sm">{leaderboard[ 2 ]?.ifcName}</Text>
-                            <Text fontSize="xs" fontFamily="mono">{formatFlightTime(leaderboard[ 2 ]?.flightTime)}</Text>
+                            <Text fontSize="sm" color="blue.500">{leaderboard[ 2 ]?.id}</Text>
+                            <Text fontSize="sm" color="fg">{leaderboard[ 2 ]?.ifcName}</Text>
+                            <Text fontSize="xs" fontFamily="mono" color="fg.muted">{formatFlightTime(leaderboard[ 2 ]?.flightTime)}</Text>
                         </Box>
                     </Box>
                 )}
 
                 {/* Table for ranks 4-10 */}
                 <Box
-                    bg="white"
+                    bg="bg.subtle"
                     borderRadius="lg"
                     boxShadow="sm"
                     border="1px"
-                    borderColor="gray.200"
+                    borderColor="border"
                     overflow="hidden"
                 >
                     <Table.Root size="sm" variant="outline">
-                        <Table.Header bg="gray.50">
+                        <Table.Header bg="bg.muted">
                             <Table.Row>
-                                <Table.ColumnHeader textAlign="center" width="80px">Rank</Table.ColumnHeader>
-                                <Table.ColumnHeader>Callsign</Table.ColumnHeader>
-                                <Table.ColumnHeader>Pilot Name</Table.ColumnHeader>
+                                <Table.ColumnHeader textAlign="center" width="80px" color="fg">Rank</Table.ColumnHeader>
+                                <Table.ColumnHeader color="fg">Callsign</Table.ColumnHeader>
+                                <Table.ColumnHeader color="fg">Pilot Name</Table.ColumnHeader>
                                 <Table.ColumnHeader textAlign="center">
                                     <HStack justify="center" spacing={1}>
-                                        <Icon as={FiClock} boxSize={4} />
-                                        <Text>Flight Time</Text>
+                                        <Icon as={FiClock} boxSize={4} color="fg" />
+                                        <Text color="fg">Flight Time</Text>
                                     </HStack>
                                 </Table.ColumnHeader>
                             </Table.Row>
@@ -299,12 +300,13 @@ export default function LeaderboardPage() {
                             {leaderboard.slice(3).map((pilot, index) => (
                                 <Table.Row
                                     key={pilot.id}
-                                    _hover={{ bg: 'gray.50' }}
+                                    _hover={{ bg: 'bg.muted' }}
                                     bg={userRank && pilot.id === userRank.id ? 'blue.50' : 'transparent'}
+                                    _dark={{ bg: userRank && pilot.id === userRank.id ? 'blue.900' : 'transparent' }}
                                 >
                                     <Table.Cell textAlign="center">
                                         <Badge
-                                            colorScheme="gray"
+                                            colorPalette="gray"
                                             variant="outline"
                                             borderRadius="full"
                                             px={3}
@@ -313,11 +315,11 @@ export default function LeaderboardPage() {
                                             #{index + 4}
                                         </Badge>
                                     </Table.Cell>
-                                    <Table.Cell fontWeight="semibold" color="blue.600">
+                                    <Table.Cell fontWeight="semibold" color="blue.500">
                                         {pilot.id}
                                     </Table.Cell>
-                                    <Table.Cell>{pilot.ifcName}</Table.Cell>
-                                    <Table.Cell textAlign="center" fontFamily="mono">
+                                    <Table.Cell color="fg">{pilot.ifcName}</Table.Cell>
+                                    <Table.Cell textAlign="center" fontFamily="mono" color="fg.muted">
                                         {formatFlightTime(pilot.flightTime)}
                                     </Table.Cell>
                                 </Table.Row>
@@ -330,23 +332,25 @@ export default function LeaderboardPage() {
                 {userRank && userRank.rank > 10 && (
                     <Box
                         bg="blue.50"
+                        _dark={{ bg: "blue.900" }}
                         borderRadius="lg"
                         boxShadow="sm"
                         border="1px"
                         borderColor="blue.200"
+                        _dark={{ borderColor: "blue.700" }}
                         overflow="hidden"
                         mt={4}
                     >
                         <Table.Root size="sm" variant="outline">
-                            <Table.Header bg="blue.100">
+                            <Table.Header bg="blue.100" _dark={{ bg: "blue.900" }}>
                                 <Table.Row>
-                                    <Table.ColumnHeader textAlign="center" width="80px">Your Rank</Table.ColumnHeader>
-                                    <Table.ColumnHeader>Callsign</Table.ColumnHeader>
-                                    <Table.ColumnHeader>Pilot Name</Table.ColumnHeader>
+                                    <Table.ColumnHeader textAlign="center" width="80px" color="fg">Your Rank</Table.ColumnHeader>
+                                    <Table.ColumnHeader color="fg">Callsign</Table.ColumnHeader>
+                                    <Table.ColumnHeader color="fg">Pilot Name</Table.ColumnHeader>
                                     <Table.ColumnHeader textAlign="center">
                                         <HStack justify="center" spacing={1}>
-                                            <Icon as={FiClock} boxSize={4} />
-                                            <Text>Flight Time</Text>
+                                            <Icon as={FiClock} boxSize={4} color="fg" />
+                                            <Text color="fg">Flight Time</Text>
                                         </HStack>
                                     </Table.ColumnHeader>
                                 </Table.Row>
@@ -355,7 +359,7 @@ export default function LeaderboardPage() {
                                 <Table.Row>
                                     <Table.Cell textAlign="center">
                                         <Badge
-                                            colorScheme="blue"
+                                            colorPalette="blue"
                                             variant="solid"
                                             borderRadius="full"
                                             px={3}
@@ -364,11 +368,11 @@ export default function LeaderboardPage() {
                                             #{userRank.rank}
                                         </Badge>
                                     </Table.Cell>
-                                    <Table.Cell fontWeight="semibold" color="blue.600">
+                                    <Table.Cell fontWeight="semibold" color="blue.500">
                                         {userRank.id}
                                     </Table.Cell>
-                                    <Table.Cell>{userRank.ifcName}</Table.Cell>
-                                    <Table.Cell textAlign="center" fontFamily="mono">
+                                    <Table.Cell color="fg">{userRank.ifcName}</Table.Cell>
+                                    <Table.Cell textAlign="center" fontFamily="mono" color="fg.muted">
                                         {formatFlightTime(userRank.flightTime)}
                                     </Table.Cell>
                                 </Table.Row>
@@ -379,10 +383,11 @@ export default function LeaderboardPage() {
 
                 {leaderboard.length === 0 && (
                     <Box textAlign="center" py={8}>
-                        <Text color="gray.500">No leaderboard data available</Text>
+                        <Text color="fg.muted">No leaderboard data available</Text>
                     </Box>
                 )}
             </VStack>
         </Box>
     );
 }
+

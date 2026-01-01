@@ -56,15 +56,9 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
   return (
     <Container maxW="100%" py="8" px="4">
       <Box
-        bg="transparent"
-        bgImage="url(/dash_ai.jpg)"
-        bgSize="cover"
-        bgPosition="-100% 50%"
-        bgRepeat="no-repeat"
-        backdropFilter="auto"
-        backdropBlur="8px"
+        bg="bg.subtle"
         borderWidth="1px"
-        borderColor="whiteAlpha.300"
+        borderColor="border"
         rounded="xl"
         p="8"
         shadow="sm"
@@ -104,7 +98,7 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
               overflow="hidden"
               flexShrink="0"
               border="2px solid"
-              borderColor="whiteAlpha.300"
+              borderColor="border"
             >
               <Avatar.Root
                 width="100%"
@@ -126,6 +120,8 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
                   justifyContent="center"
                   fontSize="2xl"
                   fontWeight="bold"
+                  color="fg"
+                  bg="bg.muted"
                 >
                   {ifcName?.charAt(0)}
                 </Avatar.Fallback>
@@ -133,7 +129,7 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
             </Box>
           </Flex>
 
-          <Box h="1px" bg="whiteAlpha.300" />
+          <Box h="1px" bg="border" />
 
           {/* User Details */}
           <Stack spacing="6">
@@ -166,3 +162,4 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
     </Container>
   )
 }
+

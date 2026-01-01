@@ -298,10 +298,10 @@ export default function AdminRoutesClient({ initialFleet }) {
         <Box>
             <Toaster />
             <Dialog.Root open={isDialogOpen} onOpenChange={(e) => setDialogOpen(e.open)} scrollBehavior="inside">
-                <Box p={{ base: 4, md: 6 }} flex="1" bg="gray.50" minH="100vh">
+                <Box p={{ base: 4, md: 6 }} flex="1" bg="gray.50" _dark={{ bg: "gray.900" }} minH="100vh">
                     <Container maxW="7xl">
                         <Stack spacing={6} align="stretch">
-                            <Heading size="xl" color="gray.800">Route Management</Heading>
+                            <Heading size="xl" color="gray.800" _dark={{ color: "white" }}>Route Management</Heading>
                             <HStack justify="space-between" wrap="wrap" gap={4}>
                                 <HStack flex="1" gap={4} wrap="wrap">
                                     {selectedRoutes.length > 0 && (
@@ -356,10 +356,10 @@ export default function AdminRoutesClient({ initialFleet }) {
                                     <Button colorPalette="orange" leftIcon={<FiPlus />}>Add New Routes</Button>
                                 </Dialog.Trigger>
                             </HStack>
-                            <Box bg="white" rounded="md" shadow="sm">
+                            <Box bg="white" _dark={{ bg: "gray.800" }} rounded="md" shadow="sm">
                                 <Table.ScrollArea>
                                     <Table.Root variant="simple">
-                                        <Table.Header bg="gray.100">
+                                        <Table.Header bg="gray.100" _dark={{ bg: "gray.700" }}>
                                             <Table.Row>
                                                 <Table.ColumnHeader>Flight Number</Table.ColumnHeader>
                                                 <Table.ColumnHeader>Departure</Table.ColumnHeader>
@@ -401,7 +401,7 @@ export default function AdminRoutesClient({ initialFleet }) {
                                             ) : (
                                                 <Table.Row>
                                                     <Table.Cell colSpan={7} textAlign="center" py={10}>
-                                                        <Text color="gray.500">No routes found.</Text>
+                                                        <Text color="gray.500" _dark={{ color: "gray.400" }}>No routes found.</Text>
                                                     </Table.Cell>
                                                 </Table.Row>
                                             )}
@@ -537,9 +537,9 @@ export default function AdminRoutesClient({ initialFleet }) {
                             <Dialog.Body>
                                 <Stack spacing={4} align="stretch">
                                     {newRoutes.map((route, index) => (
-                                        <Box key={index} p={4} borderWidth="1px" borderColor="gray.200" rounded="md">
+                                        <Box key={index} p={4} borderWidth="1px" borderColor="gray.200" _dark={{ borderColor: "gray.600", bg: "gray.800" }} rounded="md">
                                             <HStack justify="space-between" mb={4}>
-                                                <Text fontWeight="medium">Route {index + 1}</Text>
+                                                <Text fontWeight="medium" _dark={{ color: "white" }}>Route {index + 1}</Text>
                                                 {newRoutes.length > 1 && (
                                                     <CloseButton size="sm" aria-label="Remove route" onClick={() => handleRemoveRouteRow(index)} />
                                                 )}

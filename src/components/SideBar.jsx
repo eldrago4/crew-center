@@ -77,6 +77,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     fontWeight: "light",
     fontSize: "2xs",
     color: "gray.500",
+    _dark: { color: "gray.400" },
     textTransform: "uppercase",
     width: "100%"
   };
@@ -88,8 +89,8 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     justifyContent: "flex-start",
     transition: "all 0.2s ease-in-out",
     _hover: {
-      bg: 'blue.50',
-      color: 'blue.600',
+      bg: { base: 'blue.50', _dark: 'whiteAlpha.100' },
+      color: { base: 'blue.600', _dark: 'white' },
     }
   };
 
@@ -126,11 +127,11 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
         'scrollbarColor': '#A0AEC0 transparent',
       }}
     >
-      <HStack spacing={3}>
+      <HStack spacing={1}>
         {buttons.map(({ label, href, disabled, icon, isSegmentControl }, idx) => {
           if (isSegmentControl) {
             return (
-              <Box key="segment-control" p={2} bg="transparent" borderRadius="md">
+              <Box key="segment-control" bg="transparent" borderRadius="md">
                 <RoleSelectorSegmentGroup
                   orientation="vertical"
                   onChange={handleValueChange}
@@ -149,8 +150,8 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
               aria-disabled={disabled}
             >
               <VStack
-                w="80px"
-                h="70px"
+                w="70px"
+                h="50px"
                 p={2}
                 bg="transparent"
                 borderRadius="md"
@@ -158,12 +159,12 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
                 alignItems="center"
                 spacing={1}
                 transition="background 0.2s ease-in-out"
-                _hover={{ bg: !disabled ? 'blue.50' : 'transparent' }}
+                _hover={{ bg: !disabled ? { base: 'blue.50', _dark: 'whiteAlpha.100' } : 'transparent' }}
                 opacity={disabled ? 0.5 : 1}
                 cursor={disabled ? 'not-allowed' : 'pointer'}
               >
-                <Icon as={icon} boxSize="24px" color="gray.700" />
-                <Text fontSize="11px" color="gray.600" textAlign="center" noOfLines={2}>
+                <Icon as={icon} boxSize="20px" color={{ base: "gray.700", _dark: "gray.300" }} />
+                <Text fontSize="10px" color={{ base: "gray.600", _dark: "gray.400" }} textAlign="center" noOfLines={2}>
                   {label}
                 </Text>
               </VStack>
@@ -186,16 +187,17 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     <>
       <Box
         display={{ base: 'none', md: 'block' }}
-        bg="white"
+        bg={{ base: "white", _dark: "gray.800" }}
         px={5}
         py={30}
         w="250px"
         h="100vh"
         borderRightWidth="1px"
-        borderColor="gray.200"
+        borderColor={{ base: "gray.200", _dark: "gray.700" }}
         position="fixed"
         top="60px"
         left={0}
+        css={{ "&": { transition: "background-color 0.2s" } }}
       >
         <VStack width="100%">
           {currentValue !== "admin" && (
@@ -225,17 +227,18 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
       <Box
         display={{ base: 'block', md: 'none' }}
         position="fixed"
-        top="45px"
+        top="60px"
         left={0}
         right={0}
-        bg="white"
+        bg={{ base: "white", _dark: "gray.800" }}
+        borderTopWidth="1px"
         borderBottomWidth="1px"
-        borderColor="gray.200"
-        px={3}
-        pt={2}
+        borderColor={{ base: "gray.200", _dark: "gray.700" }}
+        px={2}
         zIndex="docked"
         transform={isMobileNavVisible ? 'translateY(0)' : 'translateY(-100%)'}
         transition="transform 0.3s ease-in-out"
+        css={{ "&": { transition: "background-color 0.2s" } }}
       >
         {renderMobileButtons(mobileButtonsToShow)}
       </Box>

@@ -1,5 +1,6 @@
 import { Box, HStack, Text } from "@chakra-ui/react";
 import NextImage from "next/image";
+import { ColorModeButton } from "../components/ui/color-mode";
 
 // Custom SVG slash separator component
 const SlashSeparator = () => (
@@ -31,12 +32,14 @@ export default function DashNav({ callsign }) {
             left="0"
             width="100%"
             height="60px"
-            bg="white"
-            borderBottomWidth={1}
+            bg={{ base: "white", _dark: "gray.800" }}
+            borderBottomWidth={{ base: 1, _dark: 0 }}
+            borderBottomColor={{ base: "gray.200", _dark: "gray.700" }}
             display="flex"
             alignItems="center"
             justifyContent="space-between"
             paddingX={4}
+            css={{ "&": { transition: "background-color 0.2s" } }}
         >
             <HStack spacing={4} alignItems="center">
                 <NextImage
@@ -49,9 +52,12 @@ export default function DashNav({ callsign }) {
                     priority
                 />
                 <SlashSeparator />
-                <Text fontSize="md" fontWeight="medium">INVA</Text>
+                <Text fontSize="md" fontWeight="medium" color={{ base: "gray.800", _dark: "white" }}>INVA</Text>
                 <SlashSeparator />
-                <Text fontSize="md" fontWeight="medium">{callsign}</Text>
+                <Text fontSize="md" fontWeight="medium" color={{ base: "gray.800", _dark: "white" }}>{callsign}</Text>
+            </HStack>
+            <HStack spacing={3} alignItems="center">
+                <ColorModeButton />
             </HStack>
         </Box>
     );

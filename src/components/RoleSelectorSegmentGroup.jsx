@@ -4,9 +4,8 @@ import React from 'react';
 import { HStack, SegmentGroup } from '@chakra-ui/react';
 import { GiCaptainHatProfile } from 'react-icons/gi';
 import { IoSettings } from 'react-icons/io5';
-import { FaRegClosedCaptioning } from 'react-icons/fa';
 
-export default function RoleSelectorSegmentGroup({ onChange, value = 'pilot', mobileOrientation = false }) {
+export default function RoleSelectorSegmentGroup({ onChange, value = 'pilot' }) {
   // onChange callback receives current selected value as string
 
   const handleValueChange = (details) => {
@@ -18,10 +17,9 @@ export default function RoleSelectorSegmentGroup({ onChange, value = 'pilot', mo
   return (
     <SegmentGroup.Root
       value={value}
-      size="sm"
+      size="md"
       onValueChange={handleValueChange}
-      style={{ marginBottom: 24 }}
-      {...mobileOrientation ? { orientation: "vertical" } : {}}
+      orientation="vertical"
     >
       <SegmentGroup.Indicator />
       <SegmentGroup.Items
@@ -49,4 +47,3 @@ export default function RoleSelectorSegmentGroup({ onChange, value = 'pilot', mo
     </SegmentGroup.Root>
   );
 }
-

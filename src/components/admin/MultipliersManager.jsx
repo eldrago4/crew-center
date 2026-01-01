@@ -99,8 +99,8 @@ function SortableMultiplierCard({
             style={style}
             p={4}
             borderWidth={isDragging ? 2 : 1}
-            borderColor={isDragging ? "blue.400" : "gray.200"}
-            bg={isDragging ? "blue.50" : "white"}
+            borderColor={isDragging ? "blue.400" : "border"}
+            bg={isDragging ? "blue.50" : "bg.default"}
             shadow={isDragging ? "lg" : "sm"}
             _hover={{ shadow: "md" }}
             transition="all 0.2s"
@@ -114,7 +114,7 @@ function SortableMultiplierCard({
                             variant="ghost"
                             {...listeners}
                             cursor={isDragging ? "grabbing" : "grab"}
-                            _hover={{ bg: "gray.100" }}
+                            _hover={{ bg: "bg.muted" }}
                             ariaLabel="Drag to reorder"
                         >
                             <GripVertical width={16} height={16} fill="currentColor" />
@@ -145,10 +145,10 @@ function SortableMultiplierCard({
                                             size="sm"
                                             type="number"
                                             value={multiplier.value}
-                                            onChange={(e) => onUpdate(multiplier.id, "value", parseFloat(e.target.value) || 1)}
+                                            onChange={(e) => onUpdate(multiplier.id, "value", e.target.value === "" ? "" : parseFloat(e.target.value))}
                                             min={0}
-                                            step={0.1}
-                                            max={10}
+                                            step={1}
+                                            max={999}
                                         />
                                     </Box>
 
@@ -166,7 +166,7 @@ function SortableMultiplierCard({
                         ) : (
                             <VStack spacing={1} align="stretch">
                                 <HStack spacing={2}>
-                                    <Text fontWeight="bold" fontSize="lg" color="blue.700">
+                                    <Text fontWeight="bold" fontSize="lg" color="fg">
                                         {multiplier.label}
                                     </Text>
                                     <Badge colorPalette="blue" variant="solid">
@@ -174,7 +174,7 @@ function SortableMultiplierCard({
                                     </Badge>
                                 </HStack>
 
-                                <Text fontSize="sm" color="gray.600">
+                                <Text fontSize="sm" color="fg.muted">
                                     {multiplier.description || "No description"}
                                 </Text>
                             </VStack>
@@ -273,7 +273,8 @@ export default function MultipliersManager({ initialModuleData, moduleName }) {
             return false;
         }
 
-        if (typeof multiplier.value !== "number" || multiplier.value < 0) {
+        const value = multiplier.value === "" ? 0 : Number(multiplier.value);
+        if (isNaN(value) || value < 0) {
             toaster.create({
                 title: "Validation Error",
                 description: "Value must be a positive number",
@@ -442,10 +443,10 @@ export default function MultipliersManager({ initialModuleData, moduleName }) {
             <VStack spacing={4} mb={6}>
                 <HStack justify="space-between" w="full" align="center">
                     <VStack align="start" spacing={0}>
-                        <Heading size="lg" color="blue.700">
+                        <Heading size="lg" color="fg">
                             Flight Multipliers
                         </Heading>
-                        <Text fontSize="sm" color="gray.600">
+                        <Text fontSize="sm" color="fg.muted">
                             Manage and reorder flight multipliers by dragging cards
                         </Text>
                     </VStack>
@@ -473,14 +474,14 @@ export default function MultipliersManager({ initialModuleData, moduleName }) {
                     </HStack>
                 </HStack>
 
-                <Box borderTop="1px" borderColor="gray.200" />
+                <Box borderTop="1px" borderColor="border" />
 
                 {/* Add Form */}
                 {isAdding && (
-                    <Card.Root p={4} w="full" bg="blue.50" borderColor="blue.200">
+                    <Card.Root p={4} w="full" bg="bg.subtle" borderColor="border">
                         <VStack spacing={4} align="stretch">
                             <HStack justify="space-between">
-                                <Text fontWeight="bold" color="blue.700">
+                                <Text fontWeight="bold" color="fg">
                                     Add New Multiplier
                                 </Text>
                                 <IconButton
@@ -516,11 +517,11 @@ export default function MultipliersManager({ initialModuleData, moduleName }) {
                                         value={tempMultiplier.value}
                                         onChange={(e) => setTempMultiplier({
                                             ...tempMultiplier,
-                                            value: parseFloat(e.target.value) || 1
+                                            value: e.target.value === "" ? "" : parseFloat(e.target.value)
                                         })}
                                         min={0}
-                                        step={0.1}
-                                        max={10}
+                                        step={1}
+                                        max={999}
                                     />
                                 </Box>
 
@@ -563,12 +564,12 @@ export default function MultipliersManager({ initialModuleData, moduleName }) {
                 >
                     <VStack spacing={3} align="stretch">
                         {multipliers.length === 0 && !isAdding ? (
-                            <Card.Root p={8} textAlign="center" bg="gray.50">
+                            <Card.Root p={8} textAlign="center" bg="bg.subtle">
                                 <VStack spacing={3}>
-                                    <Text color="gray.500" fontWeight="medium">
+                                    <Text color="fg.muted" fontWeight="medium">
                                         No multipliers configured yet
                                     </Text>
-                                    <Text color="gray.400" fontSize="sm">
+                                    <Text color="fg.muted" fontSize="sm">
                                         Click "Add Multiplier" to get started
                                     </Text>
                                 </VStack>
@@ -593,10 +594,10 @@ export default function MultipliersManager({ initialModuleData, moduleName }) {
 
                 <DragOverlay>
                     {activeMultiplier ? (
-                        <Card.Root p={4} bg="white" shadow="lg" opacity={0.8}>
+                        <Card.Root p={4} bg="bg.default" shadow="lg" opacity={0.8}>
                             <HStack spacing={3}>
                                 <GripVertical width={16} height={16} fill="currentColor" />
-                                <Text fontWeight="bold">{activeMultiplier.label}</Text>
+                                <Text fontWeight="bold" color="fg">{activeMultiplier.label}</Text>
                                 <Badge colorPalette="blue">{activeMultiplier.value}x</Badge>
                             </HStack>
                         </Card.Root>
@@ -606,22 +607,22 @@ export default function MultipliersManager({ initialModuleData, moduleName }) {
 
             {/* Statistics */}
             {multipliers.length > 0 && (
-                <Card.Root mt={6} p={4} bg="gray.50">
+                <Card.Root mt={6} p={4} bg="bg.subtle">
                     <HStack justify="space-between" align="center">
                         <VStack align="start" spacing={0}>
-                            <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                            <Text fontSize="sm" fontWeight="medium" color="fg">
                                 Total Multipliers: {multipliers.length}
                             </Text>
-                            <Text fontSize="xs" color="gray.500">
+                            <Text fontSize="xs" color="fg.muted">
                                 Drag cards to reorder • Values affect flight points
                             </Text>
                         </VStack>
                         <VStack align="end" spacing={0}>
-                            <Text fontSize="sm" fontWeight="medium" color="gray.700">
-                                Average: {(multipliers.reduce((sum, m) => sum + m.value, 0) / multipliers.length).toFixed(2)}x
+                            <Text fontSize="sm" fontWeight="medium" color="fg">
+                                Average: {(multipliers.reduce((sum, m) => sum + (m.value === "" ? 0 : Number(m.value) || 0), 0) / multipliers.length).toFixed(2)}x
                             </Text>
-                            <Text fontSize="xs" color="gray.500">
-                                Range: {Math.min(...multipliers.map(m => m.value))}x - {Math.max(...multipliers.map(m => m.value))}x
+                            <Text fontSize="xs" color="fg.muted">
+                                Range: {Math.min(...multipliers.map(m => m.value === "" ? 0 : Number(m.value) || 0))}x - {Math.max(...multipliers.map(m => m.value === "" ? 0 : Number(m.value) || 0))}x
                             </Text>
                         </VStack>
                     </HStack>

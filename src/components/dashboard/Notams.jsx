@@ -1,6 +1,6 @@
 // src/components/dashboard/Notams.jsx
 
-import { Table, Box } from "@chakra-ui/react";
+import { Table, Box, Text } from "@chakra-ui/react";
 
 export default function Notams({ notams = [] }) {
   const formatDate = (dateString) => {
@@ -27,24 +27,25 @@ export default function Notams({ notams = [] }) {
       <Table.Root
         borderWidth="1px"
         width="100%"         
-        tableLayout="fixed"   
+        tableLayout="fixed"
+        bg="bg.subtle"
       >
         <Table.Header
           position="sticky"
           top="0"
-          bg="white"
-          zIndex="10"         // 🔥 sticky header won’t clip under body
+          bg="bg.muted"
+          zIndex="10"
         >
           <Table.Row>
-            <Table.ColumnHeader colSpan={3} textAlign="center">
+            <Table.ColumnHeader colSpan={3} textAlign="center" color="fg">
               NOTAMS
             </Table.ColumnHeader>
           </Table.Row>
 
           <Table.Row>
-            <Table.ColumnHeader width="15%">Issued</Table.ColumnHeader>
-            <Table.ColumnHeader width="70%">Notice</Table.ColumnHeader>
-            <Table.ColumnHeader width="15%">Valid until</Table.ColumnHeader>
+            <Table.ColumnHeader width="15%" color="fg">Issued</Table.ColumnHeader>
+            <Table.ColumnHeader width="70%" color="fg">Notice</Table.ColumnHeader>
+            <Table.ColumnHeader width="15%" color="fg">Valid until</Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
 
@@ -52,7 +53,7 @@ export default function Notams({ notams = [] }) {
           {notams.length === 0 ? (
             <Table.Row>
               <Table.Cell colSpan={3} textAlign="center" py={4}>
-                No NOTAMs available
+                <Text color="fg.muted">No NOTAMs available</Text>
               </Table.Cell>
             </Table.Row>
           ) : (
@@ -65,15 +66,16 @@ export default function Notams({ notams = [] }) {
                     key={notam.issued}
                     textDecoration={isExpired ? "line-through" : "none"}
                   >
-                    <Table.Cell>{formatDate(notam.issued)}</Table.Cell>
+                    <Table.Cell color="fg.muted">{formatDate(notam.issued)}</Table.Cell>
                     <Table.Cell
                       whiteSpace="normal"
                       overflow="hidden"
                       textOverflow="ellipsis"
+                      color="fg"
                     >
                       {notam.desc}
                     </Table.Cell>
-                    <Table.Cell>{formatDate(notam.expiresOn)}</Table.Cell>
+                    <Table.Cell color="fg.muted">{formatDate(notam.expiresOn)}</Table.Cell>
                   </Table.Row>
                 );
               })
@@ -83,3 +85,4 @@ export default function Notams({ notams = [] }) {
     </Box>
   );
 }
+

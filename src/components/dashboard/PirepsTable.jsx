@@ -15,11 +15,9 @@ export default function PirepsTable({ pireps }) {
         return (
             <Container maxW="100%" py="8" px="4">
                 <Box
-                    bg="whiteAlpha.200"
-                    backdropFilter="auto"
-                    backdropBlur="8px"
+                    bg="bg.subtle"
                     borderWidth="1px"
-                    borderColor="whiteAlpha.300"
+                    borderColor="border"
                     rounded="xl"
                     p="8"
                     shadow="sm"
@@ -35,11 +33,9 @@ export default function PirepsTable({ pireps }) {
     return (
         <Container maxW="100%" py="8" px="4">
             <Box
-                bg="whiteAlpha.200"
-                backdropFilter="auto"
-                backdropBlur="8px"
+                bg="bg.subtle"
                 borderWidth="1px"
-                borderColor="whiteAlpha.300"
+                borderColor="border"
                 rounded="xl"
                 p="8"
                 shadow="sm"
@@ -64,11 +60,11 @@ export default function PirepsTable({ pireps }) {
                             <Table.Body>
                                 {pireps.map((pirep) => (
                                     <Table.Row key={pirep.pirepId}>
-                                        <Table.Cell fontWeight="medium">{pirep.flightNumber}</Table.Cell>
-                                        <Table.Cell>{pirep.departureIcao}</Table.Cell>
-                                        <Table.Cell>{pirep.arrivalIcao}</Table.Cell>
-                                        <Table.Cell>{pirep.flightTime}</Table.Cell>
-                                        <Table.Cell>{pirep.aircraft}</Table.Cell>
+                                        <Table.Cell fontWeight="medium" color="fg">{pirep.flightNumber}</Table.Cell>
+                                        <Table.Cell color="fg.muted">{pirep.departureIcao}</Table.Cell>
+                                        <Table.Cell color="fg.muted">{pirep.arrivalIcao}</Table.Cell>
+                                        <Table.Cell color="fg.muted">{pirep.flightTime}</Table.Cell>
+                                        <Table.Cell color="fg.muted">{pirep.aircraft}</Table.Cell>
                                         <Table.Cell>
                                             <Badge
                                                 colorPalette={
@@ -78,7 +74,7 @@ export default function PirepsTable({ pireps }) {
                                                             ? 'yellow'
                                                             : 'red'
                                                 }
-                                                variant="outline"
+                                                variant="subtle"
                                                 rounded="full"
                                                 px="2"
                                                 py="1"
@@ -102,3 +98,4 @@ export default function PirepsTable({ pireps }) {
         </Container>
     )
 }
+

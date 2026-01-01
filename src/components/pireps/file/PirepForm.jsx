@@ -290,10 +290,34 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
     };
 
     return (
-        <Tabs.Root variant="enclosed" fitted defaultValue="flight">
-            <Tabs.List>
-                <Tabs.Trigger value="flight">Flight</Tabs.Trigger>
-                <Tabs.Trigger value="ifatc">IFATC</Tabs.Trigger>
+        <Tabs.Root variant="enclosed" fitted defaultValue="flight" colorPalette="purple">
+            <Tabs.List bg="purple.50" _dark={{ bg: "purple.900" }} borderRadius="md">
+                <Tabs.Trigger 
+                    value="flight" 
+                    color="purple.700" 
+                    _dark={{ color: "purple.200" }}
+                    _selected={{ bg: "white", color: "purple.600", _dark: { bg: "purple.800", color: "purple.100" } }}
+                    px={6}
+                    py={2}
+                    borderRadius="sm"
+                    fontWeight="medium"
+                    transition="all 0.2s"
+                >
+                    Flight
+                </Tabs.Trigger>
+                <Tabs.Trigger 
+                    value="ifatc" 
+                    color="purple.700" 
+                    _dark={{ color: "purple.200" }}
+                    _selected={{ bg: "white", color: "purple.600", _dark: { bg: "purple.800", color: "purple.100" } }}
+                    px={6}
+                    py={2}
+                    borderRadius="sm"
+                    fontWeight="medium"
+                    transition="all 0.2s"
+                >
+                    IFATC
+                </Tabs.Trigger>
             </Tabs.List>
 
             <Tabs.Content value="flight" pt={8}>
@@ -458,7 +482,7 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                                 <Field.Label>Pilot Remarks</Field.Label>
                                 <Textarea placeholder="Add any comments about your flight..." value={comments} onChange={(e) => setComments(e.target.value.toUpperCase())} />
                             </Field.Root>
-                            <Button alignSelf="flex-start" onClick={() => handleSubmit('flight')} disabled={submitting} isLoading={submitting}>Submit Flight PIREP</Button>
+                            <Button alignSelf="flex-start" rounded="lg" onClick={() => handleSubmit('flight')} disabled={submitting} isLoading={submitting}>Submit Flight PIREP</Button>
                         </Fieldset.Content>
                     </Fieldset.Root>
                 </form>

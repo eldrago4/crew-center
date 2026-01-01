@@ -57,18 +57,18 @@ const EyeIcon = () => (
  * @param {number} props.totalPireps - Total number of PIREPs for pagination.
  */
 export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: initialTotalPireps }) {
-    const [pireps, setPireps] = useState(initialPireps);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPireps, setTotalPireps] = useState(initialTotalPireps);
-    const [processingPireps, setProcessingPireps] = useState(new Set());
-    const [completedPireps, setCompletedPireps] = useState(new Map());
-    const [errorPireps, setErrorPireps] = useState(new Map());
-    const [fadingPireps, setFadingPireps] = useState(new Set());
-    const [selectedPirep, setSelectedPirep] = useState(null); // This state is not currently used for modal, can be removed if not needed elsewhere
-    const [loadingPirep, setLoadingPirep] = useState(false); // This state is not currently used for modal, can be removed if not needed elsewhere
-    const [selectedPirepId, setSelectedPirepId] = useState(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    
+    const [ pireps, setPireps ] = useState(initialPireps);
+    const [ currentPage, setCurrentPage ] = useState(1);
+    const [ totalPireps, setTotalPireps ] = useState(initialTotalPireps);
+    const [ processingPireps, setProcessingPireps ] = useState(new Set());
+    const [ completedPireps, setCompletedPireps ] = useState(new Map());
+    const [ errorPireps, setErrorPireps ] = useState(new Map());
+    const [ fadingPireps, setFadingPireps ] = useState(new Set());
+    const [ selectedPirep, setSelectedPirep ] = useState(null); // This state is not currently used for modal, can be removed if not needed elsewhere
+    const [ loadingPirep, setLoadingPirep ] = useState(false); // This state is not currently used for modal, can be removed if not needed elsewhere
+    const [ selectedPirepId, setSelectedPirepId ] = useState(null);
+    const [ isModalOpen, setIsModalOpen ] = useState(false);
+
     const pageSize = 10; // Max 10 PIREPs per page
 
     // Base style for the liquid glass effect, to be extended by each button.
@@ -82,6 +82,10 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         _active: {
             transform: 'scale(0.98)',
+        },
+        _dark: {
+            bg: 'rgba(0, 0, 0, 0.3)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
         },
     };
 
@@ -112,7 +116,7 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
     const removePirepFromTable = (pirepIdToRemove) => {
         setPireps(prev => prev.filter(p => p.pirepId !== pirepIdToRemove));
         setTotalPireps(prev => prev - 1);
-        
+
         // Adjust current page if needed after removal
         const newTotalPages = Math.ceil((totalPireps - 1) / pageSize);
         if (currentPage > newTotalPages && newTotalPages > 0) {
@@ -149,7 +153,7 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
             newMap.delete(pirepId);
             return newMap;
         });
-        
+
         try {
             const response = await fetch('/api/users/pireps', {
                 method: 'PATCH',
@@ -170,26 +174,26 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
             }
 
             const result = await response.json(); // Assuming result might be used, though not directly in this snippet
-            
+
             // Show success status briefly before fading
             setCompletedPireps(prev => new Map(prev).set(pirepId, { status: 'approved', color: 'green' }));
-            
+
             // Wait for status to be visible, then start fade
             setTimeout(() => {
                 setFadingPireps(prev => new Set(prev).add(pirepId));
-                
+
                 // Remove from list after fade animation
                 setTimeout(() => {
                     removePirepFromTable(pirepId); // Use the new common function
                 }, 1500);
             }, 1000);
-            
+
         } catch (error) {
             console.error('Error approving PIREP:', error);
-            setErrorPireps(prev => new Map(prev).set(pirepId, { 
-                status: 'Error', 
+            setErrorPireps(prev => new Map(prev).set(pirepId, {
+                status: 'Error',
                 color: 'red',
-                message: 'Failed to approve' 
+                message: 'Failed to approve'
             }));
             setProcessingPireps(prev => {
                 const newSet = new Set(prev);
@@ -206,7 +210,7 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
             newMap.delete(pirepId);
             return newMap;
         });
-        
+
         try {
             const response = await fetch(`/api/users/pireps`, {
                 method: 'PATCH',
@@ -227,26 +231,26 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
             }
 
             const result = await response.json(); // Assuming result might be used, though not directly in this snippet
-            
+
             // Show success status briefly before fading
             setCompletedPireps(prev => new Map(prev).set(pirepId, { status: 'rejected', color: 'red' }));
-            
+
             // Wait for status to be visible, then start fade
             setTimeout(() => {
                 setFadingPireps(prev => new Set(prev).add(pirepId));
-                
+
                 // Remove from list after fade animation
                 setTimeout(() => {
                     removePirepFromTable(pirepId); // Use the new common function
                 }, 1500);
             }, 1000);
-            
+
         } catch (error) {
             console.error('Error rejecting PIREP:', error);
-            setErrorPireps(prev => new Map(prev).set(pirepId, { 
-                status: 'Error', 
+            setErrorPireps(prev => new Map(prev).set(pirepId, {
+                status: 'Error',
                 color: 'red',
-                message: 'Failed to reject' 
+                message: 'Failed to reject'
             }));
             setProcessingPireps(prev => {
                 const newSet = new Set(prev);
@@ -292,11 +296,11 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
         return (
             <Container maxW="100%" py="8" px="4">
                 <Box
-                    bg="whiteAlpha.200"
+                    bg={{ base: "pink.50", _dark: "whiteAlpha.100" }}
                     backdropFilter="auto"
                     backdropBlur="8px"
                     borderWidth="1px"
-                    borderColor="whiteAlpha.300"
+                    borderColor={{ base: "pink.600", _dark: "pink.900" }}
                     rounded="xl"
                     p="8"
                     shadow="sm"
@@ -312,11 +316,11 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
     return (
         <Container maxW="100%" py="8" px="4">
             <Box
-                bg="pink.50"
+                bg={{ base: "pink.50", _dark: "whiteAlpha.100" }}
                 backdropFilter="auto"
                 backdropBlur="8px"
                 borderWidth="1px"
-                borderColor="pink.600"
+                borderColor={{ base: "pink.600", _dark: "pink.900" }}
                 rounded="xl"
                 p="8"
                 shadow="sm"
@@ -340,7 +344,7 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
                             </Table.Header>
                             <Table.Body>
                                 {visiblePireps.map((pirep) => (
-                                    <Table.Row 
+                                    <Table.Row
                                         key={pirep.pirepId}
                                         opacity={fadingPireps.has(pirep.pirepId) ? 0.3 : 1}
                                         transition="opacity 1.5s ease-in-out"
@@ -348,7 +352,7 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
                                         <Table.Cell>
                                             <Flex direction="column">
                                                 <Text fontWeight="medium">{pirep.user?.ifcName || 'N/A'}</Text>
-                                                <Text fontSize="sm" color="gray.400">{pirep.user?.rank || 'N/A'}</Text>
+                                                <Text fontSize="sm" color="fg.muted">{pirep.user?.rank || 'N/A'}</Text>
                                             </Flex>
                                         </Table.Cell>
 
@@ -364,14 +368,14 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
                                                 >
                                                     {pirep.flightNumber}
                                                 </Badge>
-                                                <Text>
+                                                <Text color="fg">
                                                     {pirep.flightNumber === 'IFATC' ? pirep.departureIcao : `${pirep.departureIcao} - ${pirep.arrivalIcao}`}
                                                 </Text>
                                             </Flex>
                                         </Table.Cell>
 
-                                        <Table.Cell>{pirep.flightNumber === 'IFATC' ? '-' : pirep.aircraft}</Table.Cell>
-                                        <Table.Cell>{pirep.flightTime}</Table.Cell>
+                                        <Table.Cell color="fg">{pirep.flightNumber === 'IFATC' ? '-' : pirep.aircraft}</Table.Cell>
+                                        <Table.Cell color="fg">{pirep.flightTime}</Table.Cell>
 
                                         <Table.Cell>
                                             <HStack spacing="2">
@@ -400,7 +404,7 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
                                                             {...baseGlassyStyle}
                                                             color="green.400"
                                                             {...createGlowShadow('34, 197, 94')}
-                                                            isDisabled={processingPireps.has(pirep.pirepId) || completedPireps.has(pirep.pirepId) || errorPireps.has(pirep.pirepId)}
+                                                            disabled={processingPireps.has(pirep.pirepId) || completedPireps.has(pirep.pirepId) || errorPireps.has(pirep.pirepId)}
                                                         ><CheckIcon /></IconButton>
                                                         <IconButton
                                                             aria-label="Reject PIREP"
@@ -408,7 +412,7 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
                                                             {...baseGlassyStyle}
                                                             color="red.400"
                                                             {...createGlowShadow('239, 68, 68')}
-                                                            isDisabled={processingPireps.has(pirep.pirepId) || completedPireps.has(pirep.pirepId) || errorPireps.has(pirep.pirepId)}
+                                                            disabled={processingPireps.has(pirep.pirepId) || completedPireps.has(pirep.pirepId) || errorPireps.has(pirep.pirepId)}
                                                         ><XIcon /></IconButton>
 
                                                         <IconButton
@@ -417,7 +421,7 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
                                                             {...baseGlassyStyle}
                                                             color="blue.400"
                                                             {...createGlowShadow('59, 130, 246')}
-                                                            isDisabled={processingPireps.has(pirep.pirepId) || completedPireps.has(pirep.pirepId) || errorPireps.has(pirep.pirepId)}
+                                                            disabled={processingPireps.has(pirep.pirepId) || completedPireps.has(pirep.pirepId) || errorPireps.has(pirep.pirepId)}
                                                         ><EyeIcon /></IconButton>
                                                     </>
                                                 )}
@@ -467,12 +471,12 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
                     )}
                 </Stack>
             </Box>
-            
-            <PirepDetailModal 
-                isOpen={isModalOpen} 
-                onClose={handleCloseModal} 
-                pirepId={selectedPirepId} 
-                onPirepActionSuccess={handlePirepActionSuccess} // Pass the new callback
+
+            <PirepDetailModal
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                pirepId={selectedPirepId}
+                onPirepActionSuccess={handlePirepActionSuccess}
             />
         </Container>
     );

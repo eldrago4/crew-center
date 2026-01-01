@@ -142,7 +142,7 @@ export default function PirepsTabsClient() {
                         <Spinner size="xl" color="purple.500" thickness="4px" />
                     </Center>
                 ) : error ? (
-                    <Box color="red.500" textAlign="center" py={10}>
+                    <Box color="fg.error" textAlign="center" py={10}>
                         {error}
                     </Box>
                 ) : (

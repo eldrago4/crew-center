@@ -46,7 +46,8 @@ export default function ResponsiveCrewLayout({
         }}
         // Add top padding for DashNav and mobile sidebar
         pt={{
-          base:"4.5em",md: "60px"      // Only DashNav on desktop
+          base: "8.5em",
+          md: "60px"
         }}
         pr={{ base: 0, md: 4 }}
         pb={8}

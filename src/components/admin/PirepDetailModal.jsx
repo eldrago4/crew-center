@@ -208,9 +208,9 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
                         {pirep && !loading && !error && (
                             <Flex wrap="wrap" gap={6} justify="center" alignContent="flex-start">
                                 {/* Pilot Information */}
-                                <Box flex="1 1 300px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg="white">
+                                <Box flex="1 1 300px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg={{ base: "white", _dark: "gray.800" }}>
                                     <Stat.Root>
-                                        <Stat.Label fontSize="xs" color="gray.500">Pilot ID: {pirep.user?.id || 'N/A'}</Stat.Label>
+                                        <Stat.Label fontSize="xs" color={{ base: "gray.500", _dark: "gray.400" }}>Pilot ID: {pirep.user?.id || 'N/A'}</Stat.Label>
                                         <Stat.ValueText fontSize="2xl" fontWeight="bold" color="purple.600">{pirep.user?.ifcName || 'N/A'}</Stat.ValueText>
                                         <Stat.HelpText>
                                             <Badge colorPalette="blue" borderRadius="full" px={3} py={1}>
@@ -221,7 +221,7 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
                                 </Box>
 
                                 {/* Route */}
-                                <Box flex="1 1 250px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg="white">
+                                <Box flex="1 1 250px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg={{ base: "white", _dark: "gray.800" }}>
                                     <Text fontSize="lg" fontWeight="bold" mb={4}>Route</Text>
                                     <Stat.Root>
                                         <Stat.ValueText fontSize="xl">{pirep.departureIcao} → {pirep.arrivalIcao}</Stat.ValueText>
@@ -229,7 +229,7 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
                                 </Box>
 
                                 {/* Aircraft */}
-                                <Box flex="1 1 250px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg="white">
+                                <Box flex="1 1 250px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg={{ base: "white", _dark: "gray.800" }}>
                                     <Text fontSize="lg" fontWeight="bold" mb={4}>Aircraft</Text>
                                     <Stat.Root>
                                         <Stat.ValueText fontSize="xl">{pirep.aircraft}</Stat.ValueText>
@@ -237,7 +237,7 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
                                 </Box>
 
                                 {/* Flight Time */}
-                                <Box flex="1 1 200px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg="white">
+                                <Box flex="1 1 200px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg={{ base: "white", _dark: "gray.800" }}>
                                     <Text fontSize="lg" fontWeight="bold" mb={4}>Flight Duration</Text>
                                     <Stat.Root>
                                         <Stat.ValueText fontSize="xl">{pirep.flightTime}</Stat.ValueText>
@@ -245,7 +245,7 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
                                 </Box>
 
                                 {/* Date */}
-                                <Box flex="1 1 200px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg="white">
+                                <Box flex="1 1 200px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg={{ base: "white", _dark: "gray.800" }}>
                                     <Text fontSize="lg" fontWeight="bold" mb={4}>PIREP Date</Text>
                                     <Stat.Root>
                                         <Stat.ValueText fontSize="xl">{new Date(pirep.date).toLocaleDateString()}</Stat.ValueText>
@@ -254,7 +254,7 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
 
                                 {/* Multiplier */}
                                 {pirep.multiplier && (
-                                    <Box flex="1 1 180px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg="white">
+                                    <Box flex="1 1 180px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg={{ base: "white", _dark: "gray.800" }}>
                                         <Text fontSize="lg" fontWeight="bold" mb={4}>Multiplier</Text>
                                         <Stat.Root>
                                             <Stat.ValueText fontSize="xl">x{pirep.multiplier}</Stat.ValueText>
@@ -264,9 +264,9 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
 
                                 {/* Comments */}
                                 {pirep.comments && (
-                                    <Box flex="1 1 350px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg="white">
+                                    <Box flex="1 1 350px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg={{ base: "white", _dark: "gray.800" }}>
                                         <Text fontSize="lg" fontWeight="bold" mb={4}>Pilot Comments</Text>
-                                        <Box bg="gray.50" p={3} borderRadius="md" fontSize="sm" lineHeight="tall">
+                                        <Box bg={{ base: "gray.50", _dark: "gray.700" }} p={3} borderRadius="md" fontSize="sm" lineHeight="tall">
                                             {pirep.comments}
                                         </Box>
                                     </Box>
@@ -274,7 +274,7 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
 
                                 {/* Admin Comments */}
                                 {pirep.valid === null && (
-                                    <Box flex="1 1 350px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg="white">
+                                    <Box flex="1 1 350px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg={{ base: "white", _dark: "gray.800" }}>
                                         <Text fontSize="lg" fontWeight="bold" mb={4}>Admin Comments</Text>
                                         <Textarea
                                             value={adminComments}
@@ -289,9 +289,9 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
 
                                 {/* Existing Admin Comments */}
                                 {pirep.adminComments && pirep.valid !== null && (
-                                    <Box flex="1 1 350px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg="white">
+                                    <Box flex="1 1 350px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg={{ base: "white", _dark: "gray.800" }}>
                                         <Text fontSize="lg" fontWeight="bold" mb={4}>Admin Comments</Text>
-                                        <Box bg="blue.50" p={3} borderRadius="md" fontSize="sm" lineHeight="tall">
+                                        <Box bg={{ base: "blue.50", _dark: "blue.900" }} p={3} borderRadius="md" fontSize="sm" lineHeight="tall">
                                             {pirep.adminComments}
                                         </Box>
                                     </Box>
