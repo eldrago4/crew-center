@@ -9,7 +9,7 @@ if (!process.env.DATABASE_URL) {
     process.exit(1)
 }
 
-const rankenum = pgEnum('rankenum', ['Yuvraj', 'Rajkumar', 'Rajvanshi', 'Rajdhiraj', 'Maharaja', 'Samrat', 'Chhatrapati'])
+const rankenum = pgEnum('rankenum', [ 'Yuvraj', 'Rajkumar', 'Rajvanshi', 'Rajdhiraj', 'Maharaja', 'Samrat', 'Chhatrapati' ])
 
 const users = pgTable('users', {
     id: char({ length: 7 }).primaryKey().notNull(),
