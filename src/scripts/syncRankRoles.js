@@ -31,7 +31,7 @@ END`),
 const neonSql = neon(process.env.DATABASE_URL)
 const db = drizzle(neonSql, { schema: { users } })
 
-const BOT_TOKEN = 'Njk4MzA5MDYxMTIwMzYwNTA4.GxFNGi.L00v5B1OulKZzPN9sK_dM2dw5Cn_rVVhYcALwQ'
+const BOT_TOKEN = 'BOT_TOKEN_HERE'
 const GUILD_ID = '1246895842581938276'
 
 const RANK_ROLE_MAP = {
