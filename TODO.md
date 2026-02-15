@@ -1,4 +1,0 @@
-- Update onChange handler for HH input to accept only numeric digits (0-9) and limit to 2 characters
-- Update onChange handler for MM input to accept only numeric digits (0-9) and limit to 2 characters
-- Test the form by entering various inputs (numbers, letters, symbols) into HH and MM fields to ensure only digits are accepted and max 2 digits are enforced
-- Run the application and submit a flight PIREP to verify overall validation still works
