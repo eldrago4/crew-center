@@ -48,3 +48,4 @@ src/llms-full.txt
 .blackboxrules
 .env*.local
 bot
+live-api

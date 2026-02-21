@@ -74,13 +74,13 @@ const aircraftICAOCodes = aircraftList.reduce((acc, ac) => {
 }, {});
 
 const rankAircraftMap = {
-  Yuvraj: [ "A220-300", "A320", "Boeing 737-800", "Bombardier Dash 8-Q400", "Boeing 737MAX", "ERJ-175", "ERJ-190", "A318" ],
-  Rajkumar: [ "A321", "Boeing 737-900", "Boeing 757-200", "A333" ],
-  Rajvanshi: [ "Boeing 787-8", "Boeing 767-300", "Boeing 787-9" ],
-  Rajdhiraj: [ "Boeing 777-200LR", "Boeing 777F" ],
-  Maharaja: [ "Boeing 777-300ER", "Boeing 747-8", "Boeing 787-10" ],
-  Samrat: [ "A359", "Boeing 777-200ER" ],
-  Chhatrapati: [ "A388", "Boeing 747-400" ],
+  Yuvraj: [ "A220-300", "A320", "Bombardier Dash 8-Q400", "ERJ-175", "ERJ-190", "CRJ-900" ],
+  Rajkumar: [ "Boeing 737MAX", "Boeing 737-800", "Boeing 737-900", "A321" ],
+  Rajvanshi: [ "Boeing 767-300", "Boeing 757-200", "A333", "A339", "Boeing 787-8" ],
+  Rajdhiraj: [ "Boeing 787-9", "Boeing 787-10" ],
+  Maharaja: [ "Boeing 777-200LR", "Boeing 777-200ER", "Boeing 777-300ER", "Boeing 747-400", "A346" ],
+  Samrat: [ "A359", "Boeing 747-8" ],
+  Chhatrapati: [ "A388" ],
 };
 
 const ITEMS_PER_PAGE = 15;
