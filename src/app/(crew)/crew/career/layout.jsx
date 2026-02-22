@@ -1,9 +1,16 @@
+import { redirect } from 'next/navigation'
+import { auth } from '@/auth'
 import { CareerProviders } from "@/components/CareerProviders"
-import CareerNavBar, { CareerMobileNavMenu } from "@/components/CareerNavBar"
-import CareerSideBar from "@/components/CareerSideBar"
+import CareerNavBar from "@/components/CareerNavBar"
 import { Box } from "@chakra-ui/react"
 
-export default function CareerLayout({ children }) {
+export default async function CareerLayout({ children }) {
+    const session = await auth()
+
+    if (session?.user?.careerMode) {
+        redirect('/api/career-sso-redirect')
+    }
+
     return (
         <CareerProviders>
             <CareerNavBar />
