@@ -31,11 +31,11 @@ export async function POST(request) {
             return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
         }
 
-        const name = userData[0].ifcName;
+        const name = userData[ 0 ].ifcName;
         const discordId = session.user.discordId || null;
 
         // Forward registration request to the Discord bot web server
-        const botBaseUrl = process.env.BOT_BASE_URL;
+        const botBaseUrl = process.env.BOT_API_URL;
         const botApiKey = process.env.BOT_API_KEY;
 
         if (!botBaseUrl || !botApiKey) {
