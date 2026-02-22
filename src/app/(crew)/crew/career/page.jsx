@@ -26,9 +26,9 @@ const fadeInKeyframes = `
 `;
 
 const baseAirportsData = [
-    { label: "Indira Gandhi International Airport", value: "VIDP" },
-    { label: "Chhatrapati Shivaji Maharaj International Airport", value: "VABB" },
-    { label: "Kempegowda International Airport", value: "VOBL" },
+    // { label: "Indira Gandhi International Airport", value: "VIDP" },
+    // { label: "Chhatrapati Shivaji Maharaj International Airport", value: "VABB" },
+    // { label: "Kempegowda International Airport", value: "VOBL" },
     { label: "Cochin International Airport", value: "VOCI" },
     { label: "Rajiv Gandhi International Airport", value: "VOHY" },
     { label: "Netaji Subhas Chandra Bose International Airport", value: "VECC" },
@@ -55,8 +55,33 @@ const typeRatings = createListCollection({ items: typeRatingsData });
 export default function CareerPage() {
     const { data: session } = useSession();
     const [ view, setView ] = useState('idle');
-    const [ selectedBaseAirport, setSelectedBaseAirport ] = useState('VIDP');
+    const [ selectedBaseAirport, setSelectedBaseAirport ] = useState('VOCI');
     const [ selectedTypeRating, setSelectedTypeRating ] = useState('A320');
+    const [ isCheckingNext, setIsCheckingNext ] = useState(false);
+
+    // Called when user clicks → on the walkthrough page.
+    // Checks Firestore before showing the form — if already enrolled, SSO redirect.
+    const handleWalkthroughNext = async () => {
+        setIsCheckingNext(true);
+        try {
+            const res = await fetch('/api/career-status');
+            if (res.ok) {
+                const { enrolled } = await res.json();
+                if (enrolled) {
+                    const tokenRes = await fetch('/api/career-sso');
+                    if (tokenRes.ok) {
+                        const { token } = await tokenRes.json();
+                        window.location.href = `https://career.indianvirtual.site/sso?token=${token}`;
+                        return;
+                    }
+                }
+            }
+        } catch {
+            // If the check fails, fall through to the form
+        }
+        setIsCheckingNext(false);
+        setView('form');
+    };
 
     const handleSubmit = async () => {
         if (!session?.user?.callsign) {
@@ -85,6 +110,15 @@ export default function CareerPage() {
 
             if (!response.ok) {
                 throw new Error(result.error || 'Request failed');
+            }
+
+            if (result.enrolled) {
+                // Already in Firestore (Neon DB now synced) — SSO redirect
+                const tokenRes = await fetch('/api/career-sso');
+                if (!tokenRes.ok) throw new Error('SSO request failed');
+                const { token } = await tokenRes.json();
+                window.location.href = `https://career.indianvirtual.site/sso?token=${token}`;
+                return;
             }
 
             setView('pending');
@@ -231,7 +265,7 @@ export default function CareerPage() {
                             >
                                 <iframe
                                     width="100%" height="100%"
-                                    src="https://www.youtube.com/embed/qw1alO6nNmk"
+                                    src="https://www.youtube.com/embed/nnmChuctFv0"
                                     title="Career Mode Walkthrough"
                                     frameBorder="0"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -248,9 +282,11 @@ export default function CareerPage() {
                                 borderRadius="3xl" shadow="lg"
                                 _hover={{ shadow: "2xl", bg: "gray.100" }}
                                 transition="all 0.3s ease-in-out"
-                                onClick={() => setView('form')}
+                                onClick={handleWalkthroughNext}
+                                disabled={isCheckingNext}
+                                opacity={isCheckingNext ? 0.6 : 1}
                             >
-                                →
+                                {isCheckingNext ? '...' : '→'}
                             </Button>
                         </VStack>
                     </Flex>
@@ -276,7 +312,10 @@ export default function CareerPage() {
                             </VStack>
 
                             <Box w="full">
-                                <Box mb={2}><Text color="gray.300" fontSize="lg">Base Airport</Text></Box>
+                                <Box mb={2}>
+                                    <Text color="gray.300" fontSize="lg">Base Airport</Text>
+                                    <Text color="gray.500" fontSize="xs" mt={1}>VIDP, VABB and VOBL are temporarily unavailable.</Text>
+                                </Box>
                                 <Select.Root
                                     collection={baseAirports}
                                     value={[ selectedBaseAirport ]}

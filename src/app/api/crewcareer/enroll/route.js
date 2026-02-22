@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '../../../../auth';
+import { db as firebaseDb } from '../../../../lib/firebase';
 import db from '../../../../db/client';
 import { users } from '../../../../db/schema';
 import { eq } from 'drizzle-orm';
@@ -20,7 +21,26 @@ export async function POST(request) {
 
         const callsign = session.user.callsign;
 
-        // Get ifcName from Neon DB — this maps to "name" in the Firestore users doc
+        // Check Firestore first — user may already be enrolled (e.g. enrolled
+        // before this system existed, or approved by a previous bot request).
+        const existing = await firebaseDb
+            .collection('users')
+            .where('callsign', '==', callsign)
+            .limit(1)
+            .get();
+
+        if (!existing.empty) {
+            // Sync careerMode in Neon DB so the layout redirect works next time.
+            if (!session.user.careerMode) {
+                await db
+                    .update(users)
+                    .set({ careerMode: true })
+                    .where(eq(users.id, callsign));
+            }
+            return NextResponse.json({ enrolled: true });
+        }
+
+        // Not in Firestore — get ifcName from Neon DB and forward to bot.
         const userData = await db
             .select({ ifcName: users.ifcName })
             .from(users)
@@ -31,10 +51,9 @@ export async function POST(request) {
             return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
         }
 
-        const name = userData[ 0 ].ifcName;
+        const name = userData[0].ifcName;
         const discordId = session.user.discordId || null;
 
-        // Forward registration request to the Discord bot web server
         const botBaseUrl = process.env.BOT_API_URL;
         const botApiKey = process.env.BOT_API_KEY;
 
