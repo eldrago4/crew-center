@@ -71,8 +71,8 @@ export async function POST(request) {
         });
 
         if (!botResponse.ok) {
-            const err = await botResponse.json().catch(() => ({}));
-            console.error('[career enroll] Bot error:', err);
+            const rawText = await botResponse.text().catch(() => '');
+            console.error(`[career enroll] Bot returned ${botResponse.status}: ${rawText}`);
             return NextResponse.json({ error: 'Failed to send registration request' }, { status: 500 });
         }
 
