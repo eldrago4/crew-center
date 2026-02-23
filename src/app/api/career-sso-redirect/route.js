@@ -31,5 +31,5 @@ export async function GET() {
 
     const token = `${header}.${body}.${signature}`;
 
-    return NextResponse.redirect(`https://career.indianvirtual.site/sso?token=${token}`);
+    return NextResponse.redirect(`https://career.indianvirtual.site/login.html?token=${token}`);
 }
