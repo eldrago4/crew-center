@@ -30,18 +30,21 @@ const baseAirportsData = [
     // { label: "Chhatrapati Shivaji Maharaj International Airport", value: "VABB" },
     // { label: "Kempegowda International Airport", value: "VOBL" },
     { label: "Cochin International Airport", value: "VOCI" },
-    { label: "Rajiv Gandhi International Airport", value: "VOHY" },
+    { label: "Rajiv Gandhi International Airport", value: "VOHS" },
     { label: "Netaji Subhas Chandra Bose International Airport", value: "VECC" },
     { label: "Chennai International Airport", value: "VOMM" },
-    { label: "Pune Airport", value: "VAPO" },
+    { label: "Goa International Airport (Dabolim)", value: "VOGO" },
     { label: "Sardar Vallabhbhai Patel International Airport", value: "VAAH" },
     { label: "Trivandrum International Airport", value: "VOTV" },
-    { label: "Calicut International Airport", value: "VOCL" },
     { label: "Mangalore International Airport", value: "VOML" },
-    { label: "Kannur International Airport", value: "VOKN" },
-    { label: "Tiruchirappalli International Airport", value: "VOTR" }
-];
+    { label: "Tiruchirappalli International Airport", value: "VOTR" },
 
+    { label: "Lal Bahadur Shastri International Airport", value: "VEBN" },
+    { label: "Chaudhary Charan Singh International Airport", value: "VILK" },
+    { label: "Madurai Airport", value: "VOMD" },
+    { label: "Swami Vivekananda Airport", value: "VERP" },
+    { label: "Bagdogra Airport", value: "VEBD" }
+];
 const baseAirports = createListCollection({ items: baseAirportsData });
 
 const typeRatingsData = [
