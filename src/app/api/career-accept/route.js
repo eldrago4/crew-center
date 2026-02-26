@@ -50,7 +50,6 @@ export async function POST(request) {
                 simbriefUsername: '',
                 createdAt: new Date().toISOString(),
                 createdBy: callsign,
-                activeEvent: {},
             });
         }
 
