@@ -270,6 +270,10 @@ function formatOutput(monthLabel, cc, cm) {
     return lines.join('\n')
 }
 
+// ── In-memory cache ──────────────────────────────────────────
+const statsCache = new Map() // key: 'YYYY-MM', value: { text, expiresAt }
+const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
+
 // ── GET /api/stats?month=2026-01 ────────────────────────────
 export async function GET(request) {
     try {
@@ -277,6 +281,17 @@ export async function GET(request) {
         const monthParam = searchParams.get('month')
 
         const { year, month } = parseMonth(monthParam)
+        const cacheKey = `${year}-${String(month).padStart(2, '0')}`
+
+        const cached = statsCache.get(cacheKey)
+        if (cached && Date.now() < cached.expiresAt) {
+            const format = searchParams.get('format')
+            if (format === 'json') return NextResponse.json(cached.json)
+            return new Response(cached.text, {
+                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            })
+        }
+
         const monthStart = new Date(Date.UTC(year, month - 1, 1))
         const monthEnd = new Date(Date.UTC(year, month, 1))
         const monthLabel = monthStart.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -287,7 +302,50 @@ export async function GET(request) {
         ])
 
         const text = formatOutput(monthLabel, cc, cm)
+        const json = {
+            month: monthLabel,
+            // flat fields kept for backward-compat (home page)
+            activePilots: cc.activePilots,
+            totalPireps: cc.totalPireps,
+            avgWeeklyPireps: Number(cc.avgWeeklyPireps),
+            hoursFlown: Math.round(cc.totalMinutes / 60),
+            // rich structured data for /stats page
+            crewCenter: {
+                totalPireps: cc.totalPireps,
+                totalHours: Math.round(cc.totalMinutes / 60),
+                activePilots: cc.activePilots,
+                avgWeeklyPireps: Number(cc.avgWeeklyPireps),
+                topPilots: cc.topPilots,
+                topAircraft: cc.topAircraft,
+                topRoute: cc.topRoute,
+                busiestDay: cc.busiestDay,
+            },
+            careerMode: {
+                totalFlights: cm.totalFlights,
+                totalHours: cm.totalHours,
+                activePilots: cm.activePilots,
+                totalPassengers: cm.totalPassengers,
+                totalCargo: cm.totalCargo,
+                totalEarnings: cm.totalEarnings,
+                totalFuelUsed: cm.totalFuelUsed,
+                totalFuelExtra: cm.totalFuelExtra,
+                totalDistance: Math.round(cm.totalDistance),
+                avgFuelEfficiency: cm.avgFuelEfficiency,
+                fleetUtil: cm.fleetUtil,
+                activeAircraft: cm.activeAircraft,
+                totalAircraft: cm.totalAircraft,
+                completedSectors: cm.completedSectors,
+                mostFlownAircraft: cm.mostFlownAircraft,
+                topEarners: cm.topEarners,
+            },
+        }
 
+        statsCache.set(cacheKey, { text, json, expiresAt: Date.now() + CACHE_TTL_MS })
+
+        const format = searchParams.get('format')
+        if (format === 'json') {
+            return NextResponse.json(json)
+        }
         return new Response(text, {
             headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         })

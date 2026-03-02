@@ -22,7 +22,7 @@ import { useEffect, useRef, useState } from "react";
 
 const MENU_LINKS = [
   [
-    { label: "Routes", href: "/routes" },
+    { label: "Routes", href: "/operations/routes" },
     { label: "Hubs", href: "/hubs" },
     { label: "Ranks", href: "/ranks" },
   ],

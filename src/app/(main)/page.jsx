@@ -21,13 +21,13 @@ import { FaGlobe, FaUsers, FaDiscord, FaClipboardList, FaCalendarWeek, FaClock, 
 import { FaGlobeAsia } from "react-icons/fa"
 import CountUp from 'react-countup';
 
-const stats = [
-    { count: 2400, label: 'Global Routes', icon: <FaGlobe size="3rem" />, colorPalette: 'blue', gradient: 'linear-gradient(to right, #3182CE, #4299E1)' },
-    { count: 151, label: 'Active Pilots', icon: <FaUsers size="3rem" />, colorPalette: 'green', gradient: 'linear-gradient(to right, #38A169, #48BB78)' },
-    { count: 160, label: 'Discord Members', icon: <FaDiscord size="3rem" />, colorPalette: 'purple', gradient: 'linear-gradient(to right, #805AD5, #9F7AEA)' },
-    { count: 10976, label: 'PIREPs Filed', icon: <FaClipboardList size="3rem" />, colorPalette: 'orange', gradient: 'linear-gradient(to right, #DD6B20, #ED8936)' },
-    { count: 318, label: 'Weekly PIREPs', icon: <FaCalendarWeek size="3rem" />, colorPalette: 'yellow', gradient: 'linear-gradient(to right, #D69E2E, #F6E05E)' },
-    { count: 110873, label: 'Hours Flown', icon: <FaClock size="3rem" />, colorPalette: 'indigo', gradient: 'linear-gradient(to right, #5A67D8, #7F9CF5)' },
+const BASE_STATS = [
+    { key: 'globalRoutes',   count: 2400,  label: 'Global Routes',    icon: <FaGlobe size="3rem" />,         colorPalette: 'blue',   gradient: 'linear-gradient(to right, #3182CE, #4299E1)' },
+    { key: 'activePilots',   count: null,  label: 'Active Pilots',    icon: <FaUsers size="3rem" />,         colorPalette: 'green',  gradient: 'linear-gradient(to right, #38A169, #48BB78)' },
+    { key: 'discordMembers', count: 160,   label: 'Discord Members',  icon: <FaDiscord size="3rem" />,       colorPalette: 'purple', gradient: 'linear-gradient(to right, #805AD5, #9F7AEA)' },
+    { key: 'totalPireps',    count: null,  label: 'PIREPs Filed',     icon: <FaClipboardList size="3rem" />, colorPalette: 'orange', gradient: 'linear-gradient(to right, #DD6B20, #ED8936)' },
+    { key: 'weeklyPireps',   count: null,  label: 'Weekly PIREPs',    icon: <FaCalendarWeek size="3rem" />, colorPalette: 'yellow', gradient: 'linear-gradient(to right, #D69E2E, #F6E05E)' },
+    { key: 'hoursFlown',     count: null,  label: 'Hours Flown',      icon: <FaClock size="3rem" />,         colorPalette: 'indigo', gradient: 'linear-gradient(to right, #5A67D8, #7F9CF5)' },
 ];
 
 const helloLanguages = [
@@ -40,6 +40,25 @@ export default function TestPage() {
     const typedEl = useRef(null);
     const typedInstance = useRef(null);
     const [ isVisible, setIsVisible ] = useState(false);
+    const [ stats, setStats ] = useState(BASE_STATS);
+
+    useEffect(() => {
+        fetch('/api/stats?format=json')
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                setStats(BASE_STATS.map(s => {
+                    switch (s.key) {
+                        case 'activePilots': return { ...s, count: data.activePilots };
+                        case 'totalPireps':  return { ...s, count: data.totalPireps };
+                        case 'weeklyPireps': return { ...s, count: data.avgWeeklyPireps };
+                        case 'hoursFlown':   return { ...s, count: data.hoursFlown };
+                        default:             return s;
+                    }
+                }));
+            })
+            .catch(() => {});
+    }, []);
 
     useEffect(() => {
         setIsVisible(true);
@@ -230,8 +249,10 @@ export default function TestPage() {
                                             <VStack spacing={3} p={3}>
                                                 <Box color={`${stat.colorPalette}.500`} mb={3} transition="transform 0.3s" _groupHover={{ transform: 'scale(1.05)' }}>{React.cloneElement(stat.icon, { size: "2.5rem" })}</Box>
                                                 <Card.Title as="h3" fontSize={{ base: '4xl', lg: '5xl' }} fontWeight="black" sx={{ background: stat.gradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                                                    <CountUp end={stat.count} duration={2.5} separator="," delay={idx * 0.2} />
-                                                    <Text as="span" fontSize="2xl">+</Text>
+                                                    {stat.count !== null
+                                                        ? <><CountUp end={stat.count} duration={2.5} separator="," delay={idx * 0.2} /><Text as="span" fontSize="2xl">+</Text></>
+                                                        : <Text as="span" fontSize="3xl">—</Text>
+                                                    }
                                                 </Card.Title>
                                                 <Card.Description color="gray.700" fontSize="md" fontWeight="semibold" fontFamily="'Inter', sans-serif">{stat.label}</Card.Description>
                                                 <Box w={12} h={1} sx={{ background: stat.gradient }} mx="auto" mt={2} rounded="full" transition="width 0.3s" _groupHover={{ w: 16 }} />

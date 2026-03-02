@@ -44,9 +44,9 @@ export default function Footer() {
                         <GridItem>
                             <VStack align="start" spacing={3}>
                                 <Heading size="md" fontFamily="'Nata Sans', sans" color="orange.300" mb={3}>Quick Links</Heading>
-                                <Link href="/about" color="gray.300" _hover={{ color: 'orange.300', textDecoration: 'none' }} display="flex" alignItems="center" gap={2}><Box w={1} h={1} bg="orange.400" rounded="full" />About</Link>
+                                <Link href="/info" color="gray.300" _hover={{ color: 'orange.300', textDecoration: 'none' }} display="flex" alignItems="center" gap={2}><Box w={1} h={1} bg="orange.400" rounded="full" />About</Link>
                                 <Link href="/fleet" color="gray.300" _hover={{ color: 'orange.300', textDecoration: 'none' }} display="flex" alignItems="center" gap={2}><Box w={1} h={1} bg="orange.400" rounded="full" />Fleet Information</Link>
-                                <Link href="/operations/ranks" color="gray.300" _hover={{ color: 'orange.300', textDecoration: 'none' }} display="flex" alignItems="center" gap={2}><Box w={1} h={1} bg="orange.400" rounded="full" />Pilot Ranks</Link>
+                                <Link href="/ranks" color="gray.300" _hover={{ color: 'orange.300', textDecoration: 'none' }} display="flex" alignItems="center" gap={2}><Box w={1} h={1} bg="orange.400" rounded="full" />Pilot Ranks</Link>
                                 <Link href="/events" color="gray.300" _hover={{ color: 'orange.300', textDecoration: 'none' }} display="flex" alignItems="center" gap={2}><Box w={1} h={1} bg="orange.400" rounded="full" />Events</Link>
                             </VStack>
                         </GridItem>
