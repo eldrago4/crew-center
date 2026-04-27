@@ -18,6 +18,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { MdCloudDownload } from 'react-icons/md';
+import { toaster } from '@/components/ui/toaster';
 
 // The component receives pre-fetched data and the session object as props from its parent Server Component.
 export function PirepForm({ userId, session, initialAircraft, initialOperators, initialMultipliers, initialIfatcMultipliers, cacheTimestamp }) {
@@ -134,7 +135,7 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
             const res = await fetch('/api/if-last-flight');
             if (!res.ok) {
                 const err = await res.json();
-                alert(err.error || 'Failed to fetch flight from Infinite Flight');
+                toaster.create({ title: 'ACARS Error', description: err.error || 'Failed to fetch flight from Infinite Flight', type: 'error', duration: 5000 });
                 return;
             }
             const data = await res.json();
@@ -154,8 +155,13 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                     aircraftOptions.find(o => norm(o.label).includes(ifNorm) || ifNorm.includes(norm(o.label)));
                 if (match) setAircraft(match.value);
             }
+            if (data.operator) {
+                const match = operatorOptions.find(o => o.label === data.operator || o.value === data.operator);
+                if (match) setOperator(match.value);
+            }
+            toaster.create({ title: 'Flight Imported', description: `${data.departure} → ${data.arrival} imported from Infinite Flight.`, type: 'success', duration: 3000 });
         } catch {
-            alert('An error occurred while fetching your last Infinite Flight flight.');
+            toaster.create({ title: 'ACARS Error', description: 'An error occurred while fetching your last Infinite Flight flight.', type: 'error', duration: 5000 });
         } finally {
             setFetchingIF(false);
         }
