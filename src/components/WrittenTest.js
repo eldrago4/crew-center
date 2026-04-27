@@ -17,12 +17,12 @@ export default function WrittenTest({ state, questions, handleAnswerChange, hand
             </VStack>
             <VStack spacing="8">
                 {questions.map((q) => (
-                    <Box key={q.id} bg="whiteAlpha.700" p="6" rounded="xl" w="full">
+                    <Box key={q.id} bg="gray.50" p="6" rounded="xl" w="full">
                         <Heading as="h3" fontSize="lg" fontWeight="bold" mb="4">Question {q.id}: {q.question}</Heading>
                         <RadioGroup.Root value={answers[ q.id ]?.toString()} onValueChange={(details) => handleAnswerChange(q.id, parseInt(details.value))}>
                             <VStack spacing="3" align="start">
                                 {q.options.map((option, index) => (
-                                    <RadioGroup.Item key={index} value={index.toString()} colorPalette="orange">
+                                    <RadioGroup.Item key={index} value={index.toString()} colorPalette="orange" cursor="pointer">
                                         <RadioGroup.ItemHiddenInput />
                                         <RadioGroup.ItemIndicator />
                                         <RadioGroup.ItemText color="gray.700">{option}</RadioGroup.ItemText>

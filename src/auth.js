@@ -55,6 +55,20 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           discordId: account.providerAccountId,
           passedAt: new Date(),
         });
+
+        try {
+          await fetch(`https://discord.com/api/v10/guilds/${process.env.DISCORD_GUILD_ID}/members/${account.providerAccountId}`, {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ access_token: account.access_token }),
+          });
+        } catch (e) {
+          console.error('[AUTH] Failed to add applicant to guild:', e);
+        }
+
         user.callsign = callsign;
         user.discordId = account.providerAccountId;
         user.isApplicant = true;

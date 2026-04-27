@@ -5,6 +5,7 @@ import {
     Field,
     Fieldset,
     HStack,
+    Icon,
     Input,
     Portal,
     Select,
@@ -16,6 +17,7 @@ import {
 } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { MdFlightTakeoff } from 'react-icons/md';
 
 // The component receives pre-fetched data and the session object as props from its parent Server Component.
 export function PirepForm({ userId, session, initialAircraft, initialOperators, initialMultipliers, initialIfatcMultipliers, cacheTimestamp }) {
@@ -124,6 +126,40 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
     const [ selectedIfatcMultiplierIdx, setSelectedIfatcMultiplierIdx ] = useState("0");
     const [ ifatcComments, setIfatcComments ] = useState(ifatcMultiplierOptions[ 0 ]?.description || '');
     const [ submitting, setSubmitting ] = useState(false);
+    const [ fetchingIF, setFetchingIF ] = useState(false);
+
+    const importFromIF = async () => {
+        setFetchingIF(true);
+        try {
+            const res = await fetch('/api/if-last-flight');
+            if (!res.ok) {
+                const err = await res.json();
+                alert(err.error || 'Failed to fetch flight from Infinite Flight');
+                return;
+            }
+            const data = await res.json();
+            if (data.departure) setDepartureIcao(data.departure.slice(0, 4));
+            if (data.arrival) setArrivalIcao(data.arrival.slice(0, 4));
+            if (data.totalMinutes) {
+                setFlightTime({
+                    hh: String(Math.floor(data.totalMinutes / 60)).padStart(2, '0'),
+                    mm: String(Math.round(data.totalMinutes % 60)).padStart(2, '0'),
+                });
+            }
+            if (data.aircraftName) {
+                const norm = s => s.toLowerCase().replace(/[\s\-_]/g, '');
+                const ifNorm = norm(data.aircraftName);
+                const match =
+                    aircraftOptions.find(o => norm(o.label) === ifNorm || norm(o.value) === ifNorm) ||
+                    aircraftOptions.find(o => norm(o.label).includes(ifNorm) || ifNorm.includes(norm(o.label)));
+                if (match) setAircraft(match.value);
+            }
+        } catch {
+            alert('An error occurred while fetching your last Infinite Flight flight.');
+        } finally {
+            setFetchingIF(false);
+        }
+    };
 
     // Helper: is the current value valid?
     const validIfatcIdx = ifatcMultiplierCollection.items.findIndex(item => item.value === selectedIfatcMultiplierIdx);
@@ -324,6 +360,18 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                 <form>
                     <Fieldset.Root>
                         <Fieldset.Legend>Flight Details</Fieldset.Legend>
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            onClick={importFromIF}
+                            loading={fetchingIF}
+                            loadingText="Fetching..."
+                            w="full"
+                            mb={4}
+                        >
+                            <Icon as={MdFlightTakeoff} boxSize={5} />
+                            Import Last IF Flight
+                        </Button>
                         <Fieldset.Content as={Stack} spacing={5}>
                             <SimpleGrid columns={{ base: 1, md: 2 }} gap={8}>
                                 <Field.Root>

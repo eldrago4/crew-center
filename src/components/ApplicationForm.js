@@ -25,7 +25,7 @@ export default function ApplicationForm({ state, handleInputChange, handleApplic
                         </Button>
                     </Collapsible.Trigger>
                     <Collapsible.Content>
-                        <Box mt="4" bg="whiteAlpha.700" p="6" rounded="xl" border="1px solid" borderColor="gray.200">
+                        <Box mt="4" bg="gray.50" p="6" rounded="xl" border="1px solid" borderColor="gray.200">
                             <VStack as="ul" spacing="2" align="start" color="gray.700">
                                 <HStack as="li"><Icon as={MdCheckCircle} color="green.500" /><Text>Be at least 13 years of age.</Text></HStack>
                                 <HStack as="li"><Icon as={MdCheckCircle} color="green.500" /><Text>Be grade 3 or above.</Text></HStack>
