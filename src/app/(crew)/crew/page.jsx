@@ -189,7 +189,7 @@ export default function CrewLoginPage() {
               </Button>
               <Text fontSize="sm" color="whiteAlpha.700">
                 Don&apos;t have an account?{' '}
-                <Text as="a" href="#" color="blue.300" _hover={{ color: "blue.200" }}>
+                <Text as="a" href="https://indianvirtual.site/apply" color="blue.300" _hover={{ color: "blue.200" }}>
                   Apply here
                 </Text>
               </Text>

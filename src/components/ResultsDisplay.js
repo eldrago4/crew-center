@@ -15,7 +15,7 @@ import Cookies from 'js-cookie'
 export default function ResultsDisplay({ state, resetApplication, handleCallsignChange }) {
     const { status, data: session } = useSession()
     const { testResult, callsign } = state;
-    const [ isCallsignValid, setIsCallsignValid ] = useState(false);
+    const [ callsignStatus, setCallsignStatus ] = useState('idle'); // idle | checking | available | taken
     const [ discordClicked, setDiscordClicked ] = useState(false);
     const [ pendingAuth, setPendingAuth ] = useState(false);
 
@@ -48,10 +48,11 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
 
     useEffect(() => {
         if (callsign.length !== 3 || parseInt(callsign) <= 99) {
-            setIsCallsignValid(false);
+            setCallsignStatus('idle');
             return;
         }
-        const validate = async () => {
+        setCallsignStatus('checking');
+        const timer = setTimeout(async () => {
             try {
                 const res = await fetch('/api/validate-callsign', {
                     method: 'POST',
@@ -59,12 +60,12 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
                     body: JSON.stringify({ callsign }),
                 });
                 const data = await res.json();
-                setIsCallsignValid(!data.valid);
-            } catch (error) {
-                setIsCallsignValid(false);
+                setCallsignStatus(data.valid ? 'taken' : 'available');
+            } catch {
+                setCallsignStatus('idle');
             }
-        };
-        validate();
+        }, 400);
+        return () => clearTimeout(timer);
     }, [ callsign ]);
 
     useEffect(() => {
@@ -89,20 +90,27 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
                     <Text fontSize="lg" color="gray.600" mb="6">Score: {testResult.score}/10</Text>
                     {!discordClicked ? (
                         <>
-                            <Text color="gray.700" mb="8">Your callsign between 100-999</Text>
-                            <CallsignInput value={callsign} onChange={handleCallsignChange} borderColor={isCallsignValid ? 'green.500' : 'red.500'} />
+                            <Text color="gray.700" mb="4">Choose your callsign number (100–999) to get started.</Text>
+                            <CallsignInput value={callsign} onChange={handleCallsignChange} status={callsignStatus} />
+                            {callsignStatus !== 'available' && (
+                                <Text fontSize="xs" color="gray.500" mb={2}>
+                                    {callsignStatus === 'taken' ? 'Pick a different number to continue.' : 'Confirm your callsign is available before linking Discord.'}
+                                </Text>
+                            )}
                             <Button
                                 onClick={handleDiscordLogin}
                                 bg="#5865F2"
                                 color="white"
-                                _hover={{ bg: "#4752C4" }}
+                                _hover={{ bg: callsignStatus === 'available' ? "#4752C4" : "#5865F2" }}
                                 _active={{ bg: "#404EED" }}
-                                disabled={!isCallsignValid}
+                                disabled={callsignStatus !== 'available'}
                                 isLoading={pendingAuth}
                                 loadingText="Connecting..."
                                 size="md"
                                 w="full"
                                 variant="solid"
+                                opacity={callsignStatus !== 'available' ? 0.5 : 1}
+                                cursor={callsignStatus !== 'available' ? 'not-allowed' : 'pointer'}
                             ><FaDiscord /> Login with Discord</Button>
                         </>
                     ) : (

@@ -332,12 +332,11 @@ export default function LeaderboardPage() {
                 {userRank && userRank.rank > 10 && (
                     <Box
                         bg="blue.50"
-                        _dark={{ bg: "blue.900" }}
+                        _dark={{ bg: "blue.950", borderColor: "blue.700" }}
                         borderRadius="lg"
                         boxShadow="sm"
                         border="1px"
                         borderColor="blue.200"
-                        _dark={{ borderColor: "blue.700" }}
                         overflow="hidden"
                         mt={4}
                     >

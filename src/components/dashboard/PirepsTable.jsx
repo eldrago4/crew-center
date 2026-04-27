@@ -50,6 +50,7 @@ export default function PirepsTable({ pireps }) {
                             <Table.Header>
                                 <Table.Row>
                                     <Table.ColumnHeader color="fg" fontWeight="semibold">Flight #</Table.ColumnHeader>
+                                    <Table.ColumnHeader color="fg" fontWeight="semibold">Date</Table.ColumnHeader>
                                     <Table.ColumnHeader color="fg" fontWeight="semibold">Departure</Table.ColumnHeader>
                                     <Table.ColumnHeader color="fg" fontWeight="semibold">Arrival</Table.ColumnHeader>
                                     <Table.ColumnHeader color="fg" fontWeight="semibold">Flight Time</Table.ColumnHeader>
@@ -61,6 +62,9 @@ export default function PirepsTable({ pireps }) {
                                 {pireps.map((pirep) => (
                                     <Table.Row key={pirep.pirepId}>
                                         <Table.Cell fontWeight="medium" color="fg">{pirep.flightNumber}</Table.Cell>
+                                        <Table.Cell color="fg.muted" whiteSpace="nowrap">
+                                            {pirep.date ? new Date(pirep.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}
+                                        </Table.Cell>
                                         <Table.Cell color="fg.muted">{pirep.departureIcao}</Table.Cell>
                                         <Table.Cell color="fg.muted">{pirep.arrivalIcao}</Table.Cell>
                                         <Table.Cell color="fg.muted">{pirep.flightTime}</Table.Cell>

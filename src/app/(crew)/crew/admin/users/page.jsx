@@ -107,13 +107,12 @@ function AdminUsersPage() {
         return () => clearTimeout(id)
     }, [ searchTerm ])
 
-    // Fetch users from API whenever page or debounced search changes
+    // Fetch users from API whenever page, search, or sort changes
     useEffect(() => {
         const fetchUsers = async () => {
             setLoading(true)
             setError(null)
 
-            // abort previous
             if (abortRef.current) abortRef.current.abort()
             const controller = new AbortController()
             abortRef.current = controller
@@ -123,6 +122,10 @@ function AdminUsersPage() {
                 params.set('page', String(currentPage))
                 params.set('limit', String(usersPerPage))
                 if (debouncedSearch) params.set('name', debouncedSearch)
+                if (sortConfig.key) {
+                    params.set('sortBy', sortConfig.key)
+                    params.set('sortDir', sortConfig.direction)
+                }
 
                 const res = await fetch(`/api/users?${params.toString()}`, { signal: controller.signal })
                 if (!res.ok) throw new Error('Failed to fetch users')
@@ -142,23 +145,7 @@ function AdminUsersPage() {
         }
 
         fetchUsers()
-    }, [ currentPage, debouncedSearch ])
-
-    // Apply client-side sort to the current page of users
-    useEffect(() => {
-        if (!users || users.length === 0) return
-        if (!sortConfig.key) return
-        const sorted = [ ...users ].sort((a, b) => {
-            if (sortConfig.key === 'lastActive') {
-                return sortConfig.direction === 'asc'
-                    ? new Date(a.lastActive) - new Date(b.lastActive)
-                    : new Date(b.lastActive) - new Date(a.lastActive)
-            }
-            return 0
-        })
-        setUsers(sorted)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [ sortConfig ])
+    }, [ currentPage, debouncedSearch, sortConfig ])
 
     const totalPages = Math.ceil(totalUsers / usersPerPage)
     const currentUsers = users
@@ -170,6 +157,7 @@ function AdminUsersPage() {
     }
 
     const requestSort = key => {
+        setCurrentPage(1)
         setSortConfig({
             key,
             direction: sortConfig.key === key && sortConfig.direction === 'desc' ? 'asc' : 'desc',

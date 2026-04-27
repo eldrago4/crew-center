@@ -34,6 +34,12 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const offset = (page - 1) * limit
+    const sortBy = searchParams.get('sortBy') || 'id'
+    const sortDir = searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc'
+
+    const orderClause = sortBy === 'lastActive'
+      ? (sortDir === 'asc' ? sql`${users.lastActive} ASC NULLS FIRST` : sql`${users.lastActive} DESC NULLS LAST`)
+      : sql`${users.id} ASC`
 
     // If searching by id (callsign), return user or allowed status
     if (idFilter) {
@@ -77,6 +83,7 @@ export async function GET(request) {
               })
               .from(users)
               .where(sql`${users.ifcName} ILIKE ${'%' + nameFilter + '%'}`)
+              .orderBy(orderClause)
               .limit(limit)
               .offset(offset)
               .execute(),
@@ -88,20 +95,20 @@ export async function GET(request) {
           ])
           return NextResponse.json({
             data: filtered,
-            pagination: {
-              page,
-              limit,
-              total: Number(total[ 0 ].count)
-            }
+            pagination: { page, limit, total: Number(total[ 0 ].count) }
           })
         }
+        // Sort cached array in-memory for non-name queries
+        const sorted = sortBy === 'lastActive'
+          ? [ ...cachedUsers ].sort((a, b) => {
+              const ta = a.lastActive ? new Date(a.lastActive).getTime() : (sortDir === 'asc' ? -Infinity : Infinity)
+              const tb = b.lastActive ? new Date(b.lastActive).getTime() : (sortDir === 'asc' ? -Infinity : Infinity)
+              return sortDir === 'asc' ? ta - tb : tb - ta
+            })
+          : cachedUsers
         return NextResponse.json({
-          data: cachedUsers.slice(offset, offset + limit),
-          pagination: {
-            page,
-            limit,
-            total: cachedUsers.length
-          }
+          data: sorted.slice(offset, offset + limit),
+          pagination: { page, limit, total: cachedUsers.length }
         })
       }
     }
@@ -116,6 +123,7 @@ export async function GET(request) {
           lastActive: users.lastActive
         })
         .from(users)
+        .orderBy(orderClause)
         .limit(limit)
         .offset(offset)
         .execute(),
@@ -149,6 +157,7 @@ export async function GET(request) {
           })
           .from(users)
           .where(sql`${users.ifcName} ILIKE ${'%' + nameFilter + '%'}`)
+          .orderBy(orderClause)
           .limit(limit)
           .offset(offset)
           .execute(),
@@ -160,21 +169,13 @@ export async function GET(request) {
       ])
       return NextResponse.json({
         data: filtered,
-        pagination: {
-          page,
-          limit,
-          total: Number(filteredTotal[ 0 ].count)
-        }
+        pagination: { page, limit, total: Number(filteredTotal[ 0 ].count) }
       })
     }
 
     return NextResponse.json({
       data: freshData,
-      pagination: {
-        page,
-        limit,
-        total: Number(total[ 0 ].count)
-      }
+      pagination: { page, limit, total: Number(total[ 0 ].count) }
     })
 
   } catch (error) {
