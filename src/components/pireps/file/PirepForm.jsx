@@ -366,6 +366,7 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                             loading={fetchingIF}
                             loadingText="Fetching..."
                             mb={4}
+                            alignSelf="flex-start"
                             bg="purple.100"
                             color="purple.800"
                             _dark={{ bg: "purple.800", color: "purple.100" }}
@@ -374,7 +375,7 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                             letterSpacing="wide"
                         >
                             <Icon as={MdCloudDownload} boxSize={5} />
-                            Import Last IF Flight
+                            ACARS
                         </Button>
                         <Fieldset.Content as={Stack} spacing={5}>
                             <SimpleGrid columns={{ base: 1, md: 2 }} gap={8}>
