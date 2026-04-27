@@ -3,7 +3,7 @@ import { Input, InputGroup, Field, Text, Box } from "@chakra-ui/react";
 import { DarkMode } from "./ui/color-mode";
 
 // status: 'idle' | 'checking' | 'available' | 'taken'
-export default function CallsignInput({ value, onChange, status = 'idle' }) {
+export default function CallsignInput({ value, onChange, status = 'idle', label = 'Login', ...rest }) {
   const handleChange = (e) => {
     const digits = e.target.value.replace(/\D/g, "").slice(0, 3);
     onChange(digits);
@@ -24,7 +24,7 @@ export default function CallsignInput({ value, onChange, status = 'idle' }) {
   return (
     <DarkMode>
       <Field.Root invalid={isTaken} mb={3}>
-        <Field.Label>Your Callsign</Field.Label>
+        <Field.Label>{label}</Field.Label>
         <InputGroup roundedLeft="sm" startAddon="INVA" bgColor="gray.900" color="fg">
           <Input
             value={value}
@@ -36,6 +36,7 @@ export default function CallsignInput({ value, onChange, status = 'idle' }) {
             _focus={{ borderColor, boxShadow: focusShadow }}
             fontFamily="mono"
             letterSpacing="widest"
+            {...rest}
           />
         </InputGroup>
 

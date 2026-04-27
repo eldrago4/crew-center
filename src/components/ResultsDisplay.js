@@ -57,7 +57,7 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
                 const res = await fetch('/api/validate-callsign', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ callsign }),
+                    body: JSON.stringify({ callsign: `INVA${callsign.trim().toUpperCase()}` }),
                 });
                 const data = await res.json();
                 setCallsignStatus(data.valid ? 'taken' : 'available');
@@ -91,7 +91,7 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
                     {!discordClicked ? (
                         <>
                             <Text color="gray.700" mb="4">Choose your callsign number (100–999) to get started.</Text>
-                            <CallsignInput value={callsign} onChange={handleCallsignChange} status={callsignStatus} />
+                            <CallsignInput value={callsign} onChange={handleCallsignChange} status={callsignStatus} label="Your Callsign" />
                             {callsignStatus !== 'available' && (
                                 <Text fontSize="xs" color="gray.500" mb={2}>
                                     {callsignStatus === 'taken' ? 'Pick a different number to continue.' : 'Confirm your callsign is available before linking Discord.'}
