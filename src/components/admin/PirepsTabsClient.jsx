@@ -65,6 +65,10 @@ export default function PirepsTabsClient() {
         fetchPireps(tabToValid[ tab ], 1, debouncedSearch);
     }, [ tab, debouncedSearch, fetchPireps ]);
 
+    const handlePirepActioned = useCallback(() => {
+        fetchPireps(tabToValid[ tab ], pagination.page, debouncedSearch);
+    }, [ tab, pagination.page, debouncedSearch, fetchPireps ]);
+
     const handlePageChange = (newPage) => {
         if (newPage >= 1 && newPage <= pagination.totalPages) {
             fetchPireps(tabToValid[ tab ], newPage, debouncedSearch);
@@ -157,7 +161,7 @@ export default function PirepsTabsClient() {
                     </Box>
                 ) : (
                     <>
-                        <AdminPirepsTable pireps={pireps} searchTerm={searchTerm} onSearch={setSearchTerm} />
+                        <AdminPirepsTable pireps={pireps} onPirepActioned={handlePirepActioned} searchTerm={searchTerm} onSearch={setSearchTerm} />
                         <Box textAlign="center" mt={4}>
                             <Text fontSize="sm" color="gray.600" mb={2}>
                                 Showing {(pagination.page - 1) * pagination.pageSize + 1}-{(pagination.page - 1) * pagination.pageSize + pireps.length} of {pagination.total} PIREPs

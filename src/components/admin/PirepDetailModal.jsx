@@ -146,6 +146,7 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
     };
 
     return (
+        <>
         <Dialog.Root
             open={isOpen}
             onOpenChange={(details) => !details.open && onClose()}
@@ -353,5 +354,6 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
             userId={profileUserId}
             onClose={() => setProfileUserId(null)}
         />
+        </>
     );
 }
