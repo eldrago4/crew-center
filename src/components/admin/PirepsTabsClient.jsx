@@ -22,12 +22,21 @@ export default function PirepsTabsClient() {
         totalPages: 1
     });
     const [ error, setError ] = useState(null);
+    const [ searchTerm, setSearchTerm ] = useState('');
+    const [ debouncedSearch, setDebouncedSearch ] = useState('');
 
-    const fetchPireps = useCallback(async (valid, page = 1) => {
+    useEffect(() => {
+        const id = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+        return () => clearTimeout(id);
+    }, [ searchTerm ]);
+
+    const fetchPireps = useCallback(async (valid, page = 1, name = '') => {
         setLoading(true);
         setError(null);
         try {
-            const url = `/api/users/pireps?valid=${valid}&page=${page}&pageSize=${pagination.pageSize}`;
+            const params = new URLSearchParams({ valid, page, pageSize: pagination.pageSize });
+            if (name) params.set('name', name);
+            const url = `/api/users/pireps?${params.toString()}`;
             const res = await fetch(url, { cache: "no-store" });
             if (!res.ok) throw new Error("Failed to fetch PIREPs");
             const data = await res.json();
@@ -53,12 +62,12 @@ export default function PirepsTabsClient() {
     }, [ pagination.pageSize ]);
 
     useEffect(() => {
-        fetchPireps(tabToValid[ tab ], 1);
-    }, [ tab, fetchPireps ]);
+        fetchPireps(tabToValid[ tab ], 1, debouncedSearch);
+    }, [ tab, debouncedSearch, fetchPireps ]);
 
     const handlePageChange = (newPage) => {
         if (newPage >= 1 && newPage <= pagination.totalPages) {
-            fetchPireps(tabToValid[ tab ], newPage);
+            fetchPireps(tabToValid[ tab ], newPage, debouncedSearch);
         }
     };
 
@@ -119,6 +128,7 @@ export default function PirepsTabsClient() {
             value={tab}
             onValueChange={(e) => {
                 setTab(e.value);
+                setSearchTerm('');
                 setPagination(prev => ({ ...prev, page: 1 }));
             }}
             variant="enclosed"
@@ -147,7 +157,7 @@ export default function PirepsTabsClient() {
                     </Box>
                 ) : (
                     <>
-                        <AdminPirepsTable pireps={pireps} />
+                        <AdminPirepsTable pireps={pireps} searchTerm={searchTerm} onSearch={setSearchTerm} />
                         <Box textAlign="center" mt={4}>
                             <Text fontSize="sm" color="gray.600" mb={2}>
                                 Showing {(pagination.page - 1) * pagination.pageSize + 1}-{(pagination.page - 1) * pagination.pageSize + pireps.length} of {pagination.total} PIREPs

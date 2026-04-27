@@ -9,12 +9,15 @@ import {
     Center,
     Flex,
     Button,
+    IconButton,
     Textarea
 } from '@chakra-ui/react';
 import { Dialog } from '@chakra-ui/react';
 import { Stat } from '@chakra-ui/react';
 import { toaster } from '@/components/ui/toaster';
 import { useState, useEffect } from 'react';
+import { FiUser } from 'react-icons/fi';
+import UserProfileModal from '@/components/admin/UserProfileModal';
 
 export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActionSuccess }) {
     const [ pirep, setPirep ] = useState(null);
@@ -22,6 +25,7 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
     const [ error, setError ] = useState(null);
     const [ adminComments, setAdminComments ] = useState('');
     const [ processingAction, setProcessingAction ] = useState(null);
+    const [ profileUserId, setProfileUserId ] = useState(null);
 
     useEffect(() => {
         if (isOpen && pirepId) {
@@ -211,7 +215,20 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
                                 <Box flex="1 1 300px" p={5} borderWidth="1px" borderRadius="xl" shadow="lg" bg={{ base: "white", _dark: "gray.800" }}>
                                     <Stat.Root>
                                         <Stat.Label fontSize="xs" color={{ base: "gray.500", _dark: "gray.400" }}>Pilot ID: {pirep.user?.id || 'N/A'}</Stat.Label>
-                                        <Stat.ValueText fontSize="2xl" fontWeight="bold" color="purple.600">{pirep.user?.ifcName || 'N/A'}</Stat.ValueText>
+                                        <HStack align="center" gap={2}>
+                                            <Stat.ValueText fontSize="2xl" fontWeight="bold" color="purple.600">{pirep.user?.ifcName || 'N/A'}</Stat.ValueText>
+                                            {pirep.user?.id && (
+                                                <IconButton
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    aria-label="View pilot profile"
+                                                    color="purple.400"
+                                                    onClick={() => setProfileUserId(pirep.user.id)}
+                                                >
+                                                    <FiUser />
+                                                </IconButton>
+                                            )}
+                                        </HStack>
                                         <Stat.HelpText>
                                             <Badge colorPalette="blue" borderRadius="full" px={3} py={1}>
                                                 {pirep.user?.rank || 'N/A'}
@@ -331,5 +348,10 @@ export default function PirepDetailModal({ isOpen, onClose, pirepId, onPirepActi
                 </Dialog.Content>
             </Dialog.Positioner>
         </Dialog.Root>
+
+        <UserProfileModal
+            userId={profileUserId}
+            onClose={() => setProfileUserId(null)}
+        />
     );
 }

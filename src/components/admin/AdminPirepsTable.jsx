@@ -11,8 +11,8 @@ import {
     HStack,
     Text,
     IconButton,
+    Input,
     ButtonGroup,
-    // Pagination, // Removed direct import as it's accessed via dot notation
     Button,
     VStack,
     Divider,
@@ -24,6 +24,7 @@ import { Pagination } from '@chakra-ui/react';
 import { Dialog } from '@chakra-ui/react'; // Assuming Dialog is imported this way
 import { useState } from 'react';
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu';
+import { FiSearch, FiX } from 'react-icons/fi';
 import PirepDetailModal from '@/components/admin/PirepDetailModal';
 
 // Reverted icons to original stroke width
@@ -56,7 +57,7 @@ const EyeIcon = () => (
  * @param {Array<object>} props.pireps - An array of PIREP objects to display.
  * @param {number} props.totalPireps - Total number of PIREPs for pagination.
  */
-export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: initialTotalPireps }) {
+export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: initialTotalPireps, searchTerm = '', onSearch }) {
     const [ pireps, setPireps ] = useState(initialPireps);
     const [ currentPage, setCurrentPage ] = useState(1);
     const [ totalPireps, setTotalPireps ] = useState(initialTotalPireps);
@@ -68,6 +69,7 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
     const [ loadingPirep, setLoadingPirep ] = useState(false); // This state is not currently used for modal, can be removed if not needed elsewhere
     const [ selectedPirepId, setSelectedPirepId ] = useState(null);
     const [ isModalOpen, setIsModalOpen ] = useState(false);
+    const [ searchOpen, setSearchOpen ] = useState(false);
 
     const pageSize = 10; // Max 10 PIREPs per page
 
@@ -334,7 +336,36 @@ export default function AdminPirepsTable({ pireps: initialPireps, totalPireps: i
                         <Table.Root variant="outline" size="md">
                             <Table.Header>
                                 <Table.Row>
-                                    <Table.ColumnHeader color="fg" fontWeight="semibold">Pilot</Table.ColumnHeader>
+                                    <Table.ColumnHeader color="fg" fontWeight="semibold" p={searchOpen ? 2 : undefined}>
+                                        <HStack justify="space-between" align="center">
+                                            <Text fontWeight="semibold">Pilot</Text>
+                                            {onSearch && (
+                                                <IconButton
+                                                    size="xs"
+                                                    variant="ghost"
+                                                    aria-label="Search pilot"
+                                                    color={searchOpen ? 'purple.400' : 'fg.muted'}
+                                                    onClick={() => {
+                                                        setSearchOpen(o => !o);
+                                                        if (searchOpen && searchTerm) onSearch('');
+                                                    }}
+                                                >
+                                                    {searchOpen ? <FiX /> : <FiSearch />}
+                                                </IconButton>
+                                            )}
+                                        </HStack>
+                                        {searchOpen && onSearch && (
+                                            <Input
+                                                size="xs"
+                                                mt={1}
+                                                placeholder="Search pilot..."
+                                                value={searchTerm}
+                                                onChange={e => { onSearch(e.target.value); }}
+                                                autoFocus
+                                                variant="flushed"
+                                            />
+                                        )}
+                                    </Table.ColumnHeader>
                                     <Table.ColumnHeader color="fg" fontWeight="semibold">Route</Table.ColumnHeader>
                                     <Table.ColumnHeader color="fg" fontWeight="semibold">Aircraft</Table.ColumnHeader>
                                     <Table.ColumnHeader color="fg" fontWeight="semibold">Flight Time</Table.ColumnHeader>

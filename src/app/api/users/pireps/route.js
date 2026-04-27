@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import db from '@/db/client'
 import { pireps, users } from '@/db/schema'
-import { eq, sql, isNull } from 'drizzle-orm'
+import { eq, sql, isNull, ilike } from 'drizzle-orm'
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('id')
     const valid = searchParams.get('valid')
+    const name = searchParams.get('name')
     const page = parseInt(searchParams.get('page') || '1', 10)
     const pageSize = parseInt(searchParams.get('pageSize') || '20', 10)
 
@@ -51,6 +52,10 @@ export async function GET(request) {
 
     if (userId) {
       conditions.push(eq(pireps.userId, userId))
+    }
+
+    if (name && includeUserData) {
+      conditions.push(ilike(users.ifcName, `%${name}%`))
     }
 
     if (valid !== null && valid !== undefined) {
