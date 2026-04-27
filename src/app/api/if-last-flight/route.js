@@ -8,6 +8,14 @@ export const dynamic = 'force-dynamic'
 
 const IF_BASE = 'https://api.infiniteflight.com/public/v2'
 
+async function ifFetch(url, options = {}) {
+    const res = await fetch(url, options)
+    if (!res.ok) throw new Error(`IF API HTTP ${res.status} for ${url}`)
+    const json = await res.json()
+    if (json.errorCode !== 0) throw new Error(`IF API errorCode ${json.errorCode}`)
+    return json.result
+}
+
 export async function GET() {
     const session = await auth()
     if (!session?.user?.callsign) {
@@ -29,41 +37,46 @@ export async function GET() {
         return NextResponse.json({ error: 'IFC username not found' }, { status: 404 })
     }
 
-    // Resolve IFC username → IF userId
-    const userRes = await fetch(`${IF_BASE}/users?apikey=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ discourseNames: [user.ifcName] }),
-    })
-    const userData = await userRes.json()
-    const ifUser = userData.result?.find(
-        u => u.discourseUsername?.toLowerCase() === user.ifcName.toLowerCase()
-    )
-    if (!ifUser) {
-        return NextResponse.json({ error: 'User not found in Infinite Flight' }, { status: 404 })
+    try {
+        // Resolve IFC username → IF userId
+        const userResults = await ifFetch(`${IF_BASE}/users?apikey=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ discourseNames: [user.ifcName] }),
+        })
+
+        const ifUser = Array.isArray(userResults)
+            ? userResults.find(u => u.discourseUsername?.toLowerCase() === user.ifcName.toLowerCase())
+            : null
+
+        if (!ifUser?.userId) {
+            return NextResponse.json({ error: 'User not found in Infinite Flight' }, { status: 404 })
+        }
+
+        // Fetch flights (PaginatedList) and aircraft list in parallel
+        const [flightsList, aircraftList] = await Promise.all([
+            ifFetch(`${IF_BASE}/users/${ifUser.userId}/flights?page=1&apikey=${apiKey}`),
+            ifFetch(`${IF_BASE}/aircraft?apikey=${apiKey}`),
+        ])
+
+        // PaginatedList — flights are in .data
+        const lastFlight = flightsList?.data?.[0]
+        if (!lastFlight) {
+            return NextResponse.json({ error: 'No flights found in your logbook' }, { status: 404 })
+        }
+
+        const aircraft = Array.isArray(aircraftList)
+            ? aircraftList.find(a => a.id === lastFlight.aircraftId)
+            : null
+
+        return NextResponse.json({
+            departure: lastFlight.originAirport || '',
+            arrival: lastFlight.destinationAirport || '',
+            totalMinutes: lastFlight.totalTime ?? 0,
+            aircraftName: aircraft?.name || '',
+        })
+    } catch (err) {
+        console.error('[IF LAST FLIGHT]', err.message)
+        return NextResponse.json({ error: 'Failed to fetch flight data from Infinite Flight' }, { status: 502 })
     }
-
-    // Fetch most recent flight and aircraft list in parallel
-    const [flightsRes, aircraftRes] = await Promise.all([
-        fetch(`${IF_BASE}/users/${ifUser.userId}/flights?page=1&apikey=${apiKey}`),
-        fetch(`${IF_BASE}/aircraft?apikey=${apiKey}`),
-    ])
-    const [flightsData, aircraftData] = await Promise.all([
-        flightsRes.json(),
-        aircraftRes.json(),
-    ])
-
-    const lastFlight = flightsData.result?.[0]
-    if (!lastFlight) {
-        return NextResponse.json({ error: 'No flights found' }, { status: 404 })
-    }
-
-    const aircraft = aircraftData.result?.find(a => a.id === lastFlight.aircraftId)
-
-    return NextResponse.json({
-        departure: lastFlight.originAirport || '',
-        arrival: lastFlight.destinationAirport || '',
-        totalMinutes: lastFlight.totalTime ?? 0,
-        aircraftName: aircraft?.name || '',
-    })
 }
