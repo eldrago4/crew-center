@@ -6,7 +6,7 @@ import { eq, sql } from 'drizzle-orm'
 
 export async function GET(request) {
   const session = await auth()
-  if (!session?.user?.permissions?.includes('admin')) {
+  if (!session?.user?.permissions?.includes('staff')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

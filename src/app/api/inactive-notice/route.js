@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 
 export async function POST(request) {
   const session = await auth()
-  if (!session?.user?.permissions?.includes('admin')) {
+  if (!session?.user?.permissions?.includes('staff')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
