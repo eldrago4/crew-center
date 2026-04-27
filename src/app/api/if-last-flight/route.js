@@ -4,6 +4,8 @@ import db from '@/db/client'
 import { users } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
+export const dynamic = 'force-dynamic'
+
 const IF_BASE = 'https://api.infiniteflight.com/public/v2'
 
 export async function GET() {
