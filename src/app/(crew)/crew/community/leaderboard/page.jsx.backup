@@ -1,0 +1,173 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import {
+    Box,
+    VStack,
+    Text,
+    Table,
+    Thead,
+    Tbody,
+    Tr,
+    Th,
+    Td,
+    Badge,
+    Spinner,
+    Alert,
+    AlertIcon,
+    Heading,
+    HStack,
+    Icon,
+} from '@chakra-ui/react';
+import { FiAward, FiClock } from 'react-icons/fi';
+
+export default function LeaderboardPage() {
+    const [ leaderboard, setLeaderboard ] = useState([]);
+    const [ loading, setLoading ] = useState(true);
+    const [ error, setError ] = useState(null);
+
+    useEffect(() => {
+        fetchLeaderboard();
+    }, []);
+
+    const fetchLeaderboard = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/api/leaderboard');
+            if (!response.ok) {
+                throw new Error('Failed to fetch leaderboard');
+            }
+            const data = await response.json();
+            setLeaderboard(data.data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const formatFlightTime = (interval) => {
+        if (!interval) return '0:00';
+
+        // Parse PostgreSQL interval format (e.g., "1234:56:00")
+        const match = interval.match(/(\d+):(\d+):(\d+)/);
+        if (match) {
+            const hours = parseInt(match[ 1 ]);
+            const minutes = parseInt(match[ 2 ]);
+            return `${hours}:${minutes.toString().padStart(2, '0')}`;
+        }
+
+        return interval;
+    };
+
+    const getRankColor = (rank) => {
+        const colors = {
+            'Chhatrapati': 'purple',
+            'Samrat': 'red',
+            'Maharaja': 'orange',
+            'Rajdhiraj': 'yellow',
+            'Rajvanshi': 'green',
+            'Rajkumar': 'blue',
+            'Yuvraj': 'gray'
+        };
+        return colors[ rank ] || 'gray';
+    };
+
+    if (loading) {
+        return (
+            <Box display="flex" justifyContent="center" alignItems="center" minH="400px">
+                <VStack spacing={4}>
+                    <Spinner size="xl" color="blue.500" />
+                    <Text>Loading leaderboard...</Text>
+                </VStack>
+            </Box>
+        );
+    }
+
+    if (error) {
+        return (
+            <Alert status="error">
+                <AlertIcon />
+                {error}
+            </Alert>
+        );
+    }
+
+    return (
+        <Box p={6} maxW="1200px" mx="auto">
+            <VStack spacing={6} align="stretch">
+                <HStack spacing={3}>
+                    <Icon as={FiAward} boxSize={8} color="blue.500" />
+                    <Heading size="lg" color="gray.800">
+                        Pilot Leaderboard
+                    </Heading>
+                </HStack>
+
+                <Text color="gray.600" fontSize="md">
+                    Top 10 pilots ranked by total flight time
+                </Text>
+
+                <Box
+                    bg="white"
+                    borderRadius="lg"
+                    boxShadow="sm"
+                    border="1px"
+                    borderColor="gray.200"
+                    overflow="hidden"
+                >
+                    <Table variant="simple">
+                        <Thead bg="gray.50">
+                            <Tr>
+                                <Th textAlign="center" width="80px">Rank</Th>
+                                <Th>Callsign</Th>
+                                <Th>Pilot Name</Th>
+                                <Th textAlign="center">
+                                    <HStack justify="center" spacing={1}>
+                                        <Icon as={FiClock} boxSize={4} />
+                                        <Text>Flight Time</Text>
+                                    </HStack>
+                                </Th>
+                                <Th textAlign="center">Rank</Th>
+                            </Tr>
+                        </Thead>
+                        <Tbody>
+                            {leaderboard.map((pilot, index) => (
+                                <Tr key={pilot.id} _hover={{ bg: 'gray.50' }}>
+                                    <Td textAlign="center">
+                                        <Badge
+                                            colorScheme={index < 3 ? 'yellow' : 'gray'}
+                                            variant={index < 3 ? 'solid' : 'outline'}
+                                            borderRadius="full"
+                                            px={3}
+                                            py={1}
+                                        >
+                                            #{index + 1}
+                                        </Badge>
+                                    </Td>
+                                    <Td fontWeight="semibold" color="blue.600">
+                                        {pilot.id}
+                                    </Td>
+                                    <Td>{pilot.ifcName}</Td>
+                                    <Td textAlign="center" fontFamily="mono">
+                                        {formatFlightTime(pilot.flightTime)}
+                                    </Td>
+                                    <Td textAlign="center">
+                                        <Badge colorScheme={getRankColor(pilot.rank)} variant="solid">
+                                            {pilot.rank}
+                                        </Badge>
+                                    </Td>
+                                </Tr>
+                            ))}
+                        </Tbody>
+                    </Table>
+                </Box>
+
+                {leaderboard.length === 0 && (
+                    <Box textAlign="center" py={8}>
+                        <Text color="gray.500">No leaderboard data available</Text>
+                    </Box>
+                )}
+            </VStack>
+        </Box>
+    );
+}

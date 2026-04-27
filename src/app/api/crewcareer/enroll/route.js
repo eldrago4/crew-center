@@ -1,0 +1,85 @@
+import { NextResponse } from 'next/server';
+import { auth } from '../../../../auth';
+import { db as firebaseDb } from '../../../../lib/firebase';
+import db from '../../../../db/client';
+import { users } from '../../../../db/schema';
+import { eq } from 'drizzle-orm';
+
+export async function POST(request) {
+    try {
+        const session = await auth();
+
+        if (!session?.user?.callsign) {
+            return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+        }
+
+        const { baseAirport, typeRating } = await request.json();
+
+        if (!baseAirport || !typeRating) {
+            return NextResponse.json({ error: 'Base airport and type rating are required' }, { status: 400 });
+        }
+
+        const callsign = session.user.callsign;
+
+        // Check Firestore first — user may already be enrolled (e.g. enrolled
+        // before this system existed, or approved by a previous bot request).
+        const existing = await firebaseDb
+            .collection('users')
+            .where('callsign', '==', callsign)
+            .limit(1)
+            .get();
+
+        if (!existing.empty) {
+            // Sync careerMode in Neon DB so the layout redirect works next time.
+            if (!session.user.careerMode) {
+                await db
+                    .update(users)
+                    .set({ careerMode: true })
+                    .where(eq(users.id, callsign));
+            }
+            return NextResponse.json({ enrolled: true });
+        }
+
+        // Not in Firestore — get ifcName from Neon DB and forward to bot.
+        const userData = await db
+            .select({ ifcName: users.ifcName })
+            .from(users)
+            .where(eq(users.id, callsign))
+            .limit(1);
+
+        if (userData.length === 0) {
+            return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
+        }
+
+        const name = userData[0].ifcName;
+        const discordId = session.user.discordId || null;
+
+        const botBaseUrl = process.env.BOT_API_URL;
+        const botApiKey = process.env.BOT_API_KEY;
+
+        if (!botBaseUrl || !botApiKey) {
+            return NextResponse.json({ error: 'Bot not configured' }, { status: 500 });
+        }
+
+        const botResponse = await fetch(`${botBaseUrl}/career-register`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${botApiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ callsign, name, baseAirport, typeRating, discordId }),
+        });
+
+        if (!botResponse.ok) {
+            const rawText = await botResponse.text().catch(() => '');
+            console.error(`[career enroll] Bot returned ${botResponse.status}: ${rawText}`);
+            return NextResponse.json({ error: 'Failed to send registration request' }, { status: 500 });
+        }
+
+        return NextResponse.json({ pending: true });
+
+    } catch (error) {
+        console.error('[career enroll] Error:', error);
+        return NextResponse.json({ error: 'Enrollment failed', details: error.message }, { status: 500 });
+    }
+}
