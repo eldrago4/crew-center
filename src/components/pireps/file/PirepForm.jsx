@@ -17,7 +17,7 @@ import {
 } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { MdFlightTakeoff } from 'react-icons/md';
+import { MdCloudDownload } from 'react-icons/md';
 
 // The component receives pre-fetched data and the session object as props from its parent Server Component.
 export function PirepForm({ userId, session, initialAircraft, initialOperators, initialMultipliers, initialIfatcMultipliers, cacheTimestamp }) {
@@ -361,15 +361,19 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                     <Fieldset.Root>
                         <Fieldset.Legend>Flight Details</Fieldset.Legend>
                         <Button
-                            variant="outline"
-                            size="lg"
+                            size="md"
                             onClick={importFromIF}
                             loading={fetchingIF}
                             loadingText="Fetching..."
-                            w="full"
                             mb={4}
+                            bg="purple.100"
+                            color="purple.800"
+                            _dark={{ bg: "purple.800", color: "purple.100" }}
+                            _hover={{ bg: "purple.200", _dark: { bg: "purple.700" } }}
+                            fontFamily="mono"
+                            letterSpacing="wide"
                         >
-                            <Icon as={MdFlightTakeoff} boxSize={5} />
+                            <Icon as={MdCloudDownload} boxSize={5} />
                             Import Last IF Flight
                         </Button>
                         <Fieldset.Content as={Stack} spacing={5}>
