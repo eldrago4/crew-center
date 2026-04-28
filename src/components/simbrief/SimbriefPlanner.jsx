@@ -7,8 +7,8 @@ import {
 import { useState } from 'react';
 import {
     TbPlane, TbPlaneDeparture, TbPlaneArrival, TbArrowsExchange,
-    TbRoute, TbClockHour4, TbCalendar, TbSettings, TbChevronDown,
-    TbChevronUp, TbExternalLink, TbFuel, TbUsers, TbPackage,
+    TbRoute, TbCalendar, TbSettings, TbChevronDown,
+    TbChevronUp, TbExternalLink, TbDroplet, TbUsers, TbPackage,
 } from 'react-icons/tb';
 import { toaster } from '@/components/ui/toaster';
 
@@ -471,7 +471,7 @@ export default function SimbriefPlanner() {
                     </SectionCard>
 
                     {/* PERFORMANCE */}
-                    <SectionCard title="Performance & Fuel" icon={TbFuel} defaultOpen={false}>
+                    <SectionCard title="Performance & Fuel" icon={TbDroplet} defaultOpen={false}>
                         <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)' }} gap={4}>
                             <Field.Root>
                                 <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Cruise FL (optional)</Field.Label>
