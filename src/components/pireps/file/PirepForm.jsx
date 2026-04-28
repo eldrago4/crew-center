@@ -1,6 +1,7 @@
 "use client";
 
 import {
+    Box,
     Button,
     Field,
     Fieldset,
@@ -13,6 +14,7 @@ import {
     SimpleGrid,
     Stack,
     Tabs,
+    Text,
     Textarea,
 } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
@@ -128,6 +130,9 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
     const [ ifatcComments, setIfatcComments ] = useState(ifatcMultiplierOptions[ 0 ]?.description || '');
     const [ submitting, setSubmitting ] = useState(false);
     const [ fetchingIF, setFetchingIF ] = useState(false);
+    const [ acarsImported, setAcarsImported ] = useState(false);
+    const [ fetchingIFATC, setFetchingIFATC ] = useState(false);
+    const [ acarsATCImported, setAcarsATCImported ] = useState(false);
 
     const importFromIF = async () => {
         setFetchingIF(true);
@@ -160,10 +165,43 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                 if (match) setOperator(match.value);
             }
             toaster.create({ title: 'Flight Imported', description: `${data.departure} → ${data.arrival} imported from Infinite Flight.`, type: 'success', duration: 3000 });
+            setAcarsImported(true);
         } catch {
             toaster.create({ title: 'ACARS Error', description: 'An error occurred while fetching your last Infinite Flight flight.', type: 'error', duration: 5000 });
         } finally {
             setFetchingIF(false);
+        }
+    };
+
+    const importFromIFATC = async () => {
+        setFetchingIFATC(true);
+        try {
+            const res = await fetch('/api/if-last-atc');
+            if (!res.ok) {
+                const err = await res.json();
+                toaster.create({ title: 'ACARS Error', description: err.error || 'Failed to fetch ATC session from Infinite Flight', type: 'error', duration: 5000 });
+                return;
+            }
+            const data = await res.json();
+
+            // Convert UTC ISO strings to local date and HH:MM time
+            const openDate = new Date(data.openTime);
+            const closeDate = new Date(data.closeTime);
+
+            const localDate = openDate.toLocaleDateString('en-CA'); // YYYY-MM-DD
+            const localOpen = openDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const localClose = closeDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+            if (data.airportIcao) setAirportIcao(data.airportIcao);
+            setIfatcDate(localDate);
+            setIfatcTime({ open: localOpen, close: localClose });
+
+            toaster.create({ title: 'ATC Session Imported', description: `${data.airportIcao} session imported from Infinite Flight.`, type: 'success', duration: 3000 });
+            setAcarsATCImported(true);
+        } catch {
+            toaster.create({ title: 'ACARS Error', description: 'An error occurred while fetching your last ATC session.', type: 'error', duration: 5000 });
+        } finally {
+            setFetchingIFATC(false);
         }
     };
 
@@ -383,6 +421,22 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                             <Icon as={MdCloudDownload} boxSize={5} />
                             ACARS
                         </Button>
+                        {acarsImported && (
+                            <Box
+                                w="full"
+                                bg="yellow.100"
+                                _dark={{ bg: "yellow.900", borderColor: "yellow.600" }}
+                                border="1px solid"
+                                borderColor="yellow.400"
+                                borderRadius="md"
+                                px={4}
+                                py={3}
+                            >
+                                <Text fontSize="sm" color="yellow.800" _dark={{ color: "yellow.200" }} fontWeight="medium">
+                                    ⚠️ Please review the imported ACARS data carefully before submitting. Auto-filled values may not be accurate.
+                                </Text>
+                            </Box>
+                        )}
                         <Fieldset.Content as={Stack} spacing={5}>
                             <SimpleGrid columns={{ base: 1, md: 2 }} gap={8}>
                                 <Field.Root>
@@ -551,6 +605,40 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                 <form>
                     <Fieldset.Root>
                         <Fieldset.Legend>IFATC Session Details</Fieldset.Legend>
+                        <Button
+                            size="md"
+                            onClick={importFromIFATC}
+                            loading={fetchingIFATC}
+                            loadingText="Fetching..."
+                            mb={4}
+                            alignSelf="flex-start"
+                            bg="purple.100"
+                            color="purple.800"
+                            _dark={{ bg: "purple.800", color: "purple.100" }}
+                            _hover={{ bg: "purple.200", _dark: { bg: "purple.700" } }}
+                            fontFamily="mono"
+                            letterSpacing="wide"
+                        >
+                            <Icon as={MdCloudDownload} boxSize={5} />
+                            ACARS
+                        </Button>
+                        {acarsATCImported && (
+                            <Box
+                                w="full"
+                                bg="yellow.100"
+                                _dark={{ bg: "yellow.900", borderColor: "yellow.600" }}
+                                border="1px solid"
+                                borderColor="yellow.400"
+                                borderRadius="md"
+                                px={4}
+                                py={3}
+                                mb={2}
+                            >
+                                <Text fontSize="sm" color="yellow.800" _dark={{ color: "yellow.200" }} fontWeight="medium">
+                                    ⚠️ Please review the imported ACARS data carefully before submitting. Times are converted to your local timezone.
+                                </Text>
+                            </Box>
+                        )}
                         <Fieldset.Content as={Stack} spacing={10}>
                             <SimpleGrid columns={{ base: 1, md: 2 }} gap={12}>
                                 <Field.Root>

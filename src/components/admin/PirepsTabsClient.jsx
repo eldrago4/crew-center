@@ -30,8 +30,8 @@ export default function PirepsTabsClient() {
         return () => clearTimeout(id);
     }, [ searchTerm ]);
 
-    const fetchPireps = useCallback(async (valid, page = 1, name = '') => {
-        setLoading(true);
+    const fetchPireps = useCallback(async (valid, page = 1, name = '', silent = false) => {
+        if (!silent) setLoading(true);
         setError(null);
         try {
             const params = new URLSearchParams({ valid, page, pageSize: pagination.pageSize });
@@ -57,7 +57,7 @@ export default function PirepsTabsClient() {
                 totalPages: 1
             });
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [ pagination.pageSize ]);
 
@@ -66,7 +66,7 @@ export default function PirepsTabsClient() {
     }, [ tab, debouncedSearch, fetchPireps ]);
 
     const handlePirepActioned = useCallback(() => {
-        fetchPireps(tabToValid[ tab ], pagination.page, debouncedSearch);
+        fetchPireps(tabToValid[ tab ], pagination.page, debouncedSearch, true);
     }, [ tab, pagination.page, debouncedSearch, fetchPireps ]);
 
     const handlePageChange = (newPage) => {

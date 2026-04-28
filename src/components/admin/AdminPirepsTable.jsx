@@ -41,9 +41,8 @@ const EyeIcon = () => (
 
 export default function AdminPirepsTable({ pireps = [], onPirepActioned, searchTerm = '', onSearch }) {
     const [ processingPireps, setProcessingPireps ] = useState(new Set());
-    const [ completedPireps, setCompletedPireps ] = useState(new Map());
-    const [ errorPireps, setErrorPireps ] = useState(new Map());
     const [ fadingPireps, setFadingPireps ] = useState(new Set());
+    const [ errorPireps, setErrorPireps ] = useState(new Map());
     const [ selectedPirepId, setSelectedPirepId ] = useState(null);
     const [ isModalOpen, setIsModalOpen ] = useState(false);
     const [ searchOpen, setSearchOpen ] = useState(false);
@@ -75,7 +74,6 @@ export default function AdminPirepsTable({ pireps = [], onPirepActioned, searchT
 
     const cleanupPirepState = (pirepId) => {
         setProcessingPireps(prev => { const s = new Set(prev); s.delete(pirepId); return s; });
-        setCompletedPireps(prev => { const m = new Map(prev); m.delete(pirepId); return m; });
         setFadingPireps(prev => { const s = new Set(prev); s.delete(pirepId); return s; });
         setErrorPireps(prev => { const m = new Map(prev); m.delete(pirepId); return m; });
     };
@@ -92,18 +90,12 @@ export default function AdminPirepsTable({ pireps = [], onPirepActioned, searchT
             });
             if (!res.ok) throw new Error(`Failed to ${action} PIREP`);
 
-            setCompletedPireps(prev => new Map(prev).set(pirepId, {
-                status: action === 'approve' ? 'approved' : 'rejected',
-                color: action === 'approve' ? 'green' : 'red',
-            }));
-
+            setProcessingPireps(prev => { const s = new Set(prev); s.delete(pirepId); return s; });
+            setFadingPireps(prev => new Set(prev).add(pirepId));
+            onPirepActioned?.();
             setTimeout(() => {
-                setFadingPireps(prev => new Set(prev).add(pirepId));
-                setTimeout(() => {
-                    cleanupPirepState(pirepId);
-                    onPirepActioned?.();
-                }, 1500);
-            }, 1000);
+                setFadingPireps(prev => { const s = new Set(prev); s.delete(pirepId); return s; });
+            }, 1500);
 
         } catch (err) {
             console.error(err);
@@ -115,10 +107,6 @@ export default function AdminPirepsTable({ pireps = [], onPirepActioned, searchT
     const getStatusBadge = (pirepId) => {
         if (errorPireps.has(pirepId)) {
             const { status, color } = errorPireps.get(pirepId);
-            return <Badge colorPalette={color} variant="subtle">{status}</Badge>;
-        }
-        if (completedPireps.has(pirepId)) {
-            const { status, color } = completedPireps.get(pirepId);
             return <Badge colorPalette={color} variant="subtle">{status}</Badge>;
         }
         if (processingPireps.has(pirepId)) {
