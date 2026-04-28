@@ -1,4 +1,8 @@
 
+export const metadata = {
+    robots: { index: false, follow: false },
+}
+
 import { Providers } from "@/components/CrewProviders"
 import { Box } from '@chakra-ui/react'
 import { auth } from '@/auth'

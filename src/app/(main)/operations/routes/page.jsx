@@ -1,3 +1,15 @@
+export const metadata = {
+    title: 'Routes',
+    description: 'Browse Indian Virtual\'s full route network on Infinite Flight. Explore domestic and international routes operated by our virtual pilots across India and the world.',
+    keywords: ['Indian Virtual routes', 'Infinite Flight routes India', 'virtual airline route map', 'INVA route network', 'domestic international virtual routes'],
+    openGraph: {
+        title: 'Routes | Indian Virtual',
+        description: 'Explore Indian Virtual\'s full domestic and international Infinite Flight route network.',
+        url: 'https://indianvirtual.site/operations/routes',
+    },
+    alternates: { canonical: 'https://indianvirtual.site/operations/routes' },
+}
+
 import { Box } from '@chakra-ui/react'
 
 export default function RoutesPage() {
