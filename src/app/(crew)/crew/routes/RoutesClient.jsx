@@ -68,10 +68,37 @@ const rankOptions = createListCollection({
   items: rankHierarchy.map(rank => ({ label: rank.charAt(0).toUpperCase() + rank.slice(1), value: rank })),
 });
 
-const aircraftICAOCodes = aircraftList.reduce((acc, ac) => {
-  acc[ ac ] = ac;
-  return acc;
-}, {});
+// Maps route aircraft names → SimBrief ICAO type codes
+const aircraftICAOCodes = {
+  'A220-300': 'BCS3',
+  'A319': 'A319',
+  'A320': 'A320',
+  'A321': 'A321',
+  'A333': 'A333',
+  'A339': 'A339',
+  'A346': 'A346',
+  'A359': 'A359',
+  'A388': 'A388',
+  'Boeing 737-800': 'B738',
+  'Boeing 737-900': 'B739',
+  'Boeing 737MAX': 'B38M',
+  'Boeing 747-400': 'B744',
+  'Boeing 747-8': 'B748',
+  'Boeing 757-200': 'B752',
+  'Boeing 767-300': 'B763',
+  'Boeing 777-200ER': 'B772',
+  'Boeing 777-200LR': 'B77L',
+  'Boeing 777-300ER': 'B77W',
+  'Boeing 777F': 'B77L',
+  'Boeing 787-10': 'B78X',
+  'Boeing 787-8': 'B788',
+  'Boeing 787-9': 'B789',
+  'Bombardier Dash 8-Q400': 'DH8D',
+  'CRJ-900': 'CRJ9',
+  'ERJ-175': 'E175',
+  'ERJ-190': 'E190',
+  'MD-11': 'MD11',
+};
 
 const rankAircraftMap = {
   Yuvraj: [ "A220-300", "A320", "Bombardier Dash 8-Q400", "ERJ-175", "ERJ-190", "CRJ-900" ],
@@ -333,9 +360,9 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
         gap={6}
       >
         {paginatedData.map((route, index) => {
-          const aircraftIcao = aircraftICAOCodes[ route.aircraft_names ];
-          const fileLink = `https://www.digitalcrew.app/INVA/pireps/?flight_number=${encodeURIComponent(route.flight_number)}&departure_icao=${route.departure_icao}&arrival_icao=${route.arrival_icao}`;
-          const fplLink = `https://www.simbrief.com/system/dispatch.php?orig=${route.departure_icao}&dest=${route.arrival_icao}&type=${aircraftIcao}`;
+          const firstAircraft = route.aircraft_names.split(',')[ 0 ]?.trim() || '';
+          const aircraftIcao = aircraftICAOCodes[ firstAircraft ] || firstAircraft;
+          const fplLink = `/crew/plan/simbrief?orig=${route.departure_icao}&dest=${route.arrival_icao}&type=${aircraftIcao}&fltnum=${encodeURIComponent(route.flight_number)}`;
           return (
             <Card.Root
               key={index}
@@ -381,11 +408,9 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
                     <Button
                       as="a"
                       href={fplLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       size="sm"
-                      colorPalette="gray"
-                      variant="solid"
+                      colorPalette="purple"
+                      variant="outline"
                     >
                       FPL
                     </Button>

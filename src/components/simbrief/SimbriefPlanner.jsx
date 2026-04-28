@@ -6,7 +6,8 @@ import {
     Spinner, Center,
 } from '@chakra-ui/react';
 import Image from 'next/image';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
     TbPlane, TbPlaneDeparture, TbPlaneArrival, TbArrowsExchange,
     TbRoute, TbCalendar, TbSettings, TbChevronDown,
@@ -250,6 +251,27 @@ export default function SimbriefPlanner() {
     const [ dispatchedRoute, setDispatchedRoute ] = useState(null);
 
     const pollRef = useRef(null);
+    const searchParams = useSearchParams();
+
+    // Pre-fill from URL params (e.g. when coming from route cards)
+    useEffect(() => {
+        const qOrig = searchParams.get('orig');
+        const qDest = searchParams.get('dest');
+        const qType = searchParams.get('type');
+        const qFltnum = searchParams.get('fltnum');
+
+        if (qOrig) setOrig(qOrig.toUpperCase().slice(0, 4));
+        if (qDest) setDest(qDest.toUpperCase().slice(0, 4));
+        if (qFltnum) setFltnum(qFltnum.toUpperCase().slice(0, 8));
+
+        if (qType) {
+            const type = qType.toUpperCase();
+            setAcType(type);
+            // Auto-set prefix from QUICK_AIRCRAFT table if matched
+            const match = QUICK_AIRCRAFT.find(ac => ac.type === type);
+            if (match) setAcPrefix(match.prefix);
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const swapAirports = () => { setOrig(dest); setDest(orig); };
 
