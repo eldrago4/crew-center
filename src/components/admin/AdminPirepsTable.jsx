@@ -206,9 +206,9 @@ export default function AdminPirepsTable({ pireps = [], onPirepActioned, searchT
                                             <HStack spacing="2">
                                                 {getStatusBadge(pirep.pirepId) || (
                                                     <>
-                                                        <IconButton aria-label="Accept PIREP" onClick={() => runAction(pirep.pirepId, 'approve')} {...baseGlassyStyle} color="green.400" {...createGlowShadow('34,197,94')} disabled={processingPireps.has(pirep.pirepId) || completedPireps.has(pirep.pirepId)}><CheckIcon /></IconButton>
-                                                        <IconButton aria-label="Reject PIREP" onClick={() => runAction(pirep.pirepId, 'reject')} {...baseGlassyStyle} color="red.400" {...createGlowShadow('239,68,68')} disabled={processingPireps.has(pirep.pirepId) || completedPireps.has(pirep.pirepId)}><XIcon /></IconButton>
-                                                        <IconButton aria-label="View PIREP Details" onClick={() => { setSelectedPirepId(pirep.pirepId); setIsModalOpen(true); }} {...baseGlassyStyle} color="blue.400" {...createGlowShadow('59,130,246')} disabled={processingPireps.has(pirep.pirepId) || completedPireps.has(pirep.pirepId)}><EyeIcon /></IconButton>
+                                                        <IconButton aria-label="Accept PIREP" onClick={() => runAction(pirep.pirepId, 'approve')} {...baseGlassyStyle} color="green.400" {...createGlowShadow('34,197,94')} disabled={processingPireps.has(pirep.pirepId)}><CheckIcon /></IconButton>
+                                                        <IconButton aria-label="Reject PIREP" onClick={() => runAction(pirep.pirepId, 'reject')} {...baseGlassyStyle} color="red.400" {...createGlowShadow('239,68,68')} disabled={processingPireps.has(pirep.pirepId)}><XIcon /></IconButton>
+                                                        <IconButton aria-label="View PIREP Details" onClick={() => { setSelectedPirepId(pirep.pirepId); setIsModalOpen(true); }} {...baseGlassyStyle} color="blue.400" {...createGlowShadow('59,130,246')} disabled={processingPireps.has(pirep.pirepId)}><EyeIcon /></IconButton>
                                                     </>
                                                 )}
                                             </HStack>
