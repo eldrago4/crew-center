@@ -57,7 +57,7 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
                 const res = await fetch('/api/validate-callsign', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ callsign: `INVA${callsign.trim().toUpperCase()}` }),
+                    body: JSON.stringify({ callsign }),
                 });
                 const data = await res.json();
                 setCallsignStatus(data.valid ? 'taken' : 'available');

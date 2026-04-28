@@ -363,6 +363,11 @@ export async function PATCH(request) {
       });
 
     } else if (action === 'reject') {
+      // Fetch user info before updating
+      const userResult = await db.select({ discordId: users.discordId, ifcName: users.ifcName })
+        .from(users).where(eq(users.id, pirep.userId));
+      const rejectUser = userResult[0];
+
       // Check current valid status to determine if we need to deduct flight time
       let flightTimeDeducted = null;
 
@@ -399,6 +404,39 @@ export async function PATCH(request) {
       await db.update(pireps)
         .set(updateData)
         .where(eq(pireps.pirepId, pirepId));
+
+      // DM the pilot via bot
+      if (rejectUser?.discordId) {
+        try {
+          const botApiUrl = process.env.BOT_API_URL;
+          const botApiKey = process.env.BOT_API_KEY;
+
+          if (botApiUrl && botApiKey) {
+            await fetch(`${botApiUrl}/pirep-rejected`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${botApiKey}`,
+              },
+              body: JSON.stringify({
+                discord_id: rejectUser.discordId.toString(),
+                ifc_name: rejectUser.ifcName || 'Pilot',
+                pirep_id: pirepId,
+                flight_number: pirep.flightNumber,
+                departure_icao: pirep.departureIcao,
+                arrival_icao: pirep.arrivalIcao,
+                aircraft: pirep.aircraft,
+                date: pirep.date,
+                flight_time: pirep.flightTime,
+                admin_comments: adminComments || null,
+              }),
+              signal: AbortSignal.timeout(10000),
+            });
+          }
+        } catch (botErr) {
+          console.error('Failed to notify bot for PIREP rejection:', botErr);
+        }
+      }
 
       return NextResponse.json({
         message: 'PIREP rejected successfully',
