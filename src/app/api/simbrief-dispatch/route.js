@@ -24,7 +24,7 @@ export async function POST(request) {
     const body = await request.json()
     const { orig, dest, type, airframeId, fltnum, airline, route, fl, units,
             contpct, resvrule, navlog, etops, stepclimbs, tlr, notams, maps,
-            date, deph, depm, ci, pax, cargo } = body
+            date, deph, depm, ci, pax, cargo, altns } = body
 
     if (!orig || orig.length !== 4) return NextResponse.json({ error: 'Invalid origin ICAO' }, { status: 400 })
     if (!dest || dest.length !== 4) return NextResponse.json({ error: 'Invalid destination ICAO' }, { status: 400 })
@@ -65,6 +65,11 @@ export async function POST(request) {
         ...(ci !== undefined && { ci }),
         ...(pax !== undefined && { pax }),
         ...(cargo !== undefined && { cargo }),
+        // Alternates: altn, altn2, altn3, altn4
+        ...(Array.isArray(altns) && altns[0] ? { altn: altns[0].toUpperCase() } : {}),
+        ...(Array.isArray(altns) && altns[1] ? { altn2: altns[1].toUpperCase() } : {}),
+        ...(Array.isArray(altns) && altns[2] ? { altn3: altns[2].toUpperCase() } : {}),
+        ...(Array.isArray(altns) && altns[3] ? { altn4: altns[3].toUpperCase() } : {}),
     }
 
     const qs = Object.entries(params)

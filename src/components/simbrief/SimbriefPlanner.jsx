@@ -3,9 +3,8 @@
 import {
     Box, Button, Flex, Grid, HStack, Heading, Icon, Input,
     Stack, Text, Textarea, Badge, Separator, Switch, Field, Checkbox,
-    Spinner, Center,
+    Spinner, Center, Select, Portal, createListCollection,
 } from '@chakra-ui/react';
-import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -51,6 +50,70 @@ const RESERVE_RULES = [
     { value: 'etops138', label: 'ETOPS 138' },
     { value: 'etops207', label: 'ETOPS 207' },
 ];
+
+// Comprehensive SimBrief ICAO aircraft type list
+const SB_AIRCRAFT = [
+    // Airbus Narrowbody
+    { value: 'A19N', label: 'A19N — Airbus A319neo' },
+    { value: 'A319', label: 'A319 — Airbus A319ceo' },
+    { value: 'A20N', label: 'A20N — Airbus A320neo' },
+    { value: 'A320', label: 'A320 — Airbus A320ceo' },
+    { value: 'A21N', label: 'A21N — Airbus A321neo / XLR' },
+    { value: 'A321', label: 'A321 — Airbus A321ceo' },
+    // Airbus Widebody
+    { value: 'A332', label: 'A332 — Airbus A330-200' },
+    { value: 'A333', label: 'A333 — Airbus A330-300' },
+    { value: 'A338', label: 'A338 — Airbus A330-800neo' },
+    { value: 'A339', label: 'A339 — Airbus A330-900neo' },
+    { value: 'A346', label: 'A346 — Airbus A340-600' },
+    { value: 'A359', label: 'A359 — Airbus A350-900' },
+    { value: 'A35K', label: 'A35K — Airbus A350-1000' },
+    { value: 'A388', label: 'A388 — Airbus A380-800' },
+    // Airbus Regional
+    { value: 'BCS1', label: 'BCS1 — Airbus A220-100' },
+    { value: 'BCS3', label: 'BCS3 — Airbus A220-300' },
+    // Boeing Narrowbody
+    { value: 'B736', label: 'B736 — Boeing 737-600' },
+    { value: 'B737', label: 'B737 — Boeing 737-700' },
+    { value: 'B738', label: 'B738 — Boeing 737-800' },
+    { value: 'B739', label: 'B739 — Boeing 737-900' },
+    { value: 'B37M', label: 'B37M — Boeing 737 MAX 7' },
+    { value: 'B38M', label: 'B38M — Boeing 737 MAX 8' },
+    { value: 'B39M', label: 'B39M — Boeing 737 MAX 9' },
+    { value: 'B3XM', label: 'B3XM — Boeing 737 MAX 10' },
+    { value: 'B752', label: 'B752 — Boeing 757-200' },
+    { value: 'B753', label: 'B753 — Boeing 757-300' },
+    // Boeing Widebody
+    { value: 'B763', label: 'B763 — Boeing 767-300ER' },
+    { value: 'B764', label: 'B764 — Boeing 767-400ER' },
+    { value: 'B772', label: 'B772 — Boeing 777-200ER' },
+    { value: 'B77L', label: 'B77L — Boeing 777-200LR' },
+    { value: 'B77W', label: 'B77W — Boeing 777-300ER' },
+    { value: 'B779', label: 'B779 — Boeing 777X-9' },
+    { value: 'B788', label: 'B788 — Boeing 787-8' },
+    { value: 'B789', label: 'B789 — Boeing 787-9' },
+    { value: 'B78X', label: 'B78X — Boeing 787-10' },
+    { value: 'B744', label: 'B744 — Boeing 747-400' },
+    { value: 'B748', label: 'B748 — Boeing 747-8' },
+    // Regional / Turboprop
+    { value: 'AT72', label: 'AT72 — ATR 72-600' },
+    { value: 'AT75', label: 'AT75 — ATR 72-500' },
+    { value: 'DH8D', label: 'DH8D — Bombardier Dash 8-Q400' },
+    { value: 'CRJ7', label: 'CRJ7 — Bombardier CRJ-700' },
+    { value: 'CRJ9', label: 'CRJ9 — Bombardier CRJ-900' },
+    { value: 'CRJX', label: 'CRJX — Bombardier CRJ-1000' },
+    { value: 'E170', label: 'E170 — Embraer E170' },
+    { value: 'E175', label: 'E175 — Embraer E175' },
+    { value: 'E190', label: 'E190 — Embraer E190' },
+    { value: 'E195', label: 'E195 — Embraer E195' },
+    { value: 'E290', label: 'E290 — Embraer E190-E2' },
+    { value: 'E295', label: 'E295 — Embraer E195-E2' },
+    // Other
+    { value: 'MD11', label: 'MD11 — McDonnell Douglas MD-11' },
+    { value: 'C17',  label: 'C17  — Boeing C-17 Globemaster' },
+];
+
+const sbAircraftCollection = createListCollection({ items: SB_AIRCRAFT });
 
 const CONT_PCTS = [
     { value: '0', label: '0%' },
@@ -222,10 +285,10 @@ function OFPDisplay({ planText, onClose }) {
 export default function SimbriefPlanner() {
     const [ orig, setOrig ] = useState('');
     const [ dest, setDest ] = useState('');
+    const [ altns, setAltns ] = useState([ '' ]); // 1–4 alternate ICAOs
     const [ acType, setAcType ] = useState('');
     const [ acPrefix, setAcPrefix ] = useState('AI');
     const [ fltnum, setFltnum ] = useState('');
-    const [ airline, setAirline ] = useState('INVA');
     const [ date, setDate ] = useState('');
     const [ deph, setDeph ] = useState('');
     const [ depm, setDepm ] = useState('');
@@ -262,7 +325,7 @@ export default function SimbriefPlanner() {
 
         if (qOrig) setOrig(qOrig.toUpperCase().slice(0, 4));
         if (qDest) setDest(qDest.toUpperCase().slice(0, 4));
-        if (qFltnum) setFltnum(qFltnum.toUpperCase().slice(0, 8));
+        if (qFltnum) setFltnum(qFltnum.toUpperCase().slice(0, 12));
 
         if (qType) {
             const type = qType.toUpperCase();
@@ -338,7 +401,8 @@ export default function SimbriefPlanner() {
         try {
             const body = {
                 orig, dest, type: acType, airframeId: getAirframeId(),
-                airline, units: 'KGS', contpct, resvrule,
+                airline: 'INVA', units: 'KGS', contpct, resvrule,
+                altns: altns.filter(a => a.length === 4),
                 navlog, etops, stepclimbs, tlr, notams, maps,
                 ...(fltnum && { fltnum }),
                 ...(route && { route }),
@@ -384,12 +448,11 @@ export default function SimbriefPlanner() {
             {/* ── Header ── */}
             <HStack gap={4} mb={8}>
                 <Box borderRadius="xl" overflow="hidden" w="48px" h="48px" flexShrink={0} shadow="md">
-                    <Image
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                         src="/273326625_7136525176387690_3510893692608149013_n.jpg"
                         alt="Indian Virtual"
-                        width={48}
-                        height={48}
-                        style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                        style={{ width: '48px', height: '48px', objectFit: 'cover', display: 'block' }}
                     />
                 </Box>
                 <Box>
@@ -416,6 +479,47 @@ export default function SimbriefPlanner() {
                                 </Button>
                                 <IcaoInput value={dest} onChange={setDest} placeholder="VABB" icon={TbPlaneArrival} label="Destination" />
                             </Flex>
+
+                            {/* Alternate count selector */}
+                            <Flex justify="center">
+                                <HStack gap={1}>
+                                    <Text fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">Alternates</Text>
+                                    {[ 1, 2, 3, 4 ].map(n => (
+                                        <Button
+                                            key={n}
+                                            size="xs"
+                                            variant={altns.length === n ? 'solid' : 'ghost'}
+                                            colorPalette="purple"
+                                            borderRadius="full"
+                                            w="22px" h="22px"
+                                            minW="22px"
+                                            fontSize="10px"
+                                            fontFamily="mono"
+                                            onClick={() => setAltns(prev => {
+                                                const next = Array.from({ length: n }, (_, i) => prev[i] || '');
+                                                return next;
+                                            })}
+                                        >
+                                            {n}
+                                        </Button>
+                                    ))}
+                                </HStack>
+                            </Flex>
+
+                            {/* Alternate ICAO inputs */}
+                            <Grid templateColumns={`repeat(${Math.min(altns.length, 2)}, 1fr)`} gap={3}>
+                                {altns.map((altn, i) => (
+                                    <IcaoInput
+                                        key={i}
+                                        value={altn}
+                                        onChange={val => setAltns(prev => prev.map((v, j) => j === i ? val : v))}
+                                        placeholder={`ALT${i + 1}`}
+                                        icon={TbPlaneArrival}
+                                        label={`Alternate ${altns.length > 1 ? i + 1 : ''}`}
+                                    />
+                                ))}
+                            </Grid>
+
                             <Separator borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.50' }} />
                             <Field.Root>
                                 <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">
@@ -463,31 +567,49 @@ export default function SimbriefPlanner() {
                                 })}
                             </Grid>
                             <Separator borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.50' }} />
-                            <Grid templateColumns="1fr 1fr" gap={4}>
-                                <Field.Root>
-                                    <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">ICAO Type</Field.Label>
-                                    <Input
-                                        value={acType}
-                                        onChange={e => setAcType(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
-                                        placeholder="A320"
-                                        fontFamily="mono" fontWeight="bold"
-                                        borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
-                                        bg={{ base: 'white', _dark: 'blackAlpha.200' }}
-                                        _focus={{ borderColor: 'purple.400' }}
-                                    />
-                                </Field.Root>
-                                <Field.Root>
-                                    <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">Airline Prefix</Field.Label>
-                                    <Input
-                                        value={acPrefix}
-                                        onChange={e => setAcPrefix(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2))}
-                                        placeholder="AI" fontFamily="mono"
-                                        borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
-                                        bg={{ base: 'white', _dark: 'blackAlpha.200' }}
-                                        _focus={{ borderColor: 'purple.400' }}
-                                    />
-                                </Field.Root>
-                            </Grid>
+                            <Field.Root>
+                                <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">ICAO Type</Field.Label>
+                                <Select.Root
+                                    collection={sbAircraftCollection}
+                                    value={acType ? [ acType ] : []}
+                                    onValueChange={e => {
+                                        const type = e.value?.[0] || '';
+                                        setAcType(type);
+                                        const match = QUICK_AIRCRAFT.find(ac => ac.type === type);
+                                        if (match) setAcPrefix(match.prefix);
+                                    }}
+                                    size="sm"
+                                >
+                                    <Select.HiddenSelect />
+                                    <Select.Control>
+                                        <Select.Trigger
+                                            fontFamily="mono"
+                                            borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                                            bg={{ base: 'white', _dark: 'blackAlpha.200' }}
+                                            _focus={{ borderColor: 'purple.400' }}
+                                            h="40px"
+                                        >
+                                            <Select.ValueText placeholder="Select aircraft type..." />
+                                        </Select.Trigger>
+                                        <Select.IndicatorGroup>
+                                            <Select.ClearTrigger />
+                                            <Select.Indicator />
+                                        </Select.IndicatorGroup>
+                                    </Select.Control>
+                                    <Portal>
+                                        <Select.Positioner>
+                                            <Select.Content maxH="260px" overflowY="auto">
+                                                {sbAircraftCollection.items.map(item => (
+                                                    <Select.Item item={item} key={item.value} fontFamily="mono" fontSize="sm">
+                                                        {item.label}
+                                                        <Select.ItemIndicator />
+                                                    </Select.Item>
+                                                ))}
+                                            </Select.Content>
+                                        </Select.Positioner>
+                                    </Portal>
+                                </Select.Root>
+                            </Field.Root>
                             {airframeId && (
                                 <HStack gap={2} px={3} py={2}
                                     bg={{ base: 'purple.50', _dark: 'purple.950' }}
@@ -505,10 +627,9 @@ export default function SimbriefPlanner() {
 
                     {/* SCHEDULE */}
                     <SectionCard title="Schedule" icon={TbCalendar}>
-                        <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }} gap={4}>
+                        <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }} gap={4}>
                             {[
-                                { label: 'Flight No.', node: <Input value={fltnum} onChange={e => setFltnum(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))} placeholder="AI101" fontFamily="mono" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} /> },
-                                { label: 'Airline ICAO', node: <Input value={airline} onChange={e => setAirline(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4))} fontFamily="mono" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} /> },
+                                { label: 'Flight No.', node: <Input value={fltnum} onChange={e => setFltnum(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12))} placeholder="AI101" fontFamily="mono" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} /> },
                                 { label: 'Date', node: <Input type="date" value={date} onChange={e => setDate(e.target.value)} borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} /> },
                             ].map(({ label, node }) => (
                                 <Field.Root key={label}>
@@ -640,7 +761,7 @@ export default function SimbriefPlanner() {
                                         {[
                                             { label: 'Route', value: `${orig} → ${dest}` },
                                             { label: 'Aircraft', value: acType },
-                                            ...(fltnum ? [ { label: 'Flight', value: `${airline}${fltnum}` } ] : []),
+                                            ...(fltnum ? [ { label: 'Flight', value: fltnum } ] : []),
                                             ...(date ? [ { label: 'Date', value: formatDate(date) } ] : []),
                                         ].map(({ label, value }) => (
                                             <Flex key={label} justify="space-between" align="center">
@@ -759,7 +880,7 @@ export default function SimbriefPlanner() {
                     >
                         <Text fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest" mb={3}>Pre-configured</Text>
                         {[
-                            { label: 'Operator', value: 'Indian Virtual' },
+                            { label: 'Operator', value: 'Indian Virtual (INVA)' },
                             { label: 'Units', value: 'KGS' },
                             { label: 'Avoided FIRs', value: 'PK · SY · IL' },
                         ].map(({ label, value }) => (
