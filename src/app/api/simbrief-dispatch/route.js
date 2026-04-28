@@ -71,7 +71,15 @@ export async function POST(request) {
         .map(([ k, v ]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
         .join('&')
 
+    // OFP ID: timestamp_first10ofMD5(orig+dest+type) — used to poll for generated OFP
+    const ofpHash = md5((airframeId || type).toUpperCase().length > 6
+        ? orig.toUpperCase() + dest.toUpperCase() + type.toUpperCase()
+        : orig.toUpperCase() + dest.toUpperCase() + (airframeId || type).toUpperCase()
+    ).slice(0, 10)
+    const ofpId = `${timestamp}_${ofpHash}`
+
     return NextResponse.json({
         simbriefUrl: `https://www.simbrief.com/ofp/ofp.loader.api.php?${qs}`,
+        ofpId,
     })
 }

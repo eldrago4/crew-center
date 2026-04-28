@@ -1,18 +1,20 @@
 'use client';
 
 import {
-    Box, Button, Flex, Grid, GridItem, HStack, Heading, Icon, Input,
-    Stack, Text, Textarea, Badge, Separator, Switch, Field,
+    Box, Button, Flex, Grid, HStack, Heading, Icon, Input,
+    Stack, Text, Textarea, Badge, Separator, Switch, Field, Checkbox,
+    Spinner, Center,
 } from '@chakra-ui/react';
-import { useState } from 'react';
+import Image from 'next/image';
+import { useState, useRef } from 'react';
 import {
     TbPlane, TbPlaneDeparture, TbPlaneArrival, TbArrowsExchange,
     TbRoute, TbCalendar, TbSettings, TbChevronDown,
-    TbChevronUp, TbExternalLink, TbDroplet, TbUsers, TbPackage,
+    TbChevronUp, TbDroplet, TbUsers, TbPackage,
+    TbSend, TbFileText, TbAlertTriangle, TbCheck,
 } from 'react-icons/tb';
 import { toaster } from '@/components/ui/toaster';
 
-// Indian Virtual airframe IDs in SimBrief (airline prefix : IF aircraft type)
 const AIRFRAME_MAP = {
     'UK:A320': '783627_1771244115844',
     'AI:A320': '783627_1771244196756',
@@ -27,16 +29,15 @@ const AIRFRAME_MAP = {
     'AI:B744': '783627_1771244627288',
 };
 
-// Quick-select aircraft with label, ICAO type, preferred airline prefix
 const QUICK_AIRCRAFT = [
     { label: 'A320', type: 'A320', prefix: 'AI', sub: 'Airbus A320' },
     { label: 'A321', type: 'A321', prefix: 'AI', sub: 'Airbus A321' },
-    { label: 'A321XL', type: 'A21N', prefix: 'AI', sub: 'A321neo XLR' },
+    { label: 'A321neo', type: 'A21N', prefix: 'AI', sub: 'A321XLR' },
     { label: 'A350-900', type: 'A359', prefix: 'AI', sub: 'Airbus A350' },
-    { label: 'B737-8', type: 'B38M', prefix: 'IX', sub: '737 MAX 8' },
-    { label: 'B737-800', type: 'B738', prefix: 'IX', sub: 'Boeing 737-800' },
+    { label: 'B737 MAX', type: 'B38M', prefix: 'IX', sub: '737 MAX 8' },
+    { label: 'B737-800', type: 'B738', prefix: 'IX', sub: 'Boeing 737NG' },
     { label: 'B787-8', type: 'B788', prefix: 'AI', sub: 'Dreamliner' },
-    { label: 'B789', type: 'B789', prefix: 'UK', sub: 'B787-9' },
+    { label: 'B787-9', type: 'B789', prefix: 'UK', sub: 'Dreamliner' },
     { label: 'B777F', type: 'B77L', prefix: 'AI', sub: '777-200LR' },
     { label: 'B777-300', type: 'B77W', prefix: 'AI', sub: '777-300ER' },
     { label: 'B747-400', type: 'B744', prefix: 'AI', sub: '747-400' },
@@ -44,27 +45,29 @@ const QUICK_AIRCRAFT = [
 ];
 
 const RESERVE_RULES = [
-    { value: '45', label: '45 min (domestic)' },
-    { value: '30', label: '30 min (alternate)' },
-    { value: 'etops138', label: 'ETOPS 138 min' },
-    { value: 'etops207', label: 'ETOPS 207 min' },
+    { value: '45', label: '45 min' },
+    { value: '30', label: '30 min' },
+    { value: 'etops138', label: 'ETOPS 138' },
+    { value: 'etops207', label: 'ETOPS 207' },
 ];
 
 const CONT_PCTS = [
-    { value: '0', label: 'None (0%)' },
-    { value: '0.05', label: '5% (standard)' },
+    { value: '0', label: '0%' },
+    { value: '0.05', label: '5%' },
     { value: '0.10', label: '10%' },
     { value: '0.15', label: '15%' },
 ];
 
+// ── Sub-components ─────────────────────────────────────────────────────────
+
 function IcaoInput({ value, onChange, placeholder, icon: IcaoIcon, label }) {
     return (
-        <Stack gap={1} flex={1}>
-            <Text fontSize="xs" fontWeight="semibold" color="fg.muted" letterSpacing="wider" textTransform="uppercase">
+        <Stack gap={1} flex={1} minW={0}>
+            <Text fontSize="10px" fontWeight="bold" color="fg.muted" letterSpacing="widest" textTransform="uppercase">
                 {label}
             </Text>
             <Box position="relative">
-                <Box position="absolute" left={3} top="50%" transform="translateY(-50%)" color="purple.400" zIndex={1} pointerEvents="none">
+                <Box position="absolute" left={3} top="50%" transform="translateY(-50%)" color="purple.500" zIndex={1} pointerEvents="none">
                     <Icon as={IcaoIcon} boxSize={4} />
                 </Box>
                 <Input
@@ -76,13 +79,12 @@ function IcaoInput({ value, onChange, placeholder, icon: IcaoIcon, label }) {
                     fontWeight="bold"
                     fontFamily="mono"
                     letterSpacing="widest"
-                    h="64px"
+                    h="60px"
                     borderWidth="1px"
-                    borderColor="whiteAlpha.200"
-                    bg="whiteAlpha.50"
-                    _dark={{ bg: 'blackAlpha.300', borderColor: 'whiteAlpha.100' }}
+                    borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                    bg={{ base: 'white', _dark: 'blackAlpha.300' }}
                     _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px var(--chakra-colors-purple-400)' }}
-                    _placeholder={{ color: 'whiteAlpha.300', fontSize: 'xl', fontWeight: 'normal' }}
+                    _placeholder={{ color: 'gray.300', fontSize: 'xl', fontWeight: 'normal' }}
                 />
             </Box>
         </Stack>
@@ -91,9 +93,9 @@ function IcaoInput({ value, onChange, placeholder, icon: IcaoIcon, label }) {
 
 function ToggleRow({ label, sublabel, checked, onChange }) {
     return (
-        <Flex align="center" justify="space-between" py={2}>
+        <Flex align="center" justify="space-between" py={2.5}>
             <Box>
-                <Text fontSize="sm" fontWeight="medium">{label}</Text>
+                <Text fontSize="sm" fontWeight="medium" color="fg">{label}</Text>
                 {sublabel && <Text fontSize="xs" color="fg.muted">{sublabel}</Text>}
             </Box>
             <Switch.Root checked={checked} onCheckedChange={e => onChange(e.checked)} colorPalette="purple" size="sm">
@@ -111,10 +113,9 @@ function SectionCard({ title, icon: SectionIcon, children, defaultOpen = true })
     return (
         <Box
             borderWidth="1px"
-            borderColor="whiteAlpha.100"
+            borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
             borderRadius="xl"
-            bg="whiteAlpha.50"
-            _dark={{ bg: 'blackAlpha.200' }}
+            bg={{ base: 'white', _dark: 'blackAlpha.300' }}
             overflow="hidden"
         >
             <Flex
@@ -124,76 +125,138 @@ function SectionCard({ title, icon: SectionIcon, children, defaultOpen = true })
                 py={3}
                 cursor="pointer"
                 onClick={() => setOpen(o => !o)}
-                _hover={{ bg: 'whiteAlpha.100' }}
+                bg={{ base: 'gray.50', _dark: 'blackAlpha.200' }}
+                borderBottomWidth={open ? '1px' : '0'}
+                borderBottomColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                _hover={{ bg: { base: 'gray.100', _dark: 'whiteAlpha.50' } }}
                 transition="background 0.15s"
             >
                 <HStack gap={2}>
-                    <Icon as={SectionIcon} color="purple.400" boxSize={4} />
-                    <Text fontWeight="semibold" fontSize="sm" letterSpacing="wide" textTransform="uppercase" color="fg.muted">
+                    <Icon as={SectionIcon} color="purple.500" boxSize={4} />
+                    <Text fontWeight="semibold" fontSize="xs" letterSpacing="wider" textTransform="uppercase" color="fg.muted">
                         {title}
                     </Text>
                 </HStack>
                 <Icon as={open ? TbChevronUp : TbChevronDown} color="fg.muted" boxSize={4} />
             </Flex>
-            {open && (
-                <Box px={5} pb={5} pt={1}>
-                    {children}
-                </Box>
-            )}
+            {open && <Box px={5} pb={5} pt={4}>{children}</Box>}
         </Box>
     );
 }
 
+function PillButton({ active, onClick, children }) {
+    return (
+        <Button
+            size="xs"
+            variant={active ? 'solid' : 'outline'}
+            colorPalette="purple"
+            onClick={onClick}
+            fontFamily="mono"
+            borderRadius="full"
+            px={3}
+        >
+            {children}
+        </Button>
+    );
+}
+
+// ── OFP Display ────────────────────────────────────────────────────────────
+
+function OFPDisplay({ planText, onClose }) {
+    return (
+        <Box
+            borderWidth="1px"
+            borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+            borderRadius="xl"
+            overflow="hidden"
+            bg={{ base: 'white', _dark: 'gray.900' }}
+        >
+            {/* OFP Header */}
+            <Flex
+                align="center"
+                justify="space-between"
+                px={5}
+                py={3}
+                bg={{ base: 'gray.800', _dark: 'blackAlpha.500' }}
+            >
+                <HStack gap={2}>
+                    <Icon as={TbFileText} color="green.400" boxSize={4} />
+                    <Text fontWeight="bold" fontSize="sm" letterSpacing="wider" textTransform="uppercase" color="white">
+                        Operational Flight Plan
+                    </Text>
+                    <Badge colorPalette="green" variant="solid" size="xs">Generated</Badge>
+                </HStack>
+                <Button size="xs" variant="ghost" color="gray.400" _hover={{ color: 'white' }} onClick={onClose}>
+                    Close
+                </Button>
+            </Flex>
+
+            {/* OFP Body */}
+            <Box
+                as="pre"
+                p={5}
+                fontSize="xs"
+                fontFamily="'Courier New', monospace"
+                lineHeight="1.6"
+                whiteSpace="pre-wrap"
+                wordBreak="break-word"
+                color={{ base: 'gray.800', _dark: 'gray.100' }}
+                bg={{ base: 'gray.50', _dark: 'gray.950' }}
+                maxH="600px"
+                overflowY="auto"
+                css={{
+                    '&::-webkit-scrollbar': { width: '6px' },
+                    '&::-webkit-scrollbar-track': { background: 'transparent' },
+                    '&::-webkit-scrollbar-thumb': { background: 'rgba(128,128,128,0.3)', borderRadius: '3px' },
+                }}
+            >
+                {planText || 'OFP text not available.'}
+            </Box>
+        </Box>
+    );
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────
+
 export default function SimbriefPlanner() {
-    // Route
     const [ orig, setOrig ] = useState('');
     const [ dest, setDest ] = useState('');
-
-    // Aircraft
     const [ acType, setAcType ] = useState('');
     const [ acPrefix, setAcPrefix ] = useState('AI');
-
-    // Schedule
     const [ fltnum, setFltnum ] = useState('');
     const [ airline, setAirline ] = useState('INVA');
     const [ date, setDate ] = useState('');
     const [ deph, setDeph ] = useState('');
     const [ depm, setDepm ] = useState('');
-
-    // Route / perf
     const [ route, setRoute ] = useState('');
     const [ fl, setFl ] = useState('');
     const [ ci, setCi ] = useState('');
     const [ pax, setPax ] = useState('');
     const [ cargo, setCargo ] = useState('');
-
-    // Fuel policy
     const [ contpct, setContpct ] = useState('0.05');
     const [ resvrule, setResvrule ] = useState('45');
-
-    // Toggles
     const [ navlog, setNavlog ] = useState(true);
     const [ etops, setEtops ] = useState(false);
     const [ stepclimbs, setStepclimbs ] = useState(true);
     const [ tlr, setTlr ] = useState(true);
     const [ notams, setNotams ] = useState(true);
     const [ maps, setMaps ] = useState(true);
+    const [ consentChecked, setConsentChecked ] = useState(false);
 
-    const [ loading, setLoading ] = useState(false);
+    const [ dispatching, setDispatching ] = useState(false);
+    const [ polling, setPolling ] = useState(false);
+    const [ ofpText, setOfpText ] = useState(null);
+    const [ dispatchError, setDispatchError ] = useState(null);
+    const [ dispatchedRoute, setDispatchedRoute ] = useState(null);
 
-    const swapAirports = () => {
-        setOrig(dest);
-        setDest(orig);
-    };
+    const pollRef = useRef(null);
 
-    const selectAircraft = (ac) => {
-        setAcType(ac.type);
-        setAcPrefix(ac.prefix);
-    };
+    const swapAirports = () => { setOrig(dest); setDest(orig); };
+
+    const selectAircraft = (ac) => { setAcType(ac.type); setAcPrefix(ac.prefix); };
 
     const getAirframeId = () => AIRFRAME_MAP[ `${acPrefix}:${acType}` ] || null;
 
-    // Format date as DDMMMYY for SimBrief (e.g., 28APR26)
     const formatDate = (dateStr) => {
         if (!dateStr) return undefined;
         const d = new Date(dateStr);
@@ -201,21 +264,59 @@ export default function SimbriefPlanner() {
         return `${String(d.getUTCDate()).padStart(2, '0')}${months[ d.getUTCMonth() ]}${String(d.getUTCFullYear()).slice(-2)}`;
     };
 
-    const handleGenerate = async () => {
+    const stopPolling = () => {
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    };
+
+    const pollForOfp = (ofpId) => {
+        let attempts = 0;
+        const maxAttempts = 60; // 5 min at 5s intervals
+
+        pollRef.current = setInterval(async () => {
+            attempts++;
+            if (attempts > maxAttempts) {
+                stopPolling();
+                setPolling(false);
+                setDispatchError('SimBrief did not generate the OFP within the expected time. Check SimBrief directly.');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/simbrief-ofp?check=1&id=${ofpId}`);
+                const { exists } = await res.json();
+                if (exists) {
+                    stopPolling();
+                    // Fetch full OFP
+                    const ofpRes = await fetch(`/api/simbrief-ofp?id=${ofpId}`);
+                    if (ofpRes.ok) {
+                        const data = await ofpRes.json();
+                        setOfpText(data.planText);
+                        setDispatchedRoute({ orig, dest, acType });
+                    } else {
+                        setDispatchError('OFP was generated but could not be retrieved.');
+                    }
+                    setPolling(false);
+                }
+            } catch {
+                // network hiccup, keep polling
+            }
+        }, 5000);
+    };
+
+    const handleDispatch = async () => {
         if (!orig || orig.length !== 4) { toaster.create({ title: 'Enter a valid 4-letter origin ICAO', type: 'error', duration: 3000 }); return; }
         if (!dest || dest.length !== 4) { toaster.create({ title: 'Enter a valid 4-letter destination ICAO', type: 'error', duration: 3000 }); return; }
         if (!acType) { toaster.create({ title: 'Select or enter an aircraft type', type: 'error', duration: 3000 }); return; }
+        if (!consentChecked) { toaster.create({ title: 'Please confirm the briefing acknowledgement', type: 'warning', duration: 3000 }); return; }
 
-        setLoading(true);
+        setDispatching(true);
+        setDispatchError(null);
+        setOfpText(null);
+
         try {
             const body = {
-                orig, dest,
-                type: acType,
-                airframeId: getAirframeId(),
-                airline,
-                units: 'KGS',
-                contpct,
-                resvrule,
+                orig, dest, type: acType, airframeId: getAirframeId(),
+                airline, units: 'KGS', contpct, resvrule,
                 navlog, etops, stepclimbs, tlr, notams, maps,
                 ...(fltnum && { fltnum }),
                 ...(route && { route }),
@@ -236,15 +337,20 @@ export default function SimbriefPlanner() {
 
             if (!res.ok) {
                 const err = await res.json();
-                throw new Error(err.error || 'Failed to generate dispatch');
+                throw new Error(err.error || 'Dispatch failed');
             }
 
-            const { simbriefUrl } = await res.json();
+            const { simbriefUrl, ofpId } = await res.json();
             window.open(simbriefUrl, '_blank', 'noopener,noreferrer');
+
+            // Begin polling for OFP
+            setPolling(true);
+            pollForOfp(ofpId);
         } catch (err) {
+            setDispatchError(err.message);
             toaster.create({ title: 'Dispatch Error', description: err.message, type: 'error', duration: 5000 });
         } finally {
-            setLoading(false);
+            setDispatching(false);
         }
     };
 
@@ -252,74 +358,54 @@ export default function SimbriefPlanner() {
     const routeReady = orig.length === 4 && dest.length === 4 && acType;
 
     return (
-        <Box minH="100vh" px={{ base: 4, md: 8 }} py={8} maxW="1100px" mx="auto">
-            {/* Header */}
-            <Stack gap={1} mb={8}>
-                <HStack gap={3}>
-                    <Box
-                        p={2}
-                        borderRadius="lg"
-                        bg="purple.500"
-                        _dark={{ bg: 'purple.600' }}
-                        shadow="0 0 20px rgba(168,85,247,0.4)"
-                    >
-                        <Icon as={TbPlaneDeparture} color="white" boxSize={6} />
-                    </Box>
-                    <Box>
-                        <Heading size="xl" fontWeight="bold" letterSpacing="tight">SimBrief Dispatch</Heading>
-                        <Text color="fg.muted" fontSize="sm">Generate professional OFPs for Indian Virtual operations</Text>
-                    </Box>
-                </HStack>
-            </Stack>
+        <Box maxW="1100px" mx="auto">
+            {/* ── Header ── */}
+            <HStack gap={4} mb={8}>
+                <Box borderRadius="xl" overflow="hidden" w="48px" h="48px" flexShrink={0} shadow="md">
+                    <Image
+                        src="/273326625_7136525176387690_3510893692608149013_n.jpg"
+                        alt="Indian Virtual"
+                        width={48}
+                        height={48}
+                        style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                    />
+                </Box>
+                <Box>
+                    <Heading size="xl" fontWeight="bold" letterSpacing="tight" color="fg">SimBrief Dispatch</Heading>
+                    <Text color="fg.muted" fontSize="sm">Generate OFPs for Indian Virtual operations · Weights in KGS</Text>
+                </Box>
+            </HStack>
 
-            <Grid templateColumns={{ base: '1fr', lg: '1fr 320px' }} gap={6}>
-                {/* LEFT COLUMN */}
+            <Grid templateColumns={{ base: '1fr', lg: '1fr 300px' }} gap={5}>
+                {/* ── LEFT COLUMN ── */}
                 <Stack gap={5}>
+
                     {/* ROUTE */}
                     <SectionCard title="Route" icon={TbRoute}>
                         <Stack gap={4}>
                             <Flex gap={3} align="flex-end" wrap={{ base: 'wrap', sm: 'nowrap' }}>
-                                <IcaoInput
-                                    value={orig}
-                                    onChange={setOrig}
-                                    placeholder="VIDP"
-                                    icon={TbPlaneDeparture}
-                                    label="Origin"
-                                />
+                                <IcaoInput value={orig} onChange={setOrig} placeholder="VIDP" icon={TbPlaneDeparture} label="Origin" />
                                 <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={swapAirports}
-                                    mb={1}
-                                    px={2}
-                                    color="purple.400"
-                                    _hover={{ bg: 'whiteAlpha.100', color: 'purple.300' }}
-                                    flexShrink={0}
-                                    h="64px"
+                                    variant="ghost" size="sm" onClick={swapAirports}
+                                    color="purple.500" _hover={{ bg: { base: 'gray.100', _dark: 'whiteAlpha.100' } }}
+                                    flexShrink={0} h="60px" px={2} mb={0}
                                 >
                                     <Icon as={TbArrowsExchange} boxSize={5} />
                                 </Button>
-                                <IcaoInput
-                                    value={dest}
-                                    onChange={setDest}
-                                    placeholder="VABB"
-                                    icon={TbPlaneArrival}
-                                    label="Destination"
-                                />
+                                <IcaoInput value={dest} onChange={setDest} placeholder="VABB" icon={TbPlaneArrival} label="Destination" />
                             </Flex>
+                            <Separator borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.50' }} />
                             <Field.Root>
-                                <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Route String (optional)</Field.Label>
+                                <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">
+                                    Route String <Text as="span" fontWeight="normal">(optional — leave blank for auto-routing)</Text>
+                                </Field.Label>
                                 <Textarea
                                     value={route}
                                     onChange={e => setRoute(e.target.value.toUpperCase())}
-                                    placeholder="DCT IGOLU DCT ESIRU... (leave blank for SimBrief auto-routing)"
-                                    size="sm"
-                                    fontFamily="mono"
-                                    fontSize="xs"
-                                    rows={3}
-                                    borderColor="whiteAlpha.200"
-                                    bg="whiteAlpha.50"
-                                    _dark={{ bg: 'blackAlpha.300' }}
+                                    placeholder="e.g. DCT IGOLU DCT ESIRU DCT DOBIS..."
+                                    size="sm" fontFamily="mono" fontSize="xs" rows={2}
+                                    borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                                    bg={{ base: 'white', _dark: 'blackAlpha.200' }}
                                     _focus={{ borderColor: 'purple.400' }}
                                     resize="vertical"
                                 />
@@ -330,69 +416,64 @@ export default function SimbriefPlanner() {
                     {/* AIRCRAFT */}
                     <SectionCard title="Aircraft" icon={TbPlane}>
                         <Stack gap={4}>
-                            <Box>
-                                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" letterSpacing="wider" textTransform="uppercase" mb={2}>Quick Select</Text>
-                                <Grid templateColumns="repeat(auto-fill, minmax(100px, 1fr))" gap={2}>
-                                    {QUICK_AIRCRAFT.map(ac => {
-                                        const isSelected = acType === ac.type && acPrefix === ac.prefix;
-                                        return (
-                                            <Box
-                                                key={`${ac.prefix}:${ac.type}`}
-                                                onClick={() => selectAircraft(ac)}
-                                                cursor="pointer"
-                                                borderWidth="1px"
-                                                borderRadius="lg"
-                                                px={3}
-                                                py={2}
-                                                textAlign="center"
-                                                transition="all 0.15s"
-                                                borderColor={isSelected ? 'purple.400' : 'whiteAlpha.150'}
-                                                bg={isSelected ? 'purple.500' : 'whiteAlpha.50'}
-                                                _dark={{ bg: isSelected ? 'purple.700' : 'blackAlpha.200' }}
-                                                _hover={{ borderColor: 'purple.400', bg: isSelected ? 'purple.500' : 'whiteAlpha.100' }}
-                                                shadow={isSelected ? '0 0 12px rgba(168,85,247,0.3)' : 'none'}
-                                            >
-                                                <Text fontSize="sm" fontWeight="bold" fontFamily="mono" color={isSelected ? 'white' : 'fg'}>{ac.label}</Text>
-                                                <Text fontSize="10px" color={isSelected ? 'whiteAlpha.800' : 'fg.muted'} mt="1px">{ac.sub}</Text>
-                                            </Box>
-                                        );
-                                    })}
-                                </Grid>
-                            </Box>
-                            <Separator />
+                            <Grid templateColumns="repeat(auto-fill, minmax(90px, 1fr))" gap={2}>
+                                {QUICK_AIRCRAFT.map(ac => {
+                                    const selected = acType === ac.type && acPrefix === ac.prefix;
+                                    return (
+                                        <Box
+                                            key={`${ac.prefix}:${ac.type}`}
+                                            onClick={() => selectAircraft(ac)}
+                                            cursor="pointer"
+                                            borderWidth="1px"
+                                            borderRadius="lg"
+                                            px={2} py={2}
+                                            textAlign="center"
+                                            transition="all 0.15s"
+                                            borderColor={selected ? 'purple.400' : { base: 'gray.200', _dark: 'whiteAlpha.150' }}
+                                            bg={selected ? 'purple.500' : { base: 'white', _dark: 'blackAlpha.200' }}
+                                            _hover={{ borderColor: 'purple.400', bg: selected ? 'purple.500' : { base: 'purple.50', _dark: 'whiteAlpha.50' } }}
+                                            shadow={selected ? '0 0 12px rgba(168,85,247,0.3)' : 'none'}
+                                        >
+                                            <Text fontSize="sm" fontWeight="bold" fontFamily="mono" color={selected ? 'white' : 'fg'}>{ac.label}</Text>
+                                            <Text fontSize="9px" color={selected ? 'purple.100' : 'fg.muted'} mt="1px">{ac.sub}</Text>
+                                        </Box>
+                                    );
+                                })}
+                            </Grid>
+                            <Separator borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.50' }} />
                             <Grid templateColumns="1fr 1fr" gap={4}>
                                 <Field.Root>
-                                    <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">ICAO Type</Field.Label>
+                                    <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">ICAO Type</Field.Label>
                                     <Input
                                         value={acType}
                                         onChange={e => setAcType(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
                                         placeholder="A320"
-                                        fontFamily="mono"
-                                        fontWeight="bold"
-                                        borderColor="whiteAlpha.200"
-                                        bg="whiteAlpha.50"
-                                        _dark={{ bg: 'blackAlpha.300' }}
+                                        fontFamily="mono" fontWeight="bold"
+                                        borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                                        bg={{ base: 'white', _dark: 'blackAlpha.200' }}
                                         _focus={{ borderColor: 'purple.400' }}
                                     />
                                 </Field.Root>
                                 <Field.Root>
-                                    <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Airline Prefix</Field.Label>
+                                    <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">Airline Prefix</Field.Label>
                                     <Input
                                         value={acPrefix}
                                         onChange={e => setAcPrefix(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2))}
-                                        placeholder="AI"
-                                        fontFamily="mono"
-                                        borderColor="whiteAlpha.200"
-                                        bg="whiteAlpha.50"
-                                        _dark={{ bg: 'blackAlpha.300' }}
+                                        placeholder="AI" fontFamily="mono"
+                                        borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                                        bg={{ base: 'white', _dark: 'blackAlpha.200' }}
                                         _focus={{ borderColor: 'purple.400' }}
                                     />
                                 </Field.Root>
                             </Grid>
                             {airframeId && (
-                                <HStack gap={2} px={3} py={2} bg="purple.900" borderRadius="md" borderWidth="1px" borderColor="purple.700">
-                                    <Box w={2} h={2} borderRadius="full" bg="purple.400" />
-                                    <Text fontSize="xs" color="purple.300" fontFamily="mono">
+                                <HStack gap={2} px={3} py={2}
+                                    bg={{ base: 'purple.50', _dark: 'purple.950' }}
+                                    borderRadius="md" borderWidth="1px"
+                                    borderColor={{ base: 'purple.200', _dark: 'purple.800' }}
+                                >
+                                    <Box w={2} h={2} borderRadius="full" bg="purple.500" flexShrink={0} />
+                                    <Text fontSize="xs" color={{ base: 'purple.700', _dark: 'purple.300' }} fontFamily="mono">
                                         Indian Virtual airframe profile matched
                                     </Text>
                                 </HStack>
@@ -403,274 +484,278 @@ export default function SimbriefPlanner() {
                     {/* SCHEDULE */}
                     <SectionCard title="Schedule" icon={TbCalendar}>
                         <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }} gap={4}>
+                            {[
+                                { label: 'Flight No.', node: <Input value={fltnum} onChange={e => setFltnum(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))} placeholder="AI101" fontFamily="mono" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} /> },
+                                { label: 'Airline ICAO', node: <Input value={airline} onChange={e => setAirline(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4))} fontFamily="mono" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} /> },
+                                { label: 'Date', node: <Input type="date" value={date} onChange={e => setDate(e.target.value)} borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} /> },
+                            ].map(({ label, node }) => (
+                                <Field.Root key={label}>
+                                    <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">{label}</Field.Label>
+                                    {node}
+                                </Field.Root>
+                            ))}
                             <Field.Root>
-                                <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Flight No.</Field.Label>
-                                <Input
-                                    value={fltnum}
-                                    onChange={e => setFltnum(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
-                                    placeholder="AI101"
-                                    fontFamily="mono"
-                                    borderColor="whiteAlpha.200"
-                                    bg="whiteAlpha.50"
-                                    _dark={{ bg: 'blackAlpha.300' }}
-                                    _focus={{ borderColor: 'purple.400' }}
-                                />
-                            </Field.Root>
-                            <Field.Root>
-                                <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Airline ICAO</Field.Label>
-                                <Input
-                                    value={airline}
-                                    onChange={e => setAirline(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4))}
-                                    fontFamily="mono"
-                                    borderColor="whiteAlpha.200"
-                                    bg="whiteAlpha.50"
-                                    _dark={{ bg: 'blackAlpha.300' }}
-                                    _focus={{ borderColor: 'purple.400' }}
-                                />
-                            </Field.Root>
-                            <Field.Root>
-                                <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Date</Field.Label>
-                                <Input
-                                    type="date"
-                                    value={date}
-                                    onChange={e => setDate(e.target.value)}
-                                    borderColor="whiteAlpha.200"
-                                    bg="whiteAlpha.50"
-                                    _dark={{ bg: 'blackAlpha.300' }}
-                                    _focus={{ borderColor: 'purple.400' }}
-                                />
-                            </Field.Root>
-                            <Field.Root>
-                                <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">ETD (UTC)</Field.Label>
+                                <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">ETD (UTC)</Field.Label>
                                 <HStack gap={2}>
-                                    <Input
-                                        value={deph}
-                                        onChange={e => setDeph(e.target.value.replace(/[^0-9]/g, '').slice(0, 2))}
-                                        placeholder="HH"
-                                        fontFamily="mono"
-                                        maxLength={2}
-                                        borderColor="whiteAlpha.200"
-                                        bg="whiteAlpha.50"
-                                        _dark={{ bg: 'blackAlpha.300' }}
-                                        _focus={{ borderColor: 'purple.400' }}
-                                    />
-                                    <Input
-                                        value={depm}
-                                        onChange={e => setDepm(e.target.value.replace(/[^0-9]/g, '').slice(0, 2))}
-                                        placeholder="MM"
-                                        fontFamily="mono"
-                                        maxLength={2}
-                                        borderColor="whiteAlpha.200"
-                                        bg="whiteAlpha.50"
-                                        _dark={{ bg: 'blackAlpha.300' }}
-                                        _focus={{ borderColor: 'purple.400' }}
-                                    />
+                                    <Input value={deph} onChange={e => setDeph(e.target.value.replace(/[^0-9]/g, '').slice(0, 2))} placeholder="HH" fontFamily="mono" maxLength={2} borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} />
+                                    <Input value={depm} onChange={e => setDepm(e.target.value.replace(/[^0-9]/g, '').slice(0, 2))} placeholder="MM" fontFamily="mono" maxLength={2} borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} />
                                 </HStack>
                             </Field.Root>
                         </Grid>
                     </SectionCard>
 
-                    {/* PERFORMANCE */}
+                    {/* PERFORMANCE & FUEL */}
                     <SectionCard title="Performance & Fuel" icon={TbDroplet} defaultOpen={false}>
-                        <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)' }} gap={4}>
+                        <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)' }} gap={5}>
                             <Field.Root>
-                                <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Cruise FL (optional)</Field.Label>
-                                <Input
-                                    value={fl}
-                                    onChange={e => setFl(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
-                                    placeholder="Auto"
-                                    fontFamily="mono"
-                                    borderColor="whiteAlpha.200"
-                                    bg="whiteAlpha.50"
-                                    _dark={{ bg: 'blackAlpha.300' }}
-                                    _focus={{ borderColor: 'purple.400' }}
-                                />
+                                <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">Cruise FL</Field.Label>
+                                <Input value={fl} onChange={e => setFl(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))} placeholder="Auto" fontFamily="mono" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} />
                             </Field.Root>
                             <Field.Root>
-                                <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Cost Index</Field.Label>
-                                <Input
-                                    value={ci}
-                                    onChange={e => setCi(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
-                                    placeholder="Auto"
-                                    fontFamily="mono"
-                                    borderColor="whiteAlpha.200"
-                                    bg="whiteAlpha.50"
-                                    _dark={{ bg: 'blackAlpha.300' }}
-                                    _focus={{ borderColor: 'purple.400' }}
-                                />
+                                <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">Cost Index</Field.Label>
+                                <Input value={ci} onChange={e => setCi(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))} placeholder="Auto" fontFamily="mono" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} />
                             </Field.Root>
                             <Field.Root>
-                                <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Contingency Fuel</Field.Label>
-                                <Flex gap={2} wrap="wrap">
-                                    {CONT_PCTS.map(c => (
-                                        <Button
-                                            key={c.value}
-                                            size="xs"
-                                            variant={contpct === c.value ? 'solid' : 'outline'}
-                                            colorPalette="purple"
-                                            onClick={() => setContpct(c.value)}
-                                            fontFamily="mono"
-                                        >
-                                            {c.label}
-                                        </Button>
-                                    ))}
-                                </Flex>
+                                <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">Contingency</Field.Label>
+                                <HStack gap={2} wrap="wrap">
+                                    {CONT_PCTS.map(c => <PillButton key={c.value} active={contpct === c.value} onClick={() => setContpct(c.value)}>{c.label}</PillButton>)}
+                                </HStack>
                             </Field.Root>
                             <Field.Root>
-                                <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Reserve Rule</Field.Label>
-                                <Flex gap={2} wrap="wrap">
-                                    {RESERVE_RULES.map(r => (
-                                        <Button
-                                            key={r.value}
-                                            size="xs"
-                                            variant={resvrule === r.value ? 'solid' : 'outline'}
-                                            colorPalette="purple"
-                                            onClick={() => setResvrule(r.value)}
-                                            fontFamily="mono"
-                                        >
-                                            {r.label}
-                                        </Button>
-                                    ))}
-                                </Flex>
+                                <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">Reserves</Field.Label>
+                                <HStack gap={2} wrap="wrap">
+                                    {RESERVE_RULES.map(r => <PillButton key={r.value} active={resvrule === r.value} onClick={() => setResvrule(r.value)}>{r.label}</PillButton>)}
+                                </HStack>
                             </Field.Root>
                         </Grid>
                     </SectionCard>
 
                     {/* PAYLOAD */}
-                    <SectionCard title="Payload (kg)" icon={TbPackage} defaultOpen={false}>
+                    <SectionCard title="Payload" icon={TbPackage} defaultOpen={false}>
                         <Grid templateColumns="1fr 1fr" gap={4}>
                             <Field.Root>
-                                <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">
-                                    <HStack gap={1}><Icon as={TbUsers} boxSize={3} /><Text>Passengers</Text></HStack>
+                                <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">
+                                    <HStack gap={1}><Icon as={TbUsers} boxSize={3} /><span>Passengers</span></HStack>
                                 </Field.Label>
-                                <Input
-                                    value={pax}
-                                    onChange={e => setPax(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
-                                    placeholder="Auto"
-                                    fontFamily="mono"
-                                    borderColor="whiteAlpha.200"
-                                    bg="whiteAlpha.50"
-                                    _dark={{ bg: 'blackAlpha.300' }}
-                                    _focus={{ borderColor: 'purple.400' }}
-                                />
+                                <Input value={pax} onChange={e => setPax(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))} placeholder="Auto" fontFamily="mono" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} />
                             </Field.Root>
                             <Field.Root>
-                                <Field.Label fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">
-                                    <HStack gap={1}><Icon as={TbPackage} boxSize={3} /><Text>Cargo (kg)</Text></HStack>
-                                </Field.Label>
-                                <Input
-                                    value={cargo}
-                                    onChange={e => setCargo(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                                    placeholder="Auto"
-                                    fontFamily="mono"
-                                    borderColor="whiteAlpha.200"
-                                    bg="whiteAlpha.50"
-                                    _dark={{ bg: 'blackAlpha.300' }}
-                                    _focus={{ borderColor: 'purple.400' }}
-                                />
+                                <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">Cargo (kg)</Field.Label>
+                                <Input value={cargo} onChange={e => setCargo(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} placeholder="Auto" fontFamily="mono" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} bg={{ base: 'white', _dark: 'blackAlpha.200' }} _focus={{ borderColor: 'purple.400' }} />
                             </Field.Root>
                         </Grid>
-                        <Text fontSize="xs" color="fg.muted" mt={3}>
-                            Weights are always in <Badge size="xs" colorPalette="purple" variant="subtle">KGS</Badge>. Leave blank to use SimBrief defaults for the aircraft type.
-                        </Text>
+                        <Text fontSize="xs" color="fg.muted" mt={3}>All weights in <Badge size="xs" colorPalette="purple" variant="subtle">KGS</Badge>. Leave blank for SimBrief defaults.</Text>
                     </SectionCard>
-                </Stack>
 
-                {/* RIGHT COLUMN */}
-                <Stack gap={5}>
-                    {/* GENERATE BUTTON */}
+                    {/* BRIEFING CONSENT */}
                     <Box
                         borderWidth="1px"
-                        borderColor={routeReady ? 'purple.500' : 'whiteAlpha.100'}
+                        borderColor={consentChecked
+                            ? { base: 'green.300', _dark: 'green.700' }
+                            : { base: 'amber.300', _dark: 'orange.800' }}
                         borderRadius="xl"
                         p={5}
-                        bg={routeReady ? 'purple.900' : 'whiteAlpha.50'}
-                        _dark={{ bg: routeReady ? 'purple.950' : 'blackAlpha.200' }}
+                        bg={consentChecked
+                            ? { base: 'green.50', _dark: 'green.950' }
+                            : { base: 'orange.50', _dark: 'blackAlpha.300' }}
                         transition="all 0.2s"
-                        shadow={routeReady ? '0 0 30px rgba(168,85,247,0.15)' : 'none'}
                     >
-                        <Stack gap={4}>
-                            {/* Summary */}
-                            {routeReady ? (
-                                <Stack gap={2}>
-                                    <HStack justify="space-between">
-                                        <Text fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Route</Text>
-                                        <Text fontFamily="mono" fontWeight="bold" fontSize="sm">{orig} → {dest}</Text>
-                                    </HStack>
-                                    <HStack justify="space-between">
-                                        <Text fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Aircraft</Text>
-                                        <Text fontFamily="mono" fontWeight="bold" fontSize="sm">{acType}</Text>
-                                    </HStack>
-                                    {fltnum && (
-                                        <HStack justify="space-between">
-                                            <Text fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Flight</Text>
-                                            <Text fontFamily="mono" fontSize="sm">{airline}{fltnum}</Text>
-                                        </HStack>
-                                    )}
-                                    <Separator />
+                        <Checkbox.Root
+                            checked={consentChecked}
+                            onCheckedChange={e => setConsentChecked(!!e.checked)}
+                            colorPalette="green"
+                            alignItems="flex-start"
+                        >
+                            <Checkbox.HiddenInput />
+                            <Checkbox.Control mt="2px" flexShrink={0} />
+                            <Checkbox.Label>
+                                <Stack gap={1}>
+                                    <Text fontSize="sm" fontWeight="semibold" color="fg">
+                                        Pilot Flying Acknowledgement
+                                    </Text>
+                                    <Text fontSize="xs" color="fg.muted" lineHeight="tall">
+                                        I confirm that I have reviewed all available flight information including route, alternate airports, fuel requirements, estimated times, and applicable NOTAMs. As Pilot Flying for this sector, I acknowledge responsibility for the safe and professional conduct of this flight in accordance with Indian Virtual Standard Operating Procedures. I confirm that the aircraft type and planned route are within my qualification and the airline's operational limits.
+                                    </Text>
                                 </Stack>
-                            ) : (
-                                <Text fontSize="sm" color="fg.muted" textAlign="center">
-                                    Enter origin, destination and aircraft to dispatch
-                                </Text>
-                            )}
-                            <Button
-                                onClick={handleGenerate}
-                                loading={loading}
-                                loadingText="Generating..."
-                                colorPalette="purple"
-                                size="lg"
-                                w="full"
-                                disabled={!routeReady}
-                                shadow={routeReady ? '0 0 20px rgba(168,85,247,0.3)' : 'none'}
-                                _hover={{ shadow: '0 0 30px rgba(168,85,247,0.5)' }}
-                            >
-                                <Icon as={TbExternalLink} />
-                                Open SimBrief
-                            </Button>
-                            <Text fontSize="10px" color="fg.subtle" textAlign="center">
-                                Opens SimBrief in a new tab. Sign in with your SimBrief account to save the OFP.
-                            </Text>
-                        </Stack>
+                            </Checkbox.Label>
+                        </Checkbox.Root>
                     </Box>
+
+                </Stack>
+
+                {/* ── RIGHT COLUMN ── */}
+                <Stack gap={5}>
+
+                    {/* DISPATCH CARD */}
+                    <Box
+                        borderWidth="1px"
+                        borderColor={routeReady && consentChecked
+                            ? { base: 'purple.300', _dark: 'purple.700' }
+                            : { base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                        borderRadius="xl"
+                        overflow="hidden"
+                        transition="all 0.2s"
+                        shadow={routeReady && consentChecked ? '0 0 24px rgba(168,85,247,0.12)' : 'none'}
+                    >
+                        {/* Card header */}
+                        <Box
+                            px={5} py={3}
+                            bg={{ base: 'gray.50', _dark: 'blackAlpha.300' }}
+                            borderBottomWidth="1px"
+                            borderBottomColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                        >
+                            <HStack gap={2}>
+                                <Icon as={TbSend} color="purple.500" boxSize={4} />
+                                <Text fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="fg.muted">Dispatch</Text>
+                            </HStack>
+                        </Box>
+
+                        <Box px={5} py={5}>
+                            <Stack gap={4}>
+                                {/* Flight summary */}
+                                {routeReady ? (
+                                    <Stack gap={2}>
+                                        {[
+                                            { label: 'Route', value: `${orig} → ${dest}` },
+                                            { label: 'Aircraft', value: acType },
+                                            ...(fltnum ? [ { label: 'Flight', value: `${airline}${fltnum}` } ] : []),
+                                            ...(date ? [ { label: 'Date', value: formatDate(date) } ] : []),
+                                        ].map(({ label, value }) => (
+                                            <Flex key={label} justify="space-between" align="center">
+                                                <Text fontSize="xs" color="fg.muted">{label}</Text>
+                                                <Text fontFamily="mono" fontWeight="bold" fontSize="sm" color="fg">{value}</Text>
+                                            </Flex>
+                                        ))}
+                                        <Separator borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.50' }} />
+                                    </Stack>
+                                ) : (
+                                    <Text fontSize="sm" color="fg.muted" textAlign="center" py={2}>
+                                        Fill in route and aircraft to continue
+                                    </Text>
+                                )}
+
+                                <Button
+                                    onClick={handleDispatch}
+                                    loading={dispatching}
+                                    loadingText="Dispatching..."
+                                    colorPalette="purple"
+                                    size="lg"
+                                    w="full"
+                                    disabled={!routeReady || !consentChecked || dispatching || polling}
+                                >
+                                    <Icon as={TbSend} />
+                                    Dispatch
+                                </Button>
+
+                                <Text fontSize="10px" color="fg.subtle" textAlign="center">
+                                    Opens SimBrief in a new tab. Log in with your SimBrief account to save OFPs.
+                                </Text>
+                            </Stack>
+                        </Box>
+                    </Box>
+
+                    {/* POLLING STATUS */}
+                    {polling && (
+                        <Box
+                            borderWidth="1px"
+                            borderColor={{ base: 'blue.200', _dark: 'blue.800' }}
+                            borderRadius="xl"
+                            p={4}
+                            bg={{ base: 'blue.50', _dark: 'blue.950' }}
+                        >
+                            <HStack gap={3}>
+                                <Spinner size="sm" color="blue.500" />
+                                <Stack gap={0}>
+                                    <Text fontSize="sm" fontWeight="medium" color={{ base: 'blue.700', _dark: 'blue.300' }}>Awaiting OFP Generation</Text>
+                                    <Text fontSize="xs" color="fg.muted">SimBrief is processing your flight plan…</Text>
+                                </Stack>
+                            </HStack>
+                        </Box>
+                    )}
+
+                    {/* ERROR */}
+                    {dispatchError && (
+                        <Box
+                            borderWidth="1px"
+                            borderColor={{ base: 'red.200', _dark: 'red.800' }}
+                            borderRadius="xl"
+                            p={4}
+                            bg={{ base: 'red.50', _dark: 'red.950' }}
+                        >
+                            <HStack gap={2} mb={1}>
+                                <Icon as={TbAlertTriangle} color="red.500" boxSize={4} />
+                                <Text fontSize="sm" fontWeight="semibold" color={{ base: 'red.700', _dark: 'red.300' }}>Dispatch Error</Text>
+                            </HStack>
+                            <Text fontSize="xs" color="fg.muted">{dispatchError}</Text>
+                        </Box>
+                    )}
+
+                    {/* SUCCESS BADGE */}
+                    {ofpText && !polling && (
+                        <Box
+                            borderWidth="1px"
+                            borderColor={{ base: 'green.200', _dark: 'green.800' }}
+                            borderRadius="xl"
+                            p={4}
+                            bg={{ base: 'green.50', _dark: 'green.950' }}
+                        >
+                            <HStack gap={2}>
+                                <Icon as={TbCheck} color="green.500" boxSize={4} />
+                                <Text fontSize="sm" fontWeight="semibold" color={{ base: 'green.700', _dark: 'green.300' }}>OFP Ready</Text>
+                            </HStack>
+                            <Text fontSize="xs" color="fg.muted" mt={1}>
+                                {dispatchedRoute?.orig} → {dispatchedRoute?.dest} · {dispatchedRoute?.acType}
+                            </Text>
+                        </Box>
+                    )}
 
                     {/* OUTPUT OPTIONS */}
                     <SectionCard title="Output Options" icon={TbSettings}>
-                        <Stack gap={0} divideY="1px">
-                            <ToggleRow label="Navigation Log" sublabel="Detailed waypoint table" checked={navlog} onChange={setNavlog} />
-                            <ToggleRow label="Maps" sublabel="Route and weather maps" checked={maps} onChange={setMaps} />
-                            <ToggleRow label="NOTAMs" sublabel="Active NOTAMs for route" checked={notams} onChange={setNotams} />
-                            <ToggleRow label="Step Climbs" sublabel="Optimise cruise altitude steps" checked={stepclimbs} onChange={setStepclimbs} />
-                            <ToggleRow label="Top of Descent" sublabel="TLR descent calculation" checked={tlr} onChange={setTlr} />
-                            <ToggleRow label="ETOPS" sublabel="Extended range operations" checked={etops} onChange={setEtops} />
+                        <Stack gap={0}>
+                            {[
+                                { label: 'Navigation Log', sub: 'Detailed waypoint table', val: navlog, set: setNavlog },
+                                { label: 'Maps', sub: 'Route and weather maps', val: maps, set: setMaps },
+                                { label: 'NOTAMs', sub: 'Active NOTAMs for route', val: notams, set: setNotams },
+                                { label: 'Step Climbs', sub: 'Optimise cruise altitude', val: stepclimbs, set: setStepclimbs },
+                                { label: 'Top of Descent', sub: 'TLR descent calculation', val: tlr, set: setTlr },
+                                { label: 'ETOPS', sub: 'Extended range operations', val: etops, set: setEtops },
+                            ].map(({ label, sub, val, set }, i, arr) => (
+                                <Box key={label} borderBottomWidth={i < arr.length - 1 ? '1px' : '0'} borderBottomColor={{ base: 'gray.100', _dark: 'whiteAlpha.50' }}>
+                                    <ToggleRow label={label} sublabel={sub} checked={val} onChange={set} />
+                                </Box>
+                            ))}
                         </Stack>
                     </SectionCard>
 
-                    {/* INFO BOX */}
+                    {/* PRE-CONFIGURED INFO */}
                     <Box
                         borderWidth="1px"
-                        borderColor="whiteAlpha.100"
+                        borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
                         borderRadius="xl"
                         p={4}
-                        bg="whiteAlpha.50"
-                        _dark={{ bg: 'blackAlpha.200' }}
+                        bg={{ base: 'white', _dark: 'blackAlpha.200' }}
                     >
-                        <Stack gap={2}>
-                            <Text fontSize="xs" fontWeight="semibold" color="fg.muted" textTransform="uppercase" letterSpacing="wider">Pre-configured</Text>
-                            {[
-                                { label: 'Operator', value: 'Indian Virtual Airline' },
-                                { label: 'Units', value: 'Kilograms (KGS)' },
-                                { label: 'Avoided FIRs', value: 'Pakistan, Syria, Israel' },
-                            ].map(item => (
-                                <Flex key={item.label} justify="space-between" align="center">
-                                    <Text fontSize="xs" color="fg.muted">{item.label}</Text>
-                                    <Text fontSize="xs" fontWeight="medium" fontFamily="mono">{item.value}</Text>
-                                </Flex>
-                            ))}
-                        </Stack>
+                        <Text fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest" mb={3}>Pre-configured</Text>
+                        {[
+                            { label: 'Operator', value: 'Indian Virtual' },
+                            { label: 'Units', value: 'KGS' },
+                            { label: 'Avoided FIRs', value: 'PK · SY · IL' },
+                        ].map(({ label, value }) => (
+                            <Flex key={label} justify="space-between" align="center" py={1}>
+                                <Text fontSize="xs" color="fg.muted">{label}</Text>
+                                <Text fontSize="xs" fontWeight="medium" fontFamily="mono" color="fg">{value}</Text>
+                            </Flex>
+                        ))}
                     </Box>
                 </Stack>
             </Grid>
+
+            {/* ── OFP DISPLAY (full width, below grid) ── */}
+            {ofpText && (
+                <Box mt={6}>
+                    <OFPDisplay planText={ofpText} onClose={() => setOfpText(null)} />
+                </Box>
+            )}
         </Box>
     );
 }
