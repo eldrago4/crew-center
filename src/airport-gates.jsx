@@ -1,8 +1,36 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 
-const RAW_BASE = "https://raw.githubusercontent.com/InfiniteFlightAirportEditing/Airports/development";
+export const RAW_BASE = "https://raw.githubusercontent.com/InfiniteFlightAirportEditing/Airports/master";
 
-function parseAptDat(text) {
+// Map DB country names that differ from GitHub directory names
+export const COUNTRY_DIR = {
+  "USA": "United States",
+  "UK": "United Kingdom",
+  "UAE": "United Arab Emirates",
+  "South Korea": "South Korea",
+  "North Korea": "North Korea",
+  "Ivory Coast": "Ivory Coast",
+};
+
+// Brazil ICAO 2-char prefixes that use 1-level nesting
+export const BRAZIL_PREFIXES = new Set(["SB","SD","SE","SI","SJ","SK","SN","SO","SS","SW","SY"]);
+
+export function buildAptPath(icao, country) {
+  const c = icao.toUpperCase();
+  const ch1 = c[0];
+  const ch2 = c.substring(0, 2);
+  // 2-level nesting: C (Canada), K (US lower 48), Y (Australia)
+  if (ch1 === "C") return `Canada/${ch1}---/${ch2}--/${c}/apt.dat`;
+  if (ch1 === "K") return `United States/${ch1}---/${ch2}--/${c}/apt.dat`;
+  if (ch1 === "Y") return `Australia/${ch1}---/${ch2}--/${c}/apt.dat`;
+  // 1-level nesting: Brazil
+  if (BRAZIL_PREFIXES.has(ch2)) return `Brazil/${ch2}--/${c}/apt.dat`;
+  // Flat: normalize country name to match GitHub dir
+  const dir = COUNTRY_DIR[country] || country;
+  return `${dir}/${c}/apt.dat`;
+}
+
+export function parseAptDat(text) {
   const lines = text.split("\n");
   const r = { icao: "", name: "", elevation: 0, meta: {}, gates: [], runways: [], boundary: [], taxiways: [], linears: [] };
   let blk = null, nodes = [], surf = 0;
@@ -27,12 +55,31 @@ function parseAptDat(text) {
     } else if (["111","112","113","114","115","116"].includes(c)) {
       const la = +p[1], lo = +p[2];
       if (isNaN(la) || isNaN(lo)) continue;
-      nodes.push({ la, lo });
+      // Bezier nodes (112/114/116): p[3]/p[4] are the outgoing control point, paint code shifts to p[5]
+      const isBez = c === "112" || c === "114" || c === "116";
+      const bla = isBez ? +p[3] : null;
+      const blo = isBez ? +p[4] : null;
+      const pc  = parseInt(isBez ? p[5] : p[3]) || 0;
+      // Deduplicate same-position pairs (WED exports 111+112 or 112+111 at identical coords):
+      //   111 P → 112 P H : upgrade previous straight node with outgoing handle H
+      //   112 P H → 111 P : skip the redundant straight exit marker
+      const last = nodes[nodes.length - 1];
+      const dup  = last && Math.abs(last.la - la) < 1e-6 && Math.abs(last.lo - lo) < 1e-6;
+      if (dup) {
+        if (isBez && last.bla == null) { last.bla = bla; last.blo = blo; }
+        // else: straight node after bezier at same spot — skip
+      } else {
+        nodes.push({ la, lo, bla, blo, pc });
+      }
       if (c === "113" || c === "114") {
         if (blk === "b") { r.boundary = [...nodes]; blk = null; nodes = []; }
+        else if (blk === "p" && nodes.length > 2) { r.taxiways.push({ s: surf, n: [...nodes] }); nodes = []; }
       }
       if (c === "115" || c === "116") {
-        if (blk === "l" && nodes.length > 1) r.linears.push(nodes.map(n => ({ la: n.la, lo: n.lo })));
+        if (blk === "l" && nodes.length > 1) {
+          const segPc = nodes.reduce((a, n) => a || n.pc, 0);
+          r.linears.push({ pc: segPc, n: nodes.map(n => ({ la: n.la, lo: n.lo, bla: n.bla, blo: n.blo })) });
+        }
         nodes = [];
       }
     } else if (c === "1300" && p.length >= 7) {
@@ -46,7 +93,7 @@ function parseAptDat(text) {
   return r;
 }
 
-function getCenter(data) {
+export function getCenter(data) {
   let mnA = Infinity, mxA = -Infinity, mnO = Infinity, mxO = -Infinity;
   const add = (a, o) => { if (a < mnA) mnA = a; if (a > mxA) mxA = a; if (o < mnO) mnO = o; if (o > mxO) mxO = o; };
   data.gates.forEach(g => add(g.la, g.lo));
@@ -58,7 +105,7 @@ function getCenter(data) {
   return { la: cA, lo: (mnO + mxO) / 2, spanLa: mxA - mnA || 0.005, spanLo: (mxO - mnO) * cos || 0.005, cosLat: cos };
 }
 
-function pr(la, lo, cen, sc, pan, W, H) {
+export function pr(la, lo, cen, sc, pan, W, H) {
   return [(lo - cen.lo) * cen.cosLat * sc + pan.x + W / 2, -(la - cen.la) * sc + pan.y + H / 2];
 }
 
@@ -73,11 +120,38 @@ function getCategories(gates) {
   return Object.entries(m).sort((a, b) => b[1] - a[1]);
 }
 
-const K = {
+// Trace a node array onto an open canvas path using Bezier curves where handles are present.
+// Each node: { la, lo, bla?, blo? } where bla/blo is the outgoing control point (WED convention).
+// Adjacent bezier nodes: cubic (outgoing handle of prev + mirror of incoming handle of next).
+// One bezier endpoint: quadratic. Neither: straight line.
+export function traceNodes(ctx, nodes, proj) {
+  nodes.forEach((nd, i) => {
+    const [x, y] = proj(nd.la, nd.lo);
+    if (i === 0) { ctx.moveTo(x, y); return; }
+    const pv = nodes[i - 1];
+    const hP = pv.bla != null, hN = nd.bla != null;
+    if (hP && hN) {
+      const [cx1, cy1] = proj(pv.bla, pv.blo);
+      const [cx2, cy2] = proj(2 * nd.la - nd.bla, 2 * nd.lo - nd.blo);
+      ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x, y);
+    } else if (hP) {
+      const [cx1, cy1] = proj(pv.bla, pv.blo);
+      ctx.quadraticCurveTo(cx1, cy1, x, y);
+    } else if (hN) {
+      const [cx2, cy2] = proj(2 * nd.la - nd.bla, 2 * nd.lo - nd.blo);
+      ctx.quadraticCurveTo(cx2, cy2, x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+}
+
+export const K = {
   bg: "#080b12", pn: "#0d1117", pl: "#151b25", bd: "#1c2333",
   tx: "#d1d5db", dm: "#6b7280", mu: "#4b5563",
   bnd: "#141925", bns: "#1f2740", tw: "#111827", tws: "#1a2235", ln: "#151c2e",
-  rw: "#2a3350", re: "#3d4a6b", rl: "#8892aa",
+  tl: "#c8a800", tlh: "#e87f00", tlw: "#7a8fa8",
+  rw: "#2a3350", re: "#3d4a6b", rl: "#c8d0e0",
   gt: "#3b82f6", gh: "#6366f1",
   sl: "#f59e0b", sg: "#f59e0b40",
   cm: "#10b981", cg: "#10b98130",
@@ -140,9 +214,7 @@ export default function App() {
           country: ap.country,
           hasGates: Array.isArray(ap.gates) && ap.gates.length > 0,
           dbGates: Array.isArray(ap.gates) ? ap.gates.map(g => typeof g === "string" ? g : g.name) : [],
-          path: ap.country === "USA"
-            ? `United States/${ap.icao[0]}---/${ap.icao.substring(0, 2)}--/${ap.icao}/apt.dat`
-            : `${ap.country}/${ap.icao}/apt.dat`,
+          path: buildAptPath(ap.icao, ap.country),
         }));
         a.sort((x, y) => x.icao.localeCompare(y.icao));
         setIdx(a);
@@ -244,22 +316,69 @@ export default function App() {
 
     if (apt.boundary.length > 2) {
       ctx.beginPath();
-      apt.boundary.forEach((n, i) => { const [x, y] = p(n.la, n.lo); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      traceNodes(ctx, apt.boundary, p);
       ctx.closePath(); ctx.fillStyle = K.bnd; ctx.fill(); ctx.strokeStyle = K.bns; ctx.lineWidth = 1; ctx.stroke();
     }
+    // Surface-aware fill for pavement areas; stroke is zoom-adaptive and very thin
+    const bw = Math.max(0.08, Math.min(0.35, sc / 80000));
+    const surfStyle = (s) => {
+      if (s === 3)  return [K.tw.replace("111827","0e1a0e"), "#162216"]; // grass
+      if (s === 4)  return ["#17120a", "#21190e"]; // dirt
+      if (s === 5)  return ["#141418", "#1e1e24"]; // gravel
+      if (s === 12) return ["#1a1810", "#24201a"]; // dry lakebed
+      if (s === 14) return ["#192030", "#253045"]; // snow/ice
+      if (s === 15) return [null, null];            // transparent — skip
+      if (s >= 50)  return ["#121c2a", "#1c2c3e"]; // concrete variants
+      return [K.tw, K.tws];                         // asphalt (1,2,20-38) + default
+    };
     apt.taxiways.forEach(t => {
       if (t.n.length < 3) return;
+      const [fill, stroke] = surfStyle(t.s);
+      if (!fill) return;
       ctx.beginPath();
-      t.n.forEach((n, i) => { const [x, y] = p(n.la, n.lo); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-      ctx.closePath(); ctx.fillStyle = K.tw; ctx.fill(); ctx.strokeStyle = K.tws; ctx.lineWidth = 0.5; ctx.stroke();
+      traceNodes(ctx, t.n, p);
+      ctx.closePath();
+      ctx.fillStyle = fill; ctx.fill();
+      ctx.strokeStyle = stroke; ctx.lineWidth = bw; ctx.stroke();
     });
-    ctx.strokeStyle = K.ln; ctx.lineWidth = 0.4;
-    apt.linears.forEach(l => {
-      if (l.length < 2) return;
+    // Per apt.dat spec paint codes:
+    //  1/7/51/57 = solid yellow centerline (full width)
+    //  2/8/9/52/58/59 = broken/dashed yellow centerline
+    //  3/53 = double solid yellow — taxiway EDGE marking (thin yellow)
+    //  4/5/54/55 = runway & non-runway hold-short (orange)
+    //  6/56 = ILS critical area (orange, dashed approximation)
+    //  20/21/22 = white/chequerboard/broken-white runway markings (gray)
+    const tlW   = Math.max(0.8, Math.min(3, sc / 18000));
+    const DASH  = new Set([2, 8, 9, 52, 58, 59]);
+    const EDGE  = new Set([3, 53]);
+    const HOLD  = new Set([4, 5, 54, 55]);
+    const ILS   = new Set([6, 56]);
+    const WHITE = new Set([20, 21, 22]);
+    apt.linears.forEach(({ pc, n }) => {
+      if (n.length < 2) return;
+      let color, width, dash = [];
+      if (WHITE.has(pc)) {
+        color = K.tlw; width = tlW * 0.65;
+        if (pc === 22) dash = [6 * tlW, 4 * tlW]; // broken white
+      } else if (EDGE.has(pc)) {
+        color = K.tl; width = tlW * 0.5;           // thin yellow edge
+      } else if (HOLD.has(pc)) {
+        color = K.tlh; width = tlW * 1.15;         // orange hold-short
+      } else if (ILS.has(pc)) {
+        color = K.tlh; width = tlW * 0.9;
+        dash = [4 * tlW, 3 * tlW];                 // dashed ILS zone
+      } else if (DASH.has(pc)) {
+        color = K.tl; width = tlW;
+        dash = [5 * tlW, 4 * tlW];                 // dashed centerline
+      } else {
+        color = K.tl; width = tlW;                 // solid yellow centerline (default)
+      }
+      ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash);
       ctx.beginPath();
-      l.forEach((n, i) => { const [x, y] = p(n.la, n.lo); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      traceNodes(ctx, n, p);
       ctx.stroke();
     });
+    ctx.setLineDash([]);
     apt.runways.forEach(rw => {
       const [x1, y1] = p(rw.e1.la, rw.e1.lo), [x2, y2] = p(rw.e2.la, rw.e2.lo);
       const dx = x2 - x1, dy = y2 - y1, l = Math.sqrt(dx * dx + dy * dy);
@@ -273,8 +392,10 @@ export default function App() {
       ctx.strokeStyle = "#ffffff12"; ctx.lineWidth = 1; ctx.setLineDash([6, 8]); ctx.stroke(); ctx.setLineDash([]);
       if (zm > 0.3) {
         ctx.font = `bold ${Math.min(14, 10 * zm)}px system-ui`; ctx.fillStyle = K.rl; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.shadowColor = "#000"; ctx.shadowBlur = 4;
         const o = wP / 2 + 15;
         ctx.fillText(rw.e1.n, x1 - dx / l * o, y1 - dy / l * o); ctx.fillText(rw.e2.n, x2 + dx / l * o, y2 + dy / l * o);
+        ctx.shadowBlur = 0;
       }
     });
     // Draw gate dots first, collect label candidates
@@ -297,17 +418,30 @@ export default function App() {
     // Sort: hovered first, then selected, then rest
     labels.sort((a, b) => b.pri - a.pri);
     const placed = [];
-    const PAD = 2;
+    const PAD = 3;
     labels.forEach(lb => {
       const fs = Math.max(7, Math.min(11, 8 * zm));
       ctx.font = `${lb.iS || lb.iH ? "600" : "400"} ${fs}px system-ui`;
       const tw = ctx.measureText(lb.sh).width;
-      const lx = lb.gx - tw / 2 - PAD, ly = lb.gy - lb.r - fs - PAD;
+      const lx = lb.gx - tw / 2 - PAD, ly = lb.gy - lb.r - fs - PAD - 2;
       const lw = tw + PAD * 2, lh = fs + PAD * 2;
-      const overlaps = placed.some(p => lx < p.x + p.w && lx + lw > p.x && ly < p.y + p.h && ly + lh > p.y);
+      const overlaps = placed.some(q => lx < q.x + q.w && lx + lw > q.x && ly < q.y + q.h && ly + lh > q.y);
       if (overlaps && !lb.iH && !lb.iS) return;
       placed.push({ x: lx, y: ly, w: lw, h: lh });
-      ctx.fillStyle = lb.iS ? K.sl : lb.iH ? "#fff" : lb.iC ? K.cm : "#667799";
+      // Dark pill background so label reads on any surface (taxiway lines, runways, etc.)
+      ctx.fillStyle = lb.iS ? "rgba(0,0,0,0.55)" : lb.iH ? "rgba(0,0,0,0.65)" : "rgba(0,0,0,0.5)";
+      ctx.beginPath();
+      const rr = lh / 2;
+      ctx.moveTo(lx + rr, ly);
+      ctx.lineTo(lx + lw - rr, ly);
+      ctx.arcTo(lx + lw, ly, lx + lw, ly + lh, rr);
+      ctx.arcTo(lx + lw, ly + lh, lx, ly + lh, rr);
+      ctx.arcTo(lx, ly + lh, lx, ly, rr);
+      ctx.arcTo(lx, ly, lx + lw, ly, rr);
+      ctx.closePath();
+      ctx.fill();
+      const textColor = lb.iS ? K.sl : lb.iH ? "#ffffff" : lb.iC ? K.cm : "#a8b8cc";
+      ctx.fillStyle = textColor;
       ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText(lb.sh, lb.gx, lb.gy - lb.r - 2);
     });
     if (hover) {

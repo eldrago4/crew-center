@@ -15,6 +15,7 @@ import {
     FileUpload,
 } from "@chakra-ui/react";
 import { useState } from "react";
+import GateAllocationDrawer from "./GateAllocationDrawer";
 
 export default function EventsManager({ initialEventsData, moduleName = "events" }) {
 
@@ -43,6 +44,7 @@ export default function EventsManager({ initialEventsData, moduleName = "events"
     const [ isAdding, setIsAdding ] = useState(false);
     const [ isUpdating, setIsUpdating ] = useState(false);
     const [ timeInputValue, setTimeInputValue ] = useState("");
+    const [ allocatingEvent, setAllocatingEvent ] = useState(null);
 
 
     const handleSave = async () => {
@@ -75,6 +77,7 @@ export default function EventsManager({ initialEventsData, moduleName = "events"
 
     const handleAdd = () => {
         setEditingEvent({
+            id: crypto.randomUUID(),
             title: "",
             route: "",
             multiplier: 1,
@@ -224,6 +227,9 @@ export default function EventsManager({ initialEventsData, moduleName = "events"
             // Ensure promoted is a boolean
             eventToSave.promoted = Boolean(eventToSave.promoted);
 
+            // Backfill id for legacy events that were created before this field existed
+            if (!eventToSave.id) eventToSave.id = crypto.randomUUID();
+
             // Remove temporary fields
             delete eventToSave.bannerFile;
 
@@ -233,7 +239,7 @@ export default function EventsManager({ initialEventsData, moduleName = "events"
                 updatedEvents = [ ...events, eventToSave ];
                 setEvents(updatedEvents);
             } else {
-                const index = events.findIndex((e) => e === editingEvent);
+                const index = events.findIndex((e) => e.id === eventToSave.id || e === editingEvent);
                 if (index !== -1) {
                     updatedEvents = [ ...events ];
                     updatedEvents[ index ] = eventToSave;
@@ -321,6 +327,13 @@ export default function EventsManager({ initialEventsData, moduleName = "events"
                                         isDisabled={event.promoted}
                                     >
                                         Promote
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        colorPalette="purple"
+                                        onClick={() => setAllocatingEvent(event)}
+                                    >
+                                        Allocate Gates
                                     </Button>
                                 </HStack>
                             </Stack>
@@ -490,6 +503,13 @@ export default function EventsManager({ initialEventsData, moduleName = "events"
             <Button mt={4} onClick={handleSave} isLoading={isUpdating} loadingText="Updating...">
                 Save Changes
             </Button>
+
+            {allocatingEvent && (
+                <GateAllocationDrawer
+                    event={allocatingEvent}
+                    onClose={() => setAllocatingEvent(null)}
+                />
+            )}
         </Box>
     );
 }
