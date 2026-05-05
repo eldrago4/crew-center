@@ -5,7 +5,7 @@ import {
     Stack, Text, Textarea, Badge, Separator, Switch, Field, Checkbox,
     Spinner, Center, Select, Portal, createListCollection,
 } from '@chakra-ui/react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
     TbPlane, TbPlaneDeparture, TbPlaneArrival, TbArrowsExchange,
@@ -353,7 +353,24 @@ export default function SimbriefPlanner() {
         if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     };
 
-    const pollForOfp = (ofpId) => {
+    const loadOfp = useCallback(async (ofpId, routeSnapshot = {}) => {
+        const normalizedOfpId = String(ofpId || '').toUpperCase();
+        const ofpRes = await fetch(`/api/simbrief-ofp?id=${encodeURIComponent(normalizedOfpId)}`);
+        if (!ofpRes.ok) throw new Error('OFP was generated but could not be retrieved.');
+
+        const data = await ofpRes.json();
+        setOfpText(data.planText);
+        setDispatchedRoute({
+            orig: routeSnapshot.orig || orig,
+            dest: routeSnapshot.dest || dest,
+            acType: routeSnapshot.acType || acType,
+        });
+        setDispatchError(null);
+        setPolling(false);
+        return data;
+    }, [orig, dest, acType]);
+
+    const pollForOfp = (ofpId, routeSnapshot = {}) => {
         let attempts = 0;
         const maxAttempts = 60; // 5 min at 5s intervals
 
@@ -367,26 +384,67 @@ export default function SimbriefPlanner() {
             }
 
             try {
-                const res = await fetch(`/api/simbrief-ofp?check=1&id=${ofpId}`);
+                const res = await fetch(`/api/simbrief-ofp?check=1&id=${encodeURIComponent(ofpId)}`);
                 const { exists } = await res.json();
                 if (exists) {
                     stopPolling();
-                    // Fetch full OFP
-                    const ofpRes = await fetch(`/api/simbrief-ofp?id=${ofpId}`);
-                    if (ofpRes.ok) {
-                        const data = await ofpRes.json();
-                        setOfpText(data.planText);
-                        setDispatchedRoute({ orig, dest, acType });
-                    } else {
-                        setDispatchError('OFP was generated but could not be retrieved.');
-                    }
-                    setPolling(false);
+                    await loadOfp(ofpId, routeSnapshot);
                 }
             } catch {
                 // network hiccup, keep polling
             }
         }, 5000);
     };
+
+    useEffect(() => () => stopPolling(), []);
+
+    useEffect(() => {
+        const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('inva-simbrief-ofp') : null;
+
+        const handleOfpReady = event => {
+            const payload = event.data || {};
+            if (payload.type !== 'simbrief-ofp-ready' || !payload.ofpId) return;
+            stopPolling();
+            setPolling(false);
+            loadOfp(payload.ofpId, payload.route).catch(err => setDispatchError(err.message));
+        };
+
+        const handleStorage = event => {
+            if (event.key !== 'inva-simbrief-ofp-ready' || !event.newValue) return;
+            try {
+                handleOfpReady({ data: JSON.parse(event.newValue) });
+            } catch { /* ignore malformed storage events */ }
+        };
+
+        channel?.addEventListener('message', handleOfpReady);
+        window.addEventListener('storage', handleStorage);
+
+        return () => {
+            channel?.removeEventListener('message', handleOfpReady);
+            channel?.close();
+            window.removeEventListener('storage', handleStorage);
+        };
+    }, [loadOfp]);
+
+    useEffect(() => {
+        const returnedOfpId = searchParams.get('ofp_id') || searchParams.get('ofpId') || searchParams.get('id');
+        if (!returnedOfpId) return;
+
+        const message = {
+            type: 'simbrief-ofp-ready',
+            ofpId: returnedOfpId.toUpperCase(),
+            route: { orig, dest, acType },
+        };
+
+        try {
+            const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('inva-simbrief-ofp') : null;
+            channel?.postMessage(message);
+            channel?.close();
+            localStorage.setItem('inva-simbrief-ofp-ready', JSON.stringify({ ...message, ts: Date.now() }));
+        } catch { /* storage/broadcast can fail in private contexts */ }
+
+        loadOfp(returnedOfpId, message.route).catch(err => setDispatchError(err.message));
+    }, [searchParams, orig, dest, acType, loadOfp]);
 
     const handleDispatch = async () => {
         if (!orig || orig.length !== 4) { toaster.create({ title: 'Enter a valid 4-letter origin ICAO', type: 'error', duration: 3000 }); return; }
@@ -431,7 +489,7 @@ export default function SimbriefPlanner() {
 
             // Begin polling for OFP
             setPolling(true);
-            pollForOfp(ofpId);
+            pollForOfp(ofpId, { orig, dest, acType });
         } catch (err) {
             setDispatchError(err.message);
             toaster.create({ title: 'Dispatch Error', description: err.message, type: 'error', duration: 5000 });

@@ -176,7 +176,7 @@ export default function CrewLoginPage() {
               <CallsignInput
                 value={callsign}
                 onChange={setCallsign}
-                placeholder="Enter 3-digit callsign"
+                placeholder="000"
                 maxLength={3}
               />
               <Button

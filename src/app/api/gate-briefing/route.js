@@ -61,16 +61,33 @@ async function sendDmWithImage({ channelId, embed, imageBuffer }) {
   }
 }
 
+function formatPushbackTime(eventMeta = {}) {
+  if (eventMeta.pushbackTime) return eventMeta.pushbackTime
+  const raw = eventMeta.pushback || eventMeta.pushbackIso
+  if (!raw) return '—'
+  const date = new Date(String(raw).replace('+5:30', '+05:30'))
+  if (Number.isNaN(date.getTime())) return String(raw)
+  return date.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata',
+  }) + ' IST'
+}
+
 function buildEmbed({ allocation, eventMeta, simbriefData }) {
   const fields = []
 
   if (allocation.sequenceNumber) {
     fields.push({ name: 'Slot', value: `#${allocation.sequenceNumber}`, inline: true })
   }
+  if (allocation.roundNumber) {
+    fields.push({ name: 'Round', value: `R${allocation.roundNumber}`, inline: true })
+  }
   fields.push(
     { name: 'Aircraft', value: eventMeta.aircraft || '—', inline: true },
     { name: 'Your Gate', value: `${allocation.gateName} (${allocation.icao})`, inline: true },
-    { name: 'Pushback', value: eventMeta.pushbackTime || '—', inline: true },
+    { name: 'Pushback', value: formatPushbackTime(eventMeta), inline: true },
   )
 
   if (simbriefData) {

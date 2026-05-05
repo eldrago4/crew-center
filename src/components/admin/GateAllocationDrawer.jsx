@@ -6,10 +6,43 @@ import {
   Drawer,
 } from '@chakra-ui/react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Clipboard } from 'lucide-react';
 import { toaster } from '@/components/ui/toaster';
 import {
   RAW_BASE, buildAptPath, parseAptDat, getCenter, pr, traceNodes, K,
 } from '@/airport-gates';
+
+const ROUND_COLORS = ['#22c55e', '#3b82f6', '#eab308', '#ec4899', '#a855f7'];
+
+function getRoundNumber(index, total, roundCount) {
+  const rounds = Math.max(0, Math.min(5, Number(roundCount) || 0));
+  if (!rounds || total <= 0) return null;
+  const activeRounds = Math.min(rounds, total);
+  const baseSize = Math.floor(total / activeRounds);
+  const extra = total % activeRounds;
+  let start = 0;
+  for (let r = 1; r <= activeRounds; r++) {
+    const size = baseSize + (r <= extra ? 1 : 0);
+    if (index >= start && index < start + size) return r;
+    start += size;
+  }
+  return activeRounds;
+}
+
+function formatPushbackTime(event) {
+  if (!event) return '';
+  if (event.pushbackTime) return event.pushbackTime;
+  const raw = event.pushback || event.pushbackIso;
+  if (!raw) return '';
+  const date = new Date(String(raw).replace('+5:30', '+05:30'));
+  if (Number.isNaN(date.getTime())) return String(raw);
+  return date.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata',
+  }) + ' IST';
+}
 
 // ─── canvas render helpers ───────────────────────────────────────────────────
 
@@ -82,29 +115,32 @@ function drawAirportMap(ctx, apt, cen, zm, pan, W, H, allocations, selectedPilot
     ctx.setLineDash([]);
   });
 
-  // Build gate allocation lookup: gateName → pilot display name
+  // Build gate allocation lookup: gateName → allocation
   const allocMap = {};
-  allocations.forEach(a => { allocMap[a.gateName] = a.ifcName || a.displayName; });
+  allocations.forEach(a => { allocMap[a.gateName] = a; });
 
   apt.gates.forEach(g => {
     const [gx, gy] = p(g.la, g.lo);
     if (gx < -30 || gx > W + 30 || gy < -30 || gy > H + 30) return;
-    const isAlloc = allocMap[g.name] != null;
+    const allocation = allocMap[g.name];
+    const isAlloc = allocation != null;
     const iH = hover === g.name;
     const hvy = g.ac.includes('heavy');
     const r = (hvy ? 5 : 3.5) * Math.min(1.8, Math.max(0.7, zm * 0.6));
+    const roundColor = allocation?.roundNumber ? ROUND_COLORS[(allocation.roundNumber - 1) % ROUND_COLORS.length] : K.sl;
 
     if (isAlloc || iH) {
       ctx.beginPath(); ctx.arc(gx, gy, r + 5, 0, Math.PI * 2);
-      ctx.fillStyle = isAlloc ? '#f59e0b40' : '#ffffff30'; ctx.fill();
+      ctx.fillStyle = isAlloc ? `${roundColor}40` : '#ffffff30'; ctx.fill();
     }
     ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI * 2);
-    ctx.fillStyle = isAlloc ? K.sl : iH ? '#93c5fd' : hvy ? K.gh : K.gt;
+    ctx.fillStyle = isAlloc ? roundColor : iH ? '#93c5fd' : hvy ? K.gh : K.gt;
     ctx.fill();
     if (iH) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke(); }
 
     if (isAlloc && zm > 0.8) {
-      const label = allocMap[g.name];
+      const labelName = allocation.ifcName || allocation.displayName;
+      const label = allocation.roundNumber ? `R${allocation.roundNumber} · ${labelName}` : labelName;
       const fs = Math.max(7, Math.min(11, 8 * zm));
       ctx.font = `600 ${fs}px system-ui`;
       const tw = ctx.measureText(label).width;
@@ -120,7 +156,7 @@ function drawAirportMap(ctx, apt, cen, zm, pan, W, H, allocations, selectedPilot
       ctx.arcTo(lx, ly + lh, lx, ly, rr);
       ctx.arcTo(lx, ly, lx + lw, ly, rr);
       ctx.closePath(); ctx.fill();
-      ctx.fillStyle = K.sl;
+      ctx.fillStyle = roundColor;
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.fillText(label, gx, gy - r - 2);
     } else if ((zm > 1.8 || iH) && !isAlloc) {
@@ -282,6 +318,7 @@ export default function GateAllocationDrawer({ event, onClose }) {
   const [pilotOrder, setPilotOrder] = useState([]);
   const [dragSrcIdx, setDragSrcIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
+  const [roundCount, setRoundCount] = useState('');
 
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -300,6 +337,30 @@ export default function GateAllocationDrawer({ event, onClose }) {
     const rest = attendees.filter(a => !pilotOrder.includes(a.discordId));
     return [...ordered, ...rest];
   }, [attendees, pilotOrder]);
+
+  const roundByDiscordId = useMemo(() => {
+    const map = {};
+    const orderIds = orderedAttendees.length ? orderedAttendees.map(a => a.discordId) : pilotOrder;
+    orderIds.forEach((discordId, idx) => {
+      const roundNumber = getRoundNumber(idx, orderIds.length, roundCount);
+      if (roundNumber) map[discordId] = roundNumber;
+    });
+    return map;
+  }, [orderedAttendees, pilotOrder, roundCount]);
+
+  const withRoundInfo = useCallback((allocations) => (
+    allocations.map(a => ({
+      ...a,
+      roundNumber: roundByDiscordId[a.discordId] || null,
+    }))
+  ), [roundByDiscordId]);
+
+  const currentAllocationsWithRounds = useMemo(
+    () => withRoundInfo(currentAllocations),
+    [currentAllocations, withRoundInfo]
+  );
+
+  const pushbackTime = useMemo(() => formatPushbackTime(event), [event]);
 
   // Parse Discord event ID from signupUrl
   const discordEventId = useMemo(
@@ -376,6 +437,7 @@ export default function GateAllocationDrawer({ event, onClose }) {
         if (d.arrivalAllocations) setArrivalAllocations(d.arrivalAllocations);
         if (d.simbriefData) { setSimbriefData(d.simbriefData); setSimbriefUsername(d.simbriefData.username || ''); }
         if (d.pilotOrder?.length) setPilotOrder(d.pilotOrder);
+        setRoundCount(d.roundCount ? String(d.roundCount) : '');
       })
       .catch(() => {});
   }, [event?.id]);
@@ -407,8 +469,8 @@ export default function GateAllocationDrawer({ event, onClose }) {
     cv.width = W * dp; cv.height = H * dp;
     cv.style.width = W + 'px'; cv.style.height = H + 'px';
     ctx.scale(dp, dp);
-    drawAirportMap(ctx, currentApt, cen, zm, pan, W, H, currentAllocations, selectedPilot, hover);
-  }, [currentApt, cen, zm, pan, sz, currentAllocations, selectedPilot, hover]);
+    drawAirportMap(ctx, currentApt, cen, zm, pan, W, H, currentAllocationsWithRounds, selectedPilot, hover);
+  }, [currentApt, cen, zm, pan, sz, currentAllocationsWithRounds, selectedPilot, hover]);
 
   // Gate hit test
   function findAt(cx, cy) {
@@ -487,7 +549,7 @@ export default function GateAllocationDrawer({ event, onClose }) {
       const res = await fetch('/api/gate-allocations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: event.id, departureAllocations, arrivalAllocations, simbriefData, pilotOrder }),
+        body: JSON.stringify({ eventId: event.id, departureAllocations, arrivalAllocations, simbriefData, pilotOrder, roundCount: Number(roundCount) || 0 }),
       });
       if (!res.ok) throw new Error('Save failed');
       toaster.create({ title: 'Allocations saved', type: 'success', duration: 2000 });
@@ -495,6 +557,28 @@ export default function GateAllocationDrawer({ event, onClose }) {
       toaster.create({ title: e.message, type: 'error', duration: 4000 });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCopyAllocations() {
+    const orderedLines = [...currentAllocationsWithRounds]
+      .sort((a, b) => {
+        const aIdx = pilotOrder.indexOf(a.discordId);
+        const bIdx = pilotOrder.indexOf(b.discordId);
+        return (aIdx === -1 ? Number.MAX_SAFE_INTEGER : aIdx) - (bIdx === -1 ? Number.MAX_SAFE_INTEGER : bIdx);
+      })
+      .map(a => `<@${a.discordId}> ${a.roundNumber ? `R${a.roundNumber} ` : ''}${a.gateName}`);
+
+    if (!orderedLines.length) {
+      toaster.create({ title: 'No allocated gates to copy', type: 'error', duration: 2500 });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(orderedLines.join('\n'));
+      toaster.create({ title: 'Gate list copied', type: 'success', duration: 2000 });
+    } catch {
+      toaster.create({ title: 'Clipboard permission denied', type: 'error', duration: 3000 });
     }
   }
 
@@ -517,7 +601,7 @@ export default function GateAllocationDrawer({ event, onClose }) {
       }
 
       // Generate gate images client-side
-      const allocationsWithImages = await Promise.all(combined.map(async (a, i) => {
+      const allocationsWithImages = await Promise.all(withRoundInfo(combined).map(async (a, i) => {
         const seqIdx = pilotOrder.indexOf(a.discordId);
         const sequenceNumber = seqIdx >= 0 ? seqIdx + 1 : i + 1;
         const aptData = a.icao === event.departureIcao ? depApt : arrApt;
@@ -540,7 +624,9 @@ export default function GateAllocationDrawer({ event, onClose }) {
             departureIcao: event.departureIcao,
             arrivalIcao: event.arrivalIcao,
             aircraft: event.aircraft,
-            pushbackTime: event.pushbackTime,
+            pushbackTime,
+            pushbackIso: event.pushbackIso,
+            pushback: event.pushback,
           },
           simbriefData,
         }),
@@ -663,9 +749,43 @@ export default function GateAllocationDrawer({ event, onClose }) {
             <div style={panelStyle}>
               {/* Attendees */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: K.dm, letterSpacing: '0.08em', marginBottom: 4 }}>
-                  ATTENDEES {attendees.length > 0 && `(${attendees.length})`}
-                  <span style={{ fontWeight: 400, marginLeft: 6, color: K.mu }}>drag to reorder</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: K.dm, letterSpacing: '0.08em', flex: 1 }}>
+                    ATTENDEES {attendees.length > 0 && `(${attendees.length})`}
+                    <span style={{ fontWeight: 400, marginLeft: 6, color: K.mu }}>drag to reorder</span>
+                  </div>
+                  <button
+                    onClick={handleCopyAllocations}
+                    title={`Copy ${aptMode === 'departure' ? 'departure' : 'arrival'} gates`}
+                    style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', background: K.pl, border: `1px solid ${K.bd}`, borderRadius: 6, color: K.dm, cursor: 'pointer', flexShrink: 0 }}
+                  >
+                    <Clipboard size={13} />
+                  </button>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, color: K.dm, minWidth: 48 }}>Rounds</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="5"
+                    value={roundCount}
+                    onChange={e => {
+                      const value = e.target.value;
+                      if (value === '') { setRoundCount(''); return; }
+                      setRoundCount(String(Math.max(0, Math.min(5, Number(value) || 0))));
+                    }}
+                    placeholder="Off"
+                    style={{ width: 64, background: K.pl, border: `1px solid ${K.bd}`, borderRadius: 6, padding: '4px 8px', color: K.tx, fontSize: 12, outline: 'none' }}
+                  />
+                  <div style={{ display: 'flex', gap: 4, minWidth: 0 }}>
+                    {ROUND_COLORS.slice(0, Number(roundCount) || 0).map((color, idx) => (
+                      <span
+                        key={color}
+                        title={`Round ${idx + 1}`}
+                        style={{ width: 16, height: 16, borderRadius: '50%', background: color, border: '1px solid #ffffff40', flexShrink: 0 }}
+                      />
+                    ))}
+                  </div>
                 </div>
                 {attendeesLoading && <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: K.dm, fontSize: 13 }}><Spinner size="sm" /> Loading...</div>}
                 {!attendeesLoading && attendees.length === 0 && (
@@ -678,6 +798,7 @@ export default function GateAllocationDrawer({ event, onClose }) {
                     const isSelected = selectedPilot === a.discordId;
                     const isAssigned = currentAllocations.some(x => x.discordId === a.discordId);
                     const isDragOver = dragOverIdx === idx;
+                    const roundNumber = roundByDiscordId[a.discordId];
                     return (
                       <div
                         key={a.discordId}
@@ -687,8 +808,8 @@ export default function GateAllocationDrawer({ event, onClose }) {
                         onDrop={e => {
                           e.preventDefault();
                           if (dragSrcIdx === null || dragSrcIdx === idx) return;
-                          setPilotOrder(prev => {
-                            const next = [...prev];
+                          setPilotOrder(() => {
+                            const next = orderedAttendees.map(p => p.discordId);
                             const [moved] = next.splice(dragSrcIdx, 1);
                             next.splice(idx, 0, moved);
                             return next;
@@ -708,6 +829,11 @@ export default function GateAllocationDrawer({ event, onClose }) {
                         <span style={{ color: K.mu, fontSize: 10, fontWeight: 700, minWidth: 18, textAlign: 'right', flexShrink: 0 }}>
                           {pilotOrder.indexOf(a.discordId) + 1 || idx + 1}
                         </span>
+                        {roundNumber && (
+                          <span style={{ background: ROUND_COLORS[(roundNumber - 1) % ROUND_COLORS.length], color: '#08111f', borderRadius: 4, padding: '1px 4px', fontSize: 9, fontWeight: 800, flexShrink: 0 }}>
+                            R{roundNumber}
+                          </span>
+                        )}
                         {a.avatarUrl && <img src={a.avatarUrl} alt="" style={{ width: 22, height: 22, borderRadius: '50%' }} />}
                         <div style={{ flex: 1, overflow: 'hidden' }}>
                           <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ifcName || a.displayName}</div>
@@ -729,8 +855,13 @@ export default function GateAllocationDrawer({ event, onClose }) {
                 </div>
                 {currentAllocations.length === 0 && <div style={{ fontSize: 12, color: K.mu }}>None yet. Select a pilot then click a gate.</div>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 160, overflowY: 'auto' }}>
-                  {currentAllocations.map(a => (
+                  {currentAllocationsWithRounds.map(a => (
                     <div key={a.discordId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', background: K.pl, borderRadius: 5, fontSize: 12 }}>
+                      {a.roundNumber && (
+                        <span style={{ background: ROUND_COLORS[(a.roundNumber - 1) % ROUND_COLORS.length], color: '#08111f', borderRadius: 4, padding: '1px 4px', fontSize: 9, fontWeight: 800, flexShrink: 0 }}>
+                          R{a.roundNumber}
+                        </span>
+                      )}
                       <span style={{ color: K.sl, fontWeight: 700, fontFamily: 'monospace', flexShrink: 0 }}>{a.gateName}</span>
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: K.dm }}>{a.ifcName || a.displayName}</span>
                       <button

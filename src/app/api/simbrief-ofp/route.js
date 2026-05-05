@@ -18,11 +18,12 @@ export async function GET(request) {
     const ofpId = searchParams.get('id')
     const check = searchParams.get('check') // just existence check
 
-    if (!ofpId || !/^\d{10}_[a-f0-9]{10}$/.test(ofpId)) {
+    if (!ofpId || !/^\d{10}_[a-fA-F0-9]{10}$/.test(ofpId)) {
         return NextResponse.json({ error: 'Invalid OFP ID' }, { status: 400 })
     }
 
-    const xmlUrl = `https://www.simbrief.com/ofp/flightplans/xml/${ofpId}.xml`
+    const normalizedOfpId = ofpId.toUpperCase()
+    const xmlUrl = `https://www.simbrief.com/ofp/flightplans/xml/${normalizedOfpId}.xml`
 
     if (check) {
         // HEAD check — just tell client if OFP exists yet

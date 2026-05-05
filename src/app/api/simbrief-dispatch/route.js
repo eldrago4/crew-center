@@ -81,7 +81,7 @@ export async function POST(request) {
         ? orig.toUpperCase() + dest.toUpperCase() + type.toUpperCase()
         : orig.toUpperCase() + dest.toUpperCase() + (airframeId || type).toUpperCase()
     ).slice(0, 10)
-    const ofpId = `${timestamp}_${ofpHash}`
+    const ofpId = `${timestamp}_${ofpHash.toUpperCase()}`
 
     return NextResponse.json({
         simbriefUrl: `https://www.simbrief.com/ofp/ofp.loader.api.php?${qs}`,

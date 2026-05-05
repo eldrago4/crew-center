@@ -22,7 +22,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json()
-  const { eventId, departureAllocations, arrivalAllocations, simbriefData, briefingSent, pilotOrder } = body
+  const { eventId, departureAllocations, arrivalAllocations, simbriefData, briefingSent, pilotOrder, roundCount } = body
 
   if (!eventId) {
     return NextResponse.json({ error: 'eventId is required' }, { status: 400 })
@@ -38,6 +38,7 @@ export async function POST(request) {
     arrivalAllocations: arrivalAllocations ?? [],
     simbriefData: simbriefData ?? null,
     pilotOrder: pilotOrder ?? [],
+    roundCount: Math.max(0, Math.min(5, Number(roundCount) || 0)),
     briefingSent: briefingSent ?? false,
   }
 
