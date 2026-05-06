@@ -31,7 +31,9 @@ export async function POST(request) {
     if (!type) return NextResponse.json({ error: 'Aircraft type required' }, { status: 400 })
     if (orig.toUpperCase() === dest.toUpperCase()) return NextResponse.json({ error: 'Origin and destination cannot be the same' }, { status: 400 })
 
-    const outputPage = 'https://indianvirtual.site/crew/plan/simbrief'
+    const outputPageFull = 'https://indianvirtual.site/crew/plan/simbrief'
+    // SimBrief requires outputpage without protocol for both the API code hash and the param
+    const outputPage = outputPageFull.replace(/^https?:\/\//, '')
     const timestamp = Math.floor(Date.now() / 1000)
 
     // SimBrief API code: MD5(apiKey + orig + dest + type + timestamp + outputPage)
@@ -76,11 +78,8 @@ export async function POST(request) {
         .map(([ k, v ]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
         .join('&')
 
-    // OFP ID: timestamp_first10ofMD5(orig+dest+type) — used to poll for generated OFP
-    const ofpHash = md5((airframeId || type).toUpperCase().length > 6
-        ? orig.toUpperCase() + dest.toUpperCase() + type.toUpperCase()
-        : orig.toUpperCase() + dest.toUpperCase() + (airframeId || type).toUpperCase()
-    ).slice(0, 10)
+    // OFP ID: timestamp_FIRST10_UPPERCASE_MD5(orig+dest+type) — matches SimBrief's file naming
+    const ofpHash = md5(orig.toUpperCase() + dest.toUpperCase() + type.toUpperCase()).slice(0, 10).toUpperCase()
     const ofpId = `${timestamp}_${ofpHash}`
 
     return NextResponse.json({
