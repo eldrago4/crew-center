@@ -12,7 +12,7 @@ import {
     TbRoute, TbCalendar, TbSettings, TbChevronDown,
     TbChevronUp, TbDroplet, TbUsers, TbPackage,
     TbSend, TbFileText, TbAlertTriangle, TbCheck,
-    TbExternalLink, TbDownload, TbWorldWww, TbUser,
+    TbExternalLink, TbDownload, TbWorldWww,
 } from 'react-icons/tb';
 import { toaster } from '@/components/ui/toaster';
 
@@ -472,7 +472,6 @@ export default function SimbriefPlanner() {
     const [ maps, setMaps ] = useState(true);
     const [ consentChecked, setConsentChecked ] = useState(false);
 
-    const [ sbUsername, setSbUsername ]     = useState('');
     const [ showFAModal, setShowFAModal ]   = useState(false);
 
     const [ dispatching, setDispatching ]   = useState(false);
@@ -543,7 +542,7 @@ export default function SimbriefPlanner() {
         return data;
     }, [applyOfpData]);
 
-    const pollForOfp = useCallback((ofpId, routeSnapshot = {}, username = '', dispatchedAt = 0) => {
+    const pollForOfp = useCallback((ofpId, routeSnapshot = {}) => {
         let attempts = 0;
         const maxAttempts = 60; // 5 min at 5s intervals
 
@@ -557,31 +556,17 @@ export default function SimbriefPlanner() {
             }
 
             try {
-                if (username) {
-                    // Reliable path: poll via SimBrief pilot username API
-                    const res = await fetch(`/api/simbrief-pilot?username=${encodeURIComponent(username)}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        // release is a Unix timestamp (seconds); compare to our dispatch time
-                        if (parseInt(data.release || '0') > dispatchedAt) {
-                            stopPolling();
-                            applyOfpData(data, routeSnapshot);
-                        }
-                    }
-                } else {
-                    // Fallback: poll via constructed OFP ID
-                    const res = await fetch(`/api/simbrief-ofp?check=1&id=${encodeURIComponent(ofpId)}`);
-                    const { exists } = await res.json();
-                    if (exists) {
-                        stopPolling();
-                        await loadOfp(ofpId, routeSnapshot);
-                    }
+                const res = await fetch(`/api/simbrief-ofp?check=1&id=${encodeURIComponent(ofpId)}`);
+                const { exists } = await res.json();
+                if (exists) {
+                    stopPolling();
+                    await loadOfp(ofpId, routeSnapshot);
                 }
             } catch {
                 // network hiccup, keep polling
             }
         }, 5000);
-    }, [applyOfpData, loadOfp]);
+    }, [loadOfp]);
 
     useEffect(() => () => stopPolling(), []);
 
@@ -675,10 +660,8 @@ export default function SimbriefPlanner() {
             const { simbriefUrl, ofpId } = await res.json();
             window.open(simbriefUrl, '_blank', 'noopener,noreferrer');
 
-            // Begin polling for OFP
-            const dispatchedAt = Math.floor(Date.now() / 1000);
             setPolling(true);
-            pollForOfp(ofpId, { orig, dest, acType }, sbUsername.trim(), dispatchedAt);
+            pollForOfp(ofpId, { orig, dest, acType });
         } catch (err) {
             setDispatchError(err.message);
             toaster.create({ title: 'Dispatch Error', description: err.message, type: 'error', duration: 5000 });
@@ -1056,35 +1039,6 @@ export default function SimbriefPlanner() {
                                     Dispatch
                                 </Button>
 
-                                <Separator borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.50' }} />
-
-                                {/* SimBrief username for reliable OFP polling */}
-                                <Field.Root>
-                                    <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">
-                                        <HStack gap={1}>
-                                            <Icon as={TbUser} boxSize={3} />
-                                            <span>SimBrief Username</span>
-                                            <Text as="span" fontWeight="normal" textTransform="none" letterSpacing="normal">(for auto-fetch)</Text>
-                                        </HStack>
-                                    </Field.Label>
-                                    <Input
-                                        value={sbUsername}
-                                        onChange={e => setSbUsername(e.target.value.trim())}
-                                        placeholder="your SimBrief username"
-                                        size="sm"
-                                        fontFamily="mono"
-                                        borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
-                                        bg={{ base: 'white', _dark: 'blackAlpha.200' }}
-                                        _focus={{ borderColor: 'purple.400' }}
-                                    />
-                                    {sbUsername ? (
-                                        <Text fontSize="10px" color="green.500" mt={1}>OFP will be fetched automatically after dispatch.</Text>
-                                    ) : (
-                                        <Text fontSize="10px" color="fg.subtle" mt={1}>
-                                            Without a username the site polls a constructed URL — less reliable.
-                                        </Text>
-                                    )}
-                                </Field.Root>
                             </Stack>
                         </Box>
                     </Box>
