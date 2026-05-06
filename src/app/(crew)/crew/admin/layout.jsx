@@ -11,12 +11,13 @@ export default async function RootLayout({ children }) {
   }
 
   const isCEO = session.user.permissions?.includes("ceo") || false;
+  const careerMode = session.user.careerMode || false;
   if (!session.user.permissions?.includes("staff")) {
     redirect('/crew');
   }
 
   return (<SidebarProvider>
-    <ResponsiveCrewLayout isAdmin={true} callsign={session.user.callsign} ceo={isCEO}>
+    <ResponsiveCrewLayout isAdmin={true} callsign={session.user.callsign} ceo={isCEO} careerMode={careerMode}>
       {children}
     </ResponsiveCrewLayout></SidebarProvider>
   );
