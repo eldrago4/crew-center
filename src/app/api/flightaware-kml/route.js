@@ -56,29 +56,33 @@ export async function POST(request) {
     const session = await auth()
     if (!session?.user?.callsign) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    let url
-    try { ({ url } = await request.json()) } catch {
+    let url, kmlContent
+    try { ({ url, kmlContent } = await request.json()) } catch {
         return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
     }
 
-    if (!url || !url.includes('flightaware.com')) {
-        return NextResponse.json({ error: 'Must be a flightaware.com URL' }, { status: 400 })
-    }
-
-    // Append /google_earth if not already present
-    const kmlUrl = url.replace(/\/google_earth\/?$/, '').replace(/\/$/, '') + '/google_earth'
-
     let kml
-    try {
-        const res = await fetch(kmlUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; INVACrewCenter/1.0)' },
-            cache: 'no-store',
-            signal: AbortSignal.timeout(15000),
-        })
-        if (!res.ok) return NextResponse.json({ error: `FlightAware returned ${res.status}` }, { status: 502 })
-        kml = await res.text()
-    } catch (err) {
-        return NextResponse.json({ error: `Fetch failed: ${err.message}` }, { status: 502 })
+    if (kmlContent) {
+        // Direct KML content from file upload
+        kml = kmlContent
+    } else if (url) {
+        if (!url.includes('flightaware.com')) {
+            return NextResponse.json({ error: 'Must be a flightaware.com URL' }, { status: 400 })
+        }
+        const kmlUrl = url.replace(/\/google_earth\/?$/, '').replace(/\/$/, '') + '/google_earth'
+        try {
+            const res = await fetch(kmlUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; INVACrewCenter/1.0)' },
+                cache: 'no-store',
+                signal: AbortSignal.timeout(15000),
+            })
+            if (!res.ok) return NextResponse.json({ error: `FlightAware returned ${res.status}` }, { status: 502 })
+            kml = await res.text()
+        } catch (err) {
+            return NextResponse.json({ error: `Fetch failed: ${err.message}` }, { status: 502 })
+        }
+    } else {
+        return NextResponse.json({ error: 'Provide a flightaware.com URL or KML file content' }, { status: 400 })
     }
 
     let waypoints = parseKmlWaypoints(kml)

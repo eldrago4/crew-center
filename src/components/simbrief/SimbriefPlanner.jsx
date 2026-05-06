@@ -6,13 +6,13 @@ import {
     Spinner, Center, Select, Portal, createListCollection, Dialog, CloseButton,
 } from '@chakra-ui/react';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
     TbPlane, TbPlaneDeparture, TbPlaneArrival, TbArrowsExchange,
     TbRoute, TbCalendar, TbSettings, TbChevronDown,
     TbChevronUp, TbDroplet, TbUsers, TbPackage,
     TbSend, TbFileText, TbAlertTriangle, TbCheck,
-    TbExternalLink, TbDownload, TbWorldWww,
+    TbExternalLink, TbDownload, TbWorldWww, TbUpload,
 } from 'react-icons/tb';
 import { toaster } from '@/components/ui/toaster';
 
@@ -302,9 +302,11 @@ function OFPDisplay({ planHtml, planText, onClose }) {
 // ── FlightAware Modal ───────────────────────────────────────────────────────
 
 function FlightAwareModal({ open, onClose, defaultFltnum, defaultOrig, defaultDest, onRouteImport }) {
-    const [faUrl, setFaUrl]       = useState('');
-    const [importing, setImport]  = useState(false);
-    const [error, setError]       = useState(null);
+    const [faUrl, setFaUrl]         = useState('');
+    const [importing, setImport]    = useState(false);
+    const [error, setError]         = useState(null);
+    const [kmlFileName, setKmlFileName] = useState('');
+    const kmlFileRef = useRef(null);
 
     const faCallsign = toFACallsign(defaultFltnum);
     const faBaseUrl  = faCallsign
@@ -332,6 +334,34 @@ function FlightAwareModal({ open, onClose, defaultFltnum, defaultOrig, defaultDe
             setImport(false);
         }
     }, [faUrl, onRouteImport, onClose]);
+
+    const handleKmlUpload = useCallback((e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setKmlFileName(file.name);
+        setError(null);
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            setImport(true);
+            try {
+                const res = await fetch('/api/flightaware-kml', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ kmlContent: ev.target.result }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Import failed');
+                onRouteImport(data.route);
+                onClose();
+                toaster.create({ title: 'Route imported', description: `${data.route.split(' ').length} waypoints added`, type: 'success', duration: 4000 });
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setImport(false);
+            }
+        };
+        reader.readAsText(file);
+    }, [onRouteImport, onClose]);
 
     return (
         <Dialog.Root open={open} onOpenChange={e => !e.open && onClose()} size="xl">
@@ -437,6 +467,37 @@ function FlightAwareModal({ open, onClose, defaultFltnum, defaultOrig, defaultDe
                                 </HStack>
                             )}
 
+                            <Separator />
+
+                            {/* KML file upload */}
+                            <Field.Root>
+                                <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">
+                                    Upload KML File
+                                </Field.Label>
+                                <Text fontSize="xs" color="fg.muted" mb={2}>
+                                    Download the KML from FlightAware (track page → KML/GPX export) and upload it directly.
+                                </Text>
+                                <input
+                                    ref={kmlFileRef}
+                                    type="file"
+                                    accept=".kml,application/vnd.google-earth.kml+xml"
+                                    style={{ display: 'none' }}
+                                    onChange={handleKmlUpload}
+                                />
+                                <Button
+                                    onClick={() => { setKmlFileName(''); kmlFileRef.current.value = ''; kmlFileRef.current?.click(); }}
+                                    variant="outline"
+                                    colorPalette="blue"
+                                    size="sm"
+                                    loading={importing}
+                                    disabled={importing}
+                                    alignSelf="flex-start"
+                                >
+                                    <Icon as={TbUpload} />
+                                    {kmlFileName || 'Choose KML File'}
+                                </Button>
+                            </Field.Root>
+
                         </Stack>
                     </Dialog.Body>
                 </Dialog.Content>
@@ -485,6 +546,7 @@ export default function SimbriefPlanner() {
     const popupRef = useRef(null);
     const popupMonitorRef = useRef(null);
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     // Pre-fill from URL params (e.g. when coming from route cards)
     useEffect(() => {
@@ -682,7 +744,8 @@ export default function SimbriefPlanner() {
                 if (!pw) { clearInterval(popupMonitorRef.current); return; }
 
                 // When SimBrief finishes it redirects the popup to our outputpage with ?ofp_id=ACTUAL_ID.
-                // Because the popup is then same-origin we can read the URL directly to get the real ID.
+                // Because the popup is then same-origin we can read the URL directly.
+                // We navigate the main window to that URL — the searchParams effect handles loading.
                 try {
                     const href = pw.location.href;
                     if (href && href.includes('ofp_id=')) {
@@ -693,13 +756,12 @@ export default function SimbriefPlanner() {
                             pw.close();
                             stopPolling();
                             setPolling(false);
-                            loadOfp(actualOfpId, routeSnapshot)
-                                .catch(err => setDispatchError(err.message));
+                            router.replace(`/crew/plan/simbrief?ofp_id=${actualOfpId}`);
                             return;
                         }
                     }
                 } catch {
-                    // Cross-origin error: popup is still on SimBrief's domain — normal, ignore
+                    // Cross-origin: popup is still on SimBrief's domain — normal, ignore
                 }
 
                 // Fallback: user closed the popup manually before SimBrief redirected
