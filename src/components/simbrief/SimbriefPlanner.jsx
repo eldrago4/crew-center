@@ -482,6 +482,8 @@ export default function SimbriefPlanner() {
     const [ dispatchedRoute, setDispatchedRoute ] = useState(null);
 
     const pollRef = useRef(null);
+    const popupRef = useRef(null);
+    const popupMonitorRef = useRef(null);
     const searchParams = useSearchParams();
 
     // Pre-fill from URL params (e.g. when coming from route cards)
@@ -519,6 +521,7 @@ export default function SimbriefPlanner() {
 
     const stopPolling = () => {
         if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        if (popupMonitorRef.current) { clearInterval(popupMonitorRef.current); popupMonitorRef.current = null; }
     };
 
     const applyOfpData = useCallback((data, routeSnapshot = {}) => {
@@ -624,6 +627,15 @@ export default function SimbriefPlanner() {
         if (!acType) { toaster.create({ title: 'Select or enter an aircraft type', type: 'error', duration: 3000 }); return; }
         if (!consentChecked) { toaster.create({ title: 'Please confirm the briefing acknowledgement', type: 'warning', duration: 3000 }); return; }
 
+        // Open the popup synchronously during the click event to avoid popup blockers.
+        // We navigate it to the SimBrief URL after the API responds.
+        const popup = window.open('about:blank', 'sb-dispatch', 'width=1100,height=750,menubar=no,toolbar=no,location=yes');
+        if (!popup) {
+            toaster.create({ title: 'Popup blocked', description: 'Allow popups for this site to use SimBrief dispatch.', type: 'warning', duration: 5000 });
+            return;
+        }
+        popupRef.current = popup;
+
         setDispatching(true);
         setDispatchError(null);
         setOfpText(null);
@@ -654,20 +666,34 @@ export default function SimbriefPlanner() {
 
             if (!res.ok) {
                 const err = await res.json();
+                popup.close();
                 throw new Error(err.error || 'Dispatch failed');
             }
 
             const { simbriefUrl, ofpId } = await res.json();
-            window.open(simbriefUrl, '_blank', 'noopener,noreferrer');
+            popup.location.href = simbriefUrl;
 
             setPolling(true);
-            pollForOfp(ofpId, { orig, dest, acType });
+
+            // Monitor popup close — start OFP polling once the user finishes on SimBrief.
+            // This mirrors the career portal's approach and is more reliable than redirect detection.
+            popupMonitorRef.current = setInterval(() => {
+                if (!popupRef.current || popupRef.current.closed) {
+                    clearInterval(popupMonitorRef.current);
+                    popupMonitorRef.current = null;
+                    pollForOfp(ofpId, { orig, dest, acType });
+                }
+            }, 1000);
+
         } catch (err) {
+            setDispatching(false);
+            setPolling(false);
             setDispatchError(err.message);
             toaster.create({ title: 'Dispatch Error', description: err.message, type: 'error', duration: 5000 });
-        } finally {
-            setDispatching(false);
+            return;
         }
+
+        setDispatching(false);
     };
 
     const airframeId = getAirframeId();
