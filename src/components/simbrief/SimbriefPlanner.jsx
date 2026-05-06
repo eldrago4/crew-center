@@ -5,7 +5,7 @@ import {
     Stack, Text, Textarea, Badge, Separator, Switch, Field, Checkbox,
     Spinner, Center, Select, Portal, createListCollection, Dialog, CloseButton,
 } from '@chakra-ui/react';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
     TbPlane, TbPlaneDeparture, TbPlaneArrival, TbArrowsExchange,
@@ -242,6 +242,15 @@ function PillButton({ active, onClick, children }) {
 // ── OFP Display ────────────────────────────────────────────────────────────
 
 function OFPDisplay({ planHtml, planText, onClose }) {
+    const parsed = useMemo(() => {
+        if (!planHtml) return { styles: '', body: '' };
+        const styleBlocks = [...planHtml.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)];
+        const styles = styleBlocks.map(m => m[1]).join('\n');
+        const bodyMatch = planHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        const body = bodyMatch ? bodyMatch[1] : planHtml;
+        return { styles, body };
+    }, [planHtml]);
+
     return (
         <Box
             borderWidth="1px"
@@ -270,13 +279,11 @@ function OFPDisplay({ planHtml, planText, onClose }) {
             </Flex>
 
             {planHtml ? (
-                <Box h="640px" bg="white">
-                    <iframe
-                        srcDoc={planHtml}
-                        style={{ width: '100%', height: '100%', border: 'none' }}
-                        sandbox="allow-same-origin allow-popups"
-                        title="Operational Flight Plan"
-                    />
+                <Box bg="white" color="black" maxH="700px" overflowY="auto" p={5} fontSize="xs" fontFamily="'Courier New', monospace">
+                    {parsed.styles && (
+                        <style dangerouslySetInnerHTML={{ __html: parsed.styles }} />
+                    )}
+                    <Box dangerouslySetInnerHTML={{ __html: parsed.body }} />
                 </Box>
             ) : (
                 <Box
@@ -310,7 +317,7 @@ function FlightAwareModal({ open, onClose, defaultFltnum, defaultOrig, defaultDe
 
     const faCallsign = toFACallsign(defaultFltnum);
     const faBaseUrl  = faCallsign
-        ? `https://www.flightaware.com/live/flight/${faCallsign}/history/`
+        ? `https://www.flightaware.com/live/flight/${faCallsign}/history/160`
         : 'https://www.flightaware.com/';
 
     const handleImport = useCallback(async () => {
