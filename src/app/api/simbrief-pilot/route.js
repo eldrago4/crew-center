@@ -38,11 +38,19 @@ export async function GET(request) {
     )
   }
 
-  const origBlock = extractBlock(xml, 'origin')
-  const destBlock = extractBlock(xml, 'destination')
-  const fuelBlock = extractBlock(xml, 'fuel')
+  const origBlock    = extractBlock(xml, 'origin')
+  const destBlock    = extractBlock(xml, 'destination')
+  const fuelBlock    = extractBlock(xml, 'fuel')
   const weightsBlock = extractBlock(xml, 'weights')
-  const imagesBlock = extractBlock(xml, 'images')
+  const generalBlock = extractBlock(xml, 'general')
+  const textBlock    = extractBlock(xml, 'text')
+  const imagesBlock  = extractBlock(xml, 'images')
+
+  // OFP generation Unix timestamp (seconds) — used to detect a new plan after dispatch
+  const release = extractField(generalBlock || xml, 'release') || ''
+
+  // Full OFP HTML — may contain CDATA; extractField already strips CDATA wrapper
+  const planHtml = extractField(textBlock || xml, 'plan_html') || ''
 
   // Extract map URLs from <link> children inside <images>
   const mapUrls = []
@@ -54,6 +62,8 @@ export async function GET(request) {
   }
 
   return NextResponse.json({
+    release,
+    planHtml,
     pax: extractField(xml, 'pax_count_actual') || extractField(xml, 'pax_count') || '0',
     cargo: extractField(weightsBlock || xml, 'cargo_hold_weight') || '0',
     fuelRamp: extractField(fuelBlock || xml, 'plan_ramp') || '0',

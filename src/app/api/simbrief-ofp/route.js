@@ -52,16 +52,12 @@ export async function GET(request) {
             .trim()
 
         return NextResponse.json({
+            planHtml,
             planText,
             origin: get('icao_code') || '',
-            destination: get('icao_code'),
             flightNumber: get('flight_number') || '',
-            aircraft: get('icao_code') || '',
             route: get('route') || '',
             flightTime: get('est_time_enroute') || '',
-            fuelRamp: get('planned_ramp') || '',
-            alternateIcao: get('icao_code') || '',
-            raw: xml.length < 50000 ? xml : null, // only return raw XML if not huge
         })
     } catch (err) {
         return NextResponse.json({ error: err.message }, { status: 500 })

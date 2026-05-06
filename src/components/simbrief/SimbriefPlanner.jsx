@@ -3,7 +3,7 @@
 import {
     Box, Button, Flex, Grid, HStack, Heading, Icon, Input,
     Stack, Text, Textarea, Badge, Separator, Switch, Field, Checkbox,
-    Spinner, Center, Select, Portal, createListCollection,
+    Spinner, Center, Select, Portal, createListCollection, Dialog, CloseButton,
 } from '@chakra-ui/react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -12,8 +12,23 @@ import {
     TbRoute, TbCalendar, TbSettings, TbChevronDown,
     TbChevronUp, TbDroplet, TbUsers, TbPackage,
     TbSend, TbFileText, TbAlertTriangle, TbCheck,
+    TbExternalLink, TbDownload, TbWorldWww, TbUser,
 } from 'react-icons/tb';
 import { toaster } from '@/components/ui/toaster';
+
+// ── Airline IATA → ICAO callsign prefix map (for FlightAware URLs) ──────────
+const IATA_TO_ICAO = {
+    'AI': 'AIC', 'IX': 'AXB', 'UK': 'VTI',
+    '6E': 'IGO', 'SG': 'SEJ', 'QP': 'AWR',
+};
+function toFACallsign(fltnum) {
+    if (!fltnum) return '';
+    const u = fltnum.toUpperCase().replace(/\s/g, '');
+    for (const [iata, icao] of Object.entries(IATA_TO_ICAO)) {
+        if (u.startsWith(iata)) return icao + u.slice(iata.length);
+    }
+    return u;
+}
 
 const AIRFRAME_MAP = {
     'UK:A320': '783627_1771244115844',
@@ -226,7 +241,7 @@ function PillButton({ active, onClick, children }) {
 
 // ── OFP Display ────────────────────────────────────────────────────────────
 
-function OFPDisplay({ planText, onClose }) {
+function OFPDisplay({ planHtml, planText, onClose }) {
     return (
         <Box
             borderWidth="1px"
@@ -235,7 +250,6 @@ function OFPDisplay({ planText, onClose }) {
             overflow="hidden"
             bg={{ base: 'white', _dark: 'gray.900' }}
         >
-            {/* OFP Header */}
             <Flex
                 align="center"
                 justify="space-between"
@@ -255,28 +269,179 @@ function OFPDisplay({ planText, onClose }) {
                 </Button>
             </Flex>
 
-            {/* OFP Body */}
-            <Box
-                as="pre"
-                p={5}
-                fontSize="xs"
-                fontFamily="'Courier New', monospace"
-                lineHeight="1.6"
-                whiteSpace="pre-wrap"
-                wordBreak="break-word"
-                color={{ base: 'gray.800', _dark: 'gray.100' }}
-                bg={{ base: 'gray.50', _dark: 'gray.950' }}
-                maxH="600px"
-                overflowY="auto"
-                css={{
-                    '&::-webkit-scrollbar': { width: '6px' },
-                    '&::-webkit-scrollbar-track': { background: 'transparent' },
-                    '&::-webkit-scrollbar-thumb': { background: 'rgba(128,128,128,0.3)', borderRadius: '3px' },
-                }}
-            >
-                {planText || 'OFP text not available.'}
-            </Box>
+            {planHtml ? (
+                <Box h="640px" bg="white">
+                    <iframe
+                        srcDoc={planHtml}
+                        style={{ width: '100%', height: '100%', border: 'none' }}
+                        sandbox="allow-same-origin allow-popups"
+                        title="Operational Flight Plan"
+                    />
+                </Box>
+            ) : (
+                <Box
+                    as="pre"
+                    p={5}
+                    fontSize="xs"
+                    fontFamily="'Courier New', monospace"
+                    lineHeight="1.6"
+                    whiteSpace="pre-wrap"
+                    wordBreak="break-word"
+                    color={{ base: 'gray.800', _dark: 'gray.100' }}
+                    bg={{ base: 'gray.50', _dark: 'gray.950' }}
+                    maxH="600px"
+                    overflowY="auto"
+                >
+                    {planText || 'OFP text not available.'}
+                </Box>
+            )}
         </Box>
+    );
+}
+
+// ── FlightAware Modal ───────────────────────────────────────────────────────
+
+function FlightAwareModal({ open, onClose, defaultFltnum, defaultOrig, defaultDest, onRouteImport }) {
+    const [faUrl, setFaUrl]       = useState('');
+    const [importing, setImport]  = useState(false);
+    const [error, setError]       = useState(null);
+
+    const faCallsign = toFACallsign(defaultFltnum);
+    const faBaseUrl  = faCallsign
+        ? `https://www.flightaware.com/live/flight/${faCallsign}/history/`
+        : 'https://www.flightaware.com/';
+
+    const handleImport = useCallback(async () => {
+        if (!faUrl.trim()) return;
+        setImport(true);
+        setError(null);
+        try {
+            const res = await fetch('/api/flightaware-kml', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: faUrl.trim() }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Import failed');
+            onRouteImport(data.route);
+            onClose();
+            toaster.create({ title: 'Route imported', description: `${data.route.split(' ').length} waypoints added`, type: 'success', duration: 4000 });
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setImport(false);
+        }
+    }, [faUrl, onRouteImport, onClose]);
+
+    return (
+        <Dialog.Root open={open} onOpenChange={e => !e.open && onClose()} size="xl">
+            <Dialog.Backdrop />
+            <Dialog.Positioner>
+                <Dialog.Content maxW="760px">
+                    <Dialog.Header>
+                        <Dialog.Title>
+                            <HStack gap={2}>
+                                <Icon as={TbWorldWww} color="blue.500" boxSize={5} />
+                                <Text>FlightAware Route Import</Text>
+                            </HStack>
+                        </Dialog.Title>
+                        <Dialog.CloseTrigger asChild>
+                            <CloseButton size="sm" />
+                        </Dialog.CloseTrigger>
+                    </Dialog.Header>
+
+                    <Dialog.Body pb={6}>
+                        <Stack gap={4}>
+                            {/* Open FlightAware buttons */}
+                            <Flex gap={3} align="center" wrap="wrap">
+                                <Button
+                                    as="a"
+                                    href={faBaseUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    colorPalette="blue"
+                                    variant="outline"
+                                    size="sm"
+                                >
+                                    <Icon as={TbExternalLink} />
+                                    {faCallsign ? `Open ${faCallsign} on FlightAware` : 'Open FlightAware'}
+                                </Button>
+                                <Text fontSize="xs" color="fg.muted" fontWeight="semibold">OR</Text>
+                                <Button
+                                    as="a"
+                                    href={`https://www.flightaware.com/live/findflight?origin=${defaultOrig}&destination=${defaultDest}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    colorPalette="blue"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!defaultOrig || !defaultDest}
+                                >
+                                    <Icon as={TbExternalLink} />
+                                    Lookup Route
+                                </Button>
+                            </Flex>
+
+                            <Separator />
+
+                            <Stack gap={1}>
+                                <Text fontSize="sm" fontWeight="semibold" color="fg">How to import</Text>
+                                <Text fontSize="xs" color="fg.muted" lineHeight="tall">
+                                    1. Open FlightAware above and navigate to the specific flight you want to copy.<br />
+                                    2. Click on a flight date/time entry to open its track page.<br />
+                                    3. Copy the full URL from your browser — it should look like:<br />
+                                    <Box as="code" fontSize="10px" color="purple.400" bg={{ base: 'gray.100', _dark: 'gray.800' }} px={1} borderRadius="sm">
+                                        .../history/20260427/0745Z/VABB/VOGO
+                                    </Box>
+                                    <br />4. Paste below and click Import Route.
+                                </Text>
+                            </Stack>
+
+                            <Field.Root>
+                                <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">
+                                    Flight History URL
+                                </Field.Label>
+                                <Flex gap={2}>
+                                    <Input
+                                        value={faUrl}
+                                        onChange={e => setFaUrl(e.target.value)}
+                                        placeholder="https://www.flightaware.com/live/flight/.../history/20260427/..."
+                                        fontFamily="mono"
+                                        fontSize="xs"
+                                        borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                                        bg={{ base: 'white', _dark: 'blackAlpha.200' }}
+                                        _focus={{ borderColor: 'purple.400' }}
+                                    />
+                                    <Button
+                                        onClick={handleImport}
+                                        loading={importing}
+                                        loadingText="Importing..."
+                                        colorPalette="purple"
+                                        disabled={!faUrl.trim() || importing}
+                                        flexShrink={0}
+                                    >
+                                        <Icon as={TbDownload} />
+                                        Import
+                                    </Button>
+                                </Flex>
+                            </Field.Root>
+
+                            {error && (
+                                <HStack gap={2} p={3}
+                                    bg={{ base: 'red.50', _dark: 'red.950' }}
+                                    borderRadius="md" borderWidth="1px"
+                                    borderColor={{ base: 'red.200', _dark: 'red.800' }}
+                                >
+                                    <Icon as={TbAlertTriangle} color="red.500" boxSize={4} flexShrink={0} />
+                                    <Text fontSize="xs" color={{ base: 'red.700', _dark: 'red.300' }}>{error}</Text>
+                                </HStack>
+                            )}
+
+                        </Stack>
+                    </Dialog.Body>
+                </Dialog.Content>
+            </Dialog.Positioner>
+        </Dialog.Root>
     );
 }
 
@@ -307,9 +472,13 @@ export default function SimbriefPlanner() {
     const [ maps, setMaps ] = useState(true);
     const [ consentChecked, setConsentChecked ] = useState(false);
 
-    const [ dispatching, setDispatching ] = useState(false);
-    const [ polling, setPolling ] = useState(false);
-    const [ ofpText, setOfpText ] = useState(null);
+    const [ sbUsername, setSbUsername ]     = useState('');
+    const [ showFAModal, setShowFAModal ]   = useState(false);
+
+    const [ dispatching, setDispatching ]   = useState(false);
+    const [ polling, setPolling ]           = useState(false);
+    const [ ofpText, setOfpText ]           = useState(null);
+    const [ ofpHtml, setOfpHtml ]           = useState(null);
     const [ dispatchError, setDispatchError ] = useState(null);
     const [ dispatchedRoute, setDispatchedRoute ] = useState(null);
 
@@ -353,24 +522,28 @@ export default function SimbriefPlanner() {
         if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     };
 
-    const loadOfp = useCallback(async (ofpId, routeSnapshot = {}) => {
-        const normalizedOfpId = String(ofpId || '').toUpperCase();
-        const ofpRes = await fetch(`/api/simbrief-ofp?id=${encodeURIComponent(normalizedOfpId)}`);
-        if (!ofpRes.ok) throw new Error('OFP was generated but could not be retrieved.');
-
-        const data = await ofpRes.json();
-        setOfpText(data.planText);
+    const applyOfpData = useCallback((data, routeSnapshot = {}) => {
+        if (data.planHtml) setOfpHtml(data.planHtml);
+        if (data.planText) setOfpText(data.planText);
         setDispatchedRoute({
-            orig: routeSnapshot.orig || orig,
-            dest: routeSnapshot.dest || dest,
+            orig:   routeSnapshot.orig   || orig,
+            dest:   routeSnapshot.dest   || dest,
             acType: routeSnapshot.acType || acType,
         });
         setDispatchError(null);
         setPolling(false);
-        return data;
     }, [orig, dest, acType]);
 
-    const pollForOfp = (ofpId, routeSnapshot = {}) => {
+    const loadOfp = useCallback(async (ofpId, routeSnapshot = {}) => {
+        const normalizedOfpId = String(ofpId || '').toLowerCase();
+        const ofpRes = await fetch(`/api/simbrief-ofp?id=${encodeURIComponent(normalizedOfpId)}`);
+        if (!ofpRes.ok) throw new Error('OFP was generated but could not be retrieved.');
+        const data = await ofpRes.json();
+        applyOfpData(data, routeSnapshot);
+        return data;
+    }, [applyOfpData]);
+
+    const pollForOfp = useCallback((ofpId, routeSnapshot = {}, username = '', dispatchedAt = 0) => {
         let attempts = 0;
         const maxAttempts = 60; // 5 min at 5s intervals
 
@@ -384,17 +557,31 @@ export default function SimbriefPlanner() {
             }
 
             try {
-                const res = await fetch(`/api/simbrief-ofp?check=1&id=${encodeURIComponent(ofpId)}`);
-                const { exists } = await res.json();
-                if (exists) {
-                    stopPolling();
-                    await loadOfp(ofpId, routeSnapshot);
+                if (username) {
+                    // Reliable path: poll via SimBrief pilot username API
+                    const res = await fetch(`/api/simbrief-pilot?username=${encodeURIComponent(username)}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        // release is a Unix timestamp (seconds); compare to our dispatch time
+                        if (parseInt(data.release || '0') > dispatchedAt) {
+                            stopPolling();
+                            applyOfpData(data, routeSnapshot);
+                        }
+                    }
+                } else {
+                    // Fallback: poll via constructed OFP ID
+                    const res = await fetch(`/api/simbrief-ofp?check=1&id=${encodeURIComponent(ofpId)}`);
+                    const { exists } = await res.json();
+                    if (exists) {
+                        stopPolling();
+                        await loadOfp(ofpId, routeSnapshot);
+                    }
                 }
             } catch {
                 // network hiccup, keep polling
             }
         }, 5000);
-    };
+    }, [applyOfpData, loadOfp]);
 
     useEffect(() => () => stopPolling(), []);
 
@@ -455,6 +642,7 @@ export default function SimbriefPlanner() {
         setDispatching(true);
         setDispatchError(null);
         setOfpText(null);
+        setOfpHtml(null);
 
         try {
             const body = {
@@ -488,8 +676,9 @@ export default function SimbriefPlanner() {
             window.open(simbriefUrl, '_blank', 'noopener,noreferrer');
 
             // Begin polling for OFP
+            const dispatchedAt = Math.floor(Date.now() / 1000);
             setPolling(true);
-            pollForOfp(ofpId, { orig, dest, acType });
+            pollForOfp(ofpId, { orig, dest, acType }, sbUsername.trim(), dispatchedAt);
         } catch (err) {
             setDispatchError(err.message);
             toaster.create({ title: 'Dispatch Error', description: err.message, type: 'error', duration: 5000 });
@@ -580,9 +769,28 @@ export default function SimbriefPlanner() {
 
                             <Separator borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.50' }} />
                             <Field.Root>
-                                <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">
-                                    Route String <Text as="span" fontWeight="normal">(optional — leave blank for auto-routing)</Text>
-                                </Field.Label>
+                                <Flex align="center" justify="space-between" mb={1}>
+                                    <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest" mb={0}>
+                                        Route String <Text as="span" fontWeight="normal">(optional — leave blank for auto-routing)</Text>
+                                    </Field.Label>
+                                    <Box
+                                        as="button"
+                                        onClick={() => setShowFAModal(true)}
+                                        borderRadius="lg"
+                                        overflow="hidden"
+                                        flexShrink={0}
+                                        cursor="pointer"
+                                        border="1px solid"
+                                        borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                                        _hover={{ opacity: 0.85, transform: 'scale(1.04)' }}
+                                        transition="all 0.15s"
+                                        title="Import route from FlightAware"
+                                        lineHeight={0}
+                                    >
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src="/flightaware.png" alt="FlightAware" style={{ height: '32px', width: 'auto', display: 'block' }} />
+                                    </Box>
+                                </Flex>
                                 <Textarea
                                     value={route}
                                     onChange={e => setRoute(e.target.value.toUpperCase())}
@@ -848,9 +1056,35 @@ export default function SimbriefPlanner() {
                                     Dispatch
                                 </Button>
 
-                                <Text fontSize="10px" color="fg.subtle" textAlign="center">
-                                    Opens SimBrief in a new tab. Log in with your SimBrief account to save OFPs.
-                                </Text>
+                                <Separator borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.50' }} />
+
+                                {/* SimBrief username for reliable OFP polling */}
+                                <Field.Root>
+                                    <Field.Label fontSize="10px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">
+                                        <HStack gap={1}>
+                                            <Icon as={TbUser} boxSize={3} />
+                                            <span>SimBrief Username</span>
+                                            <Text as="span" fontWeight="normal" textTransform="none" letterSpacing="normal">(for auto-fetch)</Text>
+                                        </HStack>
+                                    </Field.Label>
+                                    <Input
+                                        value={sbUsername}
+                                        onChange={e => setSbUsername(e.target.value.trim())}
+                                        placeholder="your SimBrief username"
+                                        size="sm"
+                                        fontFamily="mono"
+                                        borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                                        bg={{ base: 'white', _dark: 'blackAlpha.200' }}
+                                        _focus={{ borderColor: 'purple.400' }}
+                                    />
+                                    {sbUsername ? (
+                                        <Text fontSize="10px" color="green.500" mt={1}>OFP will be fetched automatically after dispatch.</Text>
+                                    ) : (
+                                        <Text fontSize="10px" color="fg.subtle" mt={1}>
+                                            Without a username the site polls a constructed URL — less reliable.
+                                        </Text>
+                                    )}
+                                </Field.Root>
                             </Stack>
                         </Box>
                     </Box>
@@ -892,7 +1126,7 @@ export default function SimbriefPlanner() {
                     )}
 
                     {/* SUCCESS BADGE */}
-                    {ofpText && !polling && (
+                    {(ofpText || ofpHtml) && !polling && (
                         <Box
                             borderWidth="1px"
                             borderColor={{ base: 'green.200', _dark: 'green.800' }}
@@ -952,11 +1186,25 @@ export default function SimbriefPlanner() {
             </Grid>
 
             {/* ── OFP DISPLAY (full width, below grid) ── */}
-            {ofpText && (
+            {(ofpHtml || ofpText) && (
                 <Box mt={6}>
-                    <OFPDisplay planText={ofpText} onClose={() => setOfpText(null)} />
+                    <OFPDisplay
+                        planHtml={ofpHtml}
+                        planText={ofpText}
+                        onClose={() => { setOfpHtml(null); setOfpText(null); }}
+                    />
                 </Box>
             )}
+
+            {/* ── FLIGHTAWARE MODAL ── */}
+            <FlightAwareModal
+                open={showFAModal}
+                onClose={() => setShowFAModal(false)}
+                defaultFltnum={fltnum}
+                defaultOrig={orig}
+                defaultDest={dest}
+                onRouteImport={r => setRoute(r)}
+            />
         </Box>
     );
 }
