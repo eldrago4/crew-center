@@ -675,13 +675,38 @@ export default function SimbriefPlanner() {
 
             setPolling(true);
 
-            // Monitor popup close — start OFP polling once the user finishes on SimBrief.
-            // This mirrors the career portal's approach and is more reliable than redirect detection.
+            const routeSnapshot = { orig, dest, acType };
+
             popupMonitorRef.current = setInterval(() => {
-                if (!popupRef.current || popupRef.current.closed) {
+                const pw = popupRef.current;
+                if (!pw) { clearInterval(popupMonitorRef.current); return; }
+
+                // When SimBrief finishes it redirects the popup to our outputpage with ?ofp_id=ACTUAL_ID.
+                // Because the popup is then same-origin we can read the URL directly to get the real ID.
+                try {
+                    const href = pw.location.href;
+                    if (href && href.includes('ofp_id=')) {
+                        const actualOfpId = new URL(href).searchParams.get('ofp_id');
+                        if (actualOfpId) {
+                            clearInterval(popupMonitorRef.current);
+                            popupMonitorRef.current = null;
+                            pw.close();
+                            stopPolling();
+                            setPolling(false);
+                            loadOfp(actualOfpId, routeSnapshot)
+                                .catch(err => setDispatchError(err.message));
+                            return;
+                        }
+                    }
+                } catch {
+                    // Cross-origin error: popup is still on SimBrief's domain — normal, ignore
+                }
+
+                // Fallback: user closed the popup manually before SimBrief redirected
+                if (pw.closed) {
                     clearInterval(popupMonitorRef.current);
                     popupMonitorRef.current = null;
-                    pollForOfp(ofpId, { orig, dest, acType });
+                    pollForOfp(ofpId, routeSnapshot);
                 }
             }, 1000);
 
