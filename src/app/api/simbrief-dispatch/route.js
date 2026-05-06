@@ -78,8 +78,9 @@ export async function POST(request) {
         .map(([ k, v ]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
         .join('&')
 
-    // OFP ID: timestamp_FIRST10_UPPERCASE_MD5(orig+dest+type) — matches SimBrief's file naming
-    const ofpHash = md5(orig.toUpperCase() + dest.toUpperCase() + type.toUpperCase()).slice(0, 10).toUpperCase()
+    // OFP ID hash must use the SAME type param sent to SimBrief (airframeId when set)
+    // Career portal confirmed: MD5(orig + dest + type_as_sent).toUpperCase().slice(0,10)
+    const ofpHash = md5(orig.toUpperCase() + dest.toUpperCase() + typeForHash).slice(0, 10).toUpperCase()
     const ofpId = `${timestamp}_${ofpHash}`
 
     return NextResponse.json({

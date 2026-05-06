@@ -6,7 +6,7 @@ import {
     Spinner, Center, Select, Portal, createListCollection, Dialog, CloseButton,
 } from '@chakra-ui/react';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
     TbPlane, TbPlaneDeparture, TbPlaneArrival, TbArrowsExchange,
     TbRoute, TbCalendar, TbSettings, TbChevronDown,
@@ -536,6 +536,7 @@ export default function SimbriefPlanner() {
     const [ showFAModal, setShowFAModal ]   = useState(false);
 
     const [ dispatching, setDispatching ]   = useState(false);
+    const [ pendingOfp, setPendingOfp ]     = useState(null);
     const [ polling, setPolling ]           = useState(false);
     const [ ofpText, setOfpText ]           = useState(null);
     const [ ofpHtml, setOfpHtml ]           = useState(null);
@@ -546,7 +547,6 @@ export default function SimbriefPlanner() {
     const popupRef = useRef(null);
     const popupMonitorRef = useRef(null);
     const searchParams = useSearchParams();
-    const router = useRouter();
 
     // Pre-fill from URL params (e.g. when coming from route cards)
     useEffect(() => {
@@ -634,6 +634,13 @@ export default function SimbriefPlanner() {
     }, [loadOfp]);
 
     useEffect(() => () => stopPolling(), []);
+
+    useEffect(() => {
+        if (!pendingOfp) return;
+        const { ofpId, routeSnapshot } = pendingOfp;
+        setPendingOfp(null);
+        loadOfp(ofpId, routeSnapshot).catch(err => setDispatchError(err.message));
+    }, [pendingOfp, loadOfp]);
 
     useEffect(() => {
         const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('inva-simbrief-ofp') : null;
@@ -745,7 +752,7 @@ export default function SimbriefPlanner() {
 
                 // When SimBrief finishes it redirects the popup to our outputpage with ?ofp_id=ACTUAL_ID.
                 // Because the popup is then same-origin we can read the URL directly.
-                // We navigate the main window to that URL — the searchParams effect handles loading.
+                // We trigger loadOfp via React state (router.replace is ignored from setInterval).
                 try {
                     const href = pw.location.href;
                     if (href && href.includes('ofp_id=')) {
@@ -756,7 +763,7 @@ export default function SimbriefPlanner() {
                             pw.close();
                             stopPolling();
                             setPolling(false);
-                            router.replace(`/crew/plan/simbrief?ofp_id=${actualOfpId}`);
+                            setPendingOfp({ ofpId: actualOfpId, routeSnapshot });
                             return;
                         }
                     }

@@ -26,7 +26,7 @@ export async function GET(request) {
     const ofpId = searchParams.get('id')
     const check = searchParams.get('check') // just existence check
 
-    if (!ofpId || !/^\d{8,12}_[a-fA-F0-9]{6,32}$/.test(ofpId)) {
+    if (!ofpId || !/^\d{8,12}_[a-zA-Z0-9]{6,32}$/.test(ofpId)) {
         return NextResponse.json({ error: 'Invalid OFP ID' }, { status: 400 })
     }
 
