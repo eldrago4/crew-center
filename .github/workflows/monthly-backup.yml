@@ -8,6 +8,7 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Install PostgreSQL 17 client
@@ -28,15 +29,31 @@ jobs:
           FILENAME="crew-center-$(date -u +%Y-%m-%d).sql.gz"
           /usr/lib/postgresql/17/bin/pg_dump --dbname="$DATABASE_URL" | gzip > "$FILENAME"
           SIZE=$(du -sh "$FILENAME" | cut -f1)
+          FILE_BYTES=$(stat -c%s "$FILENAME")
           echo "FILENAME=$FILENAME" >> $GITHUB_ENV
           echo "SIZE=$SIZE"         >> $GITHUB_ENV
+          if [ "$FILE_BYTES" -gt $((8 * 1024 * 1024)) ]; then
+            echo "::error::Backup is ${SIZE} — exceeds Discord 8 MB limit. Upload skipped."
+            exit 1
+          fi
 
       - name: Send to Discord
         env:
           DISCORD_BACKUP_WEBHOOK: ${{ secrets.DISCORD_BACKUP_WEBHOOK }}
-          FILENAME: ${{ env.FILENAME }}
-          SIZE: ${{ env.SIZE }}
         run: |
-          curl -s -X POST "$DISCORD_BACKUP_WEBHOOK" \
+          HTTP=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$DISCORD_BACKUP_WEBHOOK" \
             -F "payload_json={\"content\":\"📦 **Crew Center — PostgreSQL Backup** \`${FILENAME}\` · ${SIZE}\"}" \
-            -F "file=@${FILENAME}"
+            -F "file=@${FILENAME}")
+          if [ "$HTTP" != "200" ]; then
+            echo "::error::Discord webhook returned HTTP $HTTP"
+            exit 1
+          fi
+
+      - name: Notify failure
+        if: failure()
+        env:
+          DISCORD_BACKUP_WEBHOOK: ${{ secrets.DISCORD_BACKUP_WEBHOOK }}
+        run: |
+          curl -sS -X POST "$DISCORD_BACKUP_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "{\"content\":\"⚠️ **Crew Center backup FAILED** on $(date -u +%Y-%m-%d) — check Actions logs for details.\"}"
