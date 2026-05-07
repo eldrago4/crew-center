@@ -16,9 +16,10 @@ jobs:
       - name: Dump and compress database
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PGSSLMODE: require
         run: |
           FILENAME="crew-center-$(date -u +%Y-%m-%d).sql.gz"
-          pg_dump "$DATABASE_URL" | gzip > "$FILENAME"
+          pg_dump --dbname="$DATABASE_URL" | gzip > "$FILENAME"
           SIZE=$(du -sh "$FILENAME" | cut -f1)
           echo "FILENAME=$FILENAME" >> $GITHUB_ENV
           echo "SIZE=$SIZE"         >> $GITHUB_ENV
