@@ -1,0 +1,32 @@
+name: Monthly Database Backup
+
+on:
+  schedule:
+    - cron: '0 2 1 * *'   # 2:00 AM UTC on 1st of each month
+  workflow_dispatch:       # manual trigger for immediate runs
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Dump and compress database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          FILENAME="crew-center-$(date -u +%Y-%m-%d).sql.gz"
+          pg_dump "$DATABASE_URL" | gzip > "$FILENAME"
+          SIZE=$(du -sh "$FILENAME" | cut -f1)
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+          echo "SIZE=$SIZE"         >> $GITHUB_ENV
+
+      - name: Send to Discord
+        env:
+          DISCORD_BACKUP_WEBHOOK: ${{ secrets.DISCORD_BACKUP_WEBHOOK }}
+        run: |
+          curl -s -X POST "$DISCORD_BACKUP_WEBHOOK" \
+            -F "payload_json={\"content\":\"📦 **Crew Center — PostgreSQL Backup** \`${FILENAME}\` · ${SIZE}\"}" \
+            -F "file=@${FILENAME}"
