@@ -3,6 +3,7 @@
 import { Box } from '@chakra-ui/react'
 import DashNav from "@/components/DashNav";
 import SidebarComponent from "@/components/SideBar";
+import { NotificationProvider } from '@/components/NotificationContext';
 
 export default function ResponsiveCrewLayout({
   children,
@@ -13,6 +14,7 @@ export default function ResponsiveCrewLayout({
   showSidebar = true
 }) {
   return (
+    <NotificationProvider>
     <Box minH="100vh">
       {/* Fixed DashNav at top */}
       <Box
@@ -56,5 +58,6 @@ export default function ResponsiveCrewLayout({
         {children}
       </Box>
     </Box>
+    </NotificationProvider>
   );
 }

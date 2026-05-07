@@ -9,6 +9,8 @@ import {
   Flex,
   Icon,
   HStack,
+  Float,
+  Circle,
 } from '@chakra-ui/react';
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -18,9 +20,11 @@ import {
 } from 'react-icons/fi';
 import RoleSelectorSegmentGroup from '@/components/RoleSelectorSegmentGroup';
 import { useSidebar } from '@/components/SidebarContext';
+import { useNotifications } from '@/components/NotificationContext';
 
 const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) => {
   const { sidebarMode: currentValue, updateSidebarMode } = useSidebar();
+  const { eventsUnseen, pirepsUnseen } = useNotifications();
   const [ isMobileNavVisible, setIsMobileNavVisible ] = useState(true);
   const lastScrollY = useRef(0);
 
@@ -39,10 +43,13 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // notifKey maps to { events: eventsUnseen, pireps: pirepsUnseen }
+  const notifCounts = { events: eventsUnseen, pireps: pirepsUnseen };
+
   const BUTTON_SECTIONS = {
     dashboard: [ { label: "Profile", href: "/crew/dashboard", icon: FiUser } ],
     pireps: [
-      { label: "Logbook", href: "/crew/pireps/logbook", icon: FiBookOpen },
+      { label: "Logbook", href: "/crew/pireps/logbook", icon: FiBookOpen, notifKey: 'pireps' },
       { label: "File", href: "/crew/pireps/file", icon: FiFilePlus }
     ],
     plan: [
@@ -51,7 +58,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
       { label: "Career Mode", href: "/crew/career", disabled: !careerMode, icon: FiTrendingUp }
     ],
     community: [
-      { label: "Events", href: "/crew/community/events", icon: FiCalendar },
+      { label: "Events", href: "/crew/community/events", icon: FiCalendar, notifKey: 'events' },
       { label: "Routes of the Week", href: "https://discord.com/channels/1246895842581938276/1270078880576966666", icon: FiStar },
       { label: "Leaderboard", href: "/crew/community/leaderboard", icon: FiAward },
       { label: "Live Map", href: "/crew/community/live-map", icon: FiGlobe }
@@ -100,17 +107,29 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
 
   const renderDesktopButtons = (buttons) => (
     <ButtonGroup orientation="vertical" spacing={4} width="100%">
-      {buttons.map(({ label, href, disabled }, idx) => (
-        <Button
-          key={idx}
-          {...desktopButtonProps}
-          as={href && !disabled ? "a" : "button"}
-          href={href}
-          {...(disabled ? { disabled: true } : {})}
-        >
-          {label}
-        </Button>
-      ))}
+      {buttons.map(({ label, href, disabled, notifKey }, idx) => {
+        const count = notifKey ? notifCounts[notifKey] : 0;
+        return (
+          <Box key={idx} position="relative" display="flex" width="100%">
+            <Button
+              {...desktopButtonProps}
+              as={href && !disabled ? "a" : "button"}
+              href={href}
+              {...(disabled ? { disabled: true } : {})}
+              flex={1}
+            >
+              {label}
+            </Button>
+            {count > 0 && (
+              <Float placement="top-end" offsetX="1" offsetY="1">
+                <Circle size="16px" bg="red.500" color="white" fontSize="9px" fontWeight="bold">
+                  {count > 9 ? '9+' : count}
+                </Circle>
+              </Float>
+            )}
+          </Box>
+        );
+      })}
     </ButtonGroup>
   );
 
@@ -128,7 +147,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
       }}
     >
       <HStack spacing={1}>
-        {buttons.map(({ label, href, disabled, icon, isSegmentControl }, idx) => {
+        {buttons.map(({ label, href, disabled, icon, isSegmentControl, notifKey }, idx) => {
           if (isSegmentControl) {
             return (
               <Box key="segment-control" bg="transparent" borderRadius="md">
@@ -140,9 +159,11 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
               </Box>
             );
           }
+          const count = notifKey ? notifCounts[notifKey] : 0;
           return (
             <Box
               key={idx}
+              position="relative"
               as="a"
               href={!disabled ? href : undefined}
               _hover={{ textDecoration: 'none' }}
@@ -168,6 +189,13 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
                   {label}
                 </Text>
               </VStack>
+              {count > 0 && (
+                <Float placement="top-end" offsetX="1" offsetY="1">
+                  <Circle size="16px" bg="red.500" color="white" fontSize="9px" fontWeight="bold">
+                    {count > 9 ? '9+' : count}
+                  </Circle>
+                </Float>
+              )}
             </Box>
           );
         })}

@@ -279,11 +279,14 @@ function OFPDisplay({ planHtml, planText, onClose }) {
             </Flex>
 
             {planHtml ? (
-                <Box bg="white" color="black" maxH="700px" overflowY="auto" p={5} fontSize="xs" fontFamily="'Courier New', monospace">
+                <Box bg="white" maxH="700px" overflowY="auto">
                     {parsed.styles && (
                         <style dangerouslySetInnerHTML={{ __html: parsed.styles }} />
                     )}
-                    <Box dangerouslySetInnerHTML={{ __html: parsed.body }} />
+                    <div
+                        dangerouslySetInnerHTML={{ __html: parsed.body }}
+                        style={{ padding: '20px', color: '#111', fontFamily: "'Courier New', monospace", fontSize: '12px', lineHeight: '1.5' }}
+                    />
                 </Box>
             ) : (
                 <Box
@@ -314,7 +317,7 @@ function FlightAwareModal({ open, onClose, defaultFltnum, defaultOrig, defaultDe
     const [error, setError]         = useState(null);
     const [kmlFileName, setKmlFileName] = useState('');
     const kmlFileRef = useRef(null);
-
+0
     const faCallsign = toFACallsign(defaultFltnum);
     const faBaseUrl  = faCallsign
         ? `https://www.flightaware.com/live/flight/${faCallsign}/history/160`
