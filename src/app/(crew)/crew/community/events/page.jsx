@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import {
-    Box, Flex, Stack, HStack, Heading, Text, Badge,
+    Box, Flex, Stack, HStack, VStack, Heading, Text, Badge,
     Icon, Button, Spinner, Separator,
 } from '@chakra-ui/react'
 import {
     TbCalendarEvent, TbClock, TbPlane, TbArrowRight,
-    TbStar, TbUsers, TbExternalLink,
+    TbStar, TbUsers, TbExternalLink, TbCheck, TbCalendarPlus,
 } from 'react-icons/tb'
 import SignupOrFileButton from '@/components/dashboard/SignupOrFileButton'
 
-// Extract Discord event ID from URL like https://discord.com/events/GUILD/EVENT_ID
 function extractDiscordEventId(url) {
     if (!url) return null
     const m = url.match(/discord\.com\/events\/\d+\/(\d+)/)
@@ -21,11 +21,38 @@ function extractDiscordEventId(url) {
 function fmtPushback(iso) {
     if (!iso) return null
     try {
-        const d = new Date(iso.replace('+5:30', ''))
+        const normalized = iso.replace(/([+-])(\d)(:)/, '$10$2$3')
+        const d = new Date(normalized)
+        if (isNaN(d)) return null
         return {
             date: d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }),
             time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) + ' IST',
         }
+    } catch {
+        return null
+    }
+}
+
+function buildGCalUrl(event) {
+    if (!event.pushbackIso) return null
+    try {
+        const normalized = event.pushbackIso.replace(/([+-])(\d)(:)/, '$10$2$3')
+        const start = new Date(normalized)
+        if (isNaN(start.getTime())) return null
+        const durationHours = Number(event.flightTime) || 2
+        const end = new Date(start.getTime() + durationHours * 3600 * 1000)
+        const fmt = d => d.toISOString().replace(/[-:]/g, '').replace('.000Z', 'Z')
+        const params = new URLSearchParams({
+            action: 'TEMPLATE',
+            text: event.title || `${event.departureIcao || ''} → ${event.arrivalIcao || ''}`,
+            dates: `${fmt(start)}/${fmt(end)}`,
+            details: [
+                event.flightNumber && `Flight: ${event.flightNumber}`,
+                event.aircraft && `Aircraft: ${event.aircraft}`,
+                event.signupUrl && `Sign up: ${event.signupUrl}`,
+            ].filter(Boolean).join('\n'),
+        })
+        return `https://calendar.google.com/calendar/render?${params}`
     } catch {
         return null
     }
@@ -48,10 +75,58 @@ function parseDiscordTimestamps(text) {
     })
 }
 
-function EventCard({ event, discordData }) {
+// Render inline Discord markdown to React nodes
+const INLINE_RE = /(\*\*(.+?)\*\*|\*(.+?)\*|__(.+?)__|~~(.+?)~~|`(.+?)`|\[([^\]]+)\]\((https?:\/\/[^)]+)\)|(https?:\/\/[^\s<>[\]()]+))/gs
+
+function renderInline(text, keyPrefix) {
+    const nodes = []
+    let last = 0
+    let m
+    INLINE_RE.lastIndex = 0
+    while ((m = INLINE_RE.exec(text)) !== null) {
+        if (m.index > last) nodes.push(text.slice(last, m.index))
+        const k = `${keyPrefix}-${m.index}`
+        if (m[2]) nodes.push(<strong key={k}>{m[2]}</strong>)
+        else if (m[3]) nodes.push(<em key={k}>{m[3]}</em>)
+        else if (m[4]) nodes.push(<u key={k}>{m[4]}</u>)
+        else if (m[5]) nodes.push(<s key={k}>{m[5]}</s>)
+        else if (m[6]) nodes.push(<code key={k} style={{ background: 'rgba(124,58,237,0.08)', borderRadius: '3px', padding: '1px 4px', fontFamily: 'monospace', fontSize: '0.85em' }}>{m[6]}</code>)
+        else if (m[7]) nodes.push(<a key={k} href={m[8]} target="_blank" rel="noopener noreferrer" style={{ color: '#7c3aed', textDecoration: 'underline' }}>{m[7]}</a>)
+        else if (m[9]) nodes.push(<a key={k} href={m[9]} target="_blank" rel="noopener noreferrer" style={{ color: '#7c3aed', textDecoration: 'underline' }}>{m[9]}</a>)
+        last = m.index + m[0].length
+    }
+    if (last < text.length) nodes.push(text.slice(last))
+    return nodes
+}
+
+function renderDiscordMarkdown(text) {
+    if (!text) return null
+    const lines = text.split('\n')
+    return lines.flatMap((line, li) => {
+        let lineNodes
+        if (line.startsWith('> ')) {
+            lineNodes = [
+                <span key={`bq-${li}`} style={{ borderLeft: '3px solid #7c3aed', paddingLeft: '8px', opacity: 0.75, display: 'inline-block' }}>
+                    {renderInline(line.slice(2), `bq-${li}`)}
+                </span>
+            ]
+        } else if (/^#{1,3} /.test(line)) {
+            const content = line.replace(/^#{1,3} /, '')
+            lineNodes = [<strong key={`h-${li}`}>{renderInline(content, `h-${li}`)}</strong>]
+        } else {
+            lineNodes = renderInline(line, String(li))
+        }
+        return li < lines.length - 1 ? [...lineNodes, <br key={`br-${li}`} />] : lineNodes
+    })
+}
+
+function EventCard({ event, discordData, isParticipating }) {
     const pb = fmtPushback(event.pushbackIso)
-    const description = discordData?.description ? parseDiscordTimestamps(discordData.description) : null
+    const description = discordData?.description
+        ? renderDiscordMarkdown(parseDiscordTimestamps(discordData.description))
+        : null
     const userCount = discordData?.user_count ?? null
+    const gCalUrl = buildGCalUrl(event)
 
     return (
         <Box
@@ -130,76 +205,96 @@ function EventCard({ event, discordData }) {
 
             {/* ── Body ── */}
             <Stack gap={5} p={6}>
-                {/* Route + flight meta row */}
-                <Flex gap={4} align="center" flexWrap="wrap">
-                    <HStack
-                        bg={{ base: 'gray.50', _dark: 'whiteAlpha.50' }}
-                        px={4} py={2.5}
-                        borderRadius="xl"
-                        borderWidth="1px"
-                        borderColor={{ base: 'gray.150', _dark: 'whiteAlpha.100' }}
-                        gap={3}
-                    >
-                        <Text fontFamily="mono" fontWeight="bold" fontSize="xl" color="fg" letterSpacing="wider">
-                            {event.departureIcao || '—'}
-                        </Text>
-                        <Icon as={TbArrowRight} boxSize={5} color="purple.500" />
-                        <Text fontFamily="mono" fontWeight="bold" fontSize="xl" color="fg" letterSpacing="wider">
-                            {event.arrivalIcao || '—'}
-                        </Text>
-                    </HStack>
-
+                {/* Centered route section */}
+                <VStack gap={2} align="center">
                     {event.flightNumber && (
-                        <Badge colorPalette="purple" variant="subtle" px={3} py={1.5} borderRadius="full" fontSize="sm" fontFamily="mono" fontWeight="bold">
+                        <Badge
+                            colorPalette="purple"
+                            variant="subtle"
+                            px={3} py={1}
+                            borderRadius="full"
+                            fontSize="sm"
+                            fontFamily="mono"
+                            fontWeight="bold"
+                            letterSpacing="wider"
+                        >
                             {event.flightNumber}
                         </Badge>
                     )}
-
-                    {event.aircraft && (
-                        <HStack color="fg.muted" gap={1.5}>
-                            <Icon as={TbPlane} boxSize={4} />
-                            <Text fontSize="sm" fontWeight="medium">{event.aircraft}</Text>
+                    <HStack
+                        bg={{ base: 'gray.50', _dark: 'whiteAlpha.50' }}
+                        px={6} py={3}
+                        borderRadius="2xl"
+                        borderWidth="1px"
+                        borderColor={{ base: 'gray.150', _dark: 'whiteAlpha.100' }}
+                        gap={4}
+                    >
+                        <Text fontFamily="mono" fontWeight="black" fontSize={{ base: '3xl', md: '4xl' }} color="fg" letterSpacing="widest">
+                            {event.departureIcao || '—'}
+                        </Text>
+                        <Icon as={TbArrowRight} boxSize={6} color="purple.500" />
+                        <Text fontFamily="mono" fontWeight="black" fontSize={{ base: '3xl', md: '4xl' }} color="fg" letterSpacing="widest">
+                            {event.arrivalIcao || '—'}
+                        </Text>
+                    </HStack>
+                    {(event.aircraft || event.flightTime) && (
+                        <HStack gap={4} color="fg.muted" justify="center" flexWrap="wrap">
+                            {event.aircraft && (
+                                <HStack gap={1.5}>
+                                    <Icon as={TbPlane} boxSize={4} />
+                                    <Text fontSize="sm" fontWeight="medium">{event.aircraft}</Text>
+                                </HStack>
+                            )}
+                            {event.flightTime && (
+                                <HStack gap={1.5}>
+                                    <Icon as={TbClock} boxSize={4} />
+                                    <Text fontSize="sm" fontWeight="medium">{event.flightTime} hrs</Text>
+                                </HStack>
+                            )}
                         </HStack>
                     )}
+                </VStack>
 
-                    {event.flightTime && (
-                        <HStack color="fg.muted" gap={1.5}>
-                            <Icon as={TbClock} boxSize={4} />
-                            <Text fontSize="sm" fontWeight="medium">{event.flightTime} hrs</Text>
-                        </HStack>
-                    )}
-                </Flex>
-
-                {/* Pushback */}
+                {/* Pushback — clickable → Google Calendar */}
                 {pb && (
                     <HStack
+                        as={gCalUrl ? 'a' : 'div'}
+                        href={gCalUrl || undefined}
+                        target={gCalUrl ? '_blank' : undefined}
+                        rel={gCalUrl ? 'noopener noreferrer' : undefined}
                         bg={{ base: 'purple.50', _dark: 'purple.950' }}
                         px={4} py={3}
                         borderRadius="xl"
                         borderWidth="1px"
                         borderColor={{ base: 'purple.100', _dark: 'purple.800' }}
                         gap={3}
+                        cursor={gCalUrl ? 'pointer' : 'default'}
+                        _hover={gCalUrl ? { borderColor: { base: 'purple.300', _dark: 'purple.600' } } : {}}
+                        transition="border-color 0.15s"
+                        textDecoration="none"
                     >
                         <Icon as={TbCalendarEvent} boxSize={5} color="purple.500" flexShrink={0} />
-                        <Box>
+                        <Box flex={1}>
                             <Text fontSize="sm" fontWeight="bold" color={{ base: 'purple.800', _dark: 'purple.200' }}>{pb.date}</Text>
                             <Text fontSize="xs" color={{ base: 'purple.600', _dark: 'purple.400' }}>{pb.time}</Text>
                         </Box>
+                        {gCalUrl && (
+                            <Icon as={TbCalendarPlus} boxSize={4} color={{ base: 'purple.400', _dark: 'purple.500' }} flexShrink={0} />
+                        )}
                     </HStack>
                 )}
 
-                {/* Discord description */}
+                {/* Discord description with markdown rendering */}
                 {description && (
                     <>
                         <Separator borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.100' }} />
-                        <Text
+                        <Box
                             fontSize="sm"
                             color={{ base: 'gray.700', _dark: 'gray.300' }}
                             lineHeight="1.75"
-                            whiteSpace="pre-wrap"
                         >
                             {description}
-                        </Text>
+                        </Box>
                     </>
                 )}
 
@@ -212,6 +307,7 @@ function EventCard({ event, discordData }) {
                         arrivalIcao={event.arrivalIcao}
                         aircraft={event.aircraft}
                         signupUrl={event.signupUrl}
+                        isParticipating={isParticipating}
                     />
                     {event.signupUrl && (
                         <Button
@@ -235,18 +331,23 @@ function EventCard({ event, discordData }) {
 }
 
 export default function EventsPage() {
+    const { data: session } = useSession()
+    const userDiscordId = session?.user?.discordId ?? null
+
     const [events, setEvents] = useState([])
     const [discordMap, setDiscordMap] = useState({})
+    const [attendeesMap, setAttendeesMap] = useState({})
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         async function load() {
-            // Fetch INVA events
-            const evRes = await fetch('/api/crewcenter?module=events').catch(() => null)
+            const [evRes, dRes] = await Promise.all([
+                fetch('/api/crewcenter?module=events').catch(() => null),
+                fetch('/api/discord-events').catch(() => null),
+            ])
+
             const evData = evRes?.ok ? await evRes.json() : []
             const evList = Array.isArray(evData) ? evData : []
-
-            // Sort: promoted first, then by pushback
             evList.sort((a, b) => {
                 if (a.promoted && !b.promoted) return -1
                 if (!a.promoted && b.promoted) return 1
@@ -254,22 +355,31 @@ export default function EventsPage() {
             })
             setEvents(evList)
 
-            // Fetch Discord events to cross-reference description + user_count
-            const dRes = await fetch('/api/discord-events').catch(() => null)
+            // Build Discord event map
             const dList = dRes?.ok ? await dRes.json() : []
             const map = {}
-            for (const de of (Array.isArray(dList) ? dList : [])) {
-                map[de.id] = de
-            }
-            // Also map by extracting ID from signupUrl for events not already matched
+            for (const de of (Array.isArray(dList) ? dList : [])) map[de.id] = de
             for (const ev of evList) {
                 const id = extractDiscordEventId(ev.signupUrl)
-                if (id && map[id]) {
-                    // keyed by INVA event id for easy lookup in render
-                    map[ev.id] = map[id]
-                }
+                if (id && map[id]) map[ev.id] = map[id]
             }
             setDiscordMap(map)
+
+            // Fetch attendees for all events in parallel
+            const results = await Promise.all(
+                evList.map(async ev => {
+                    const discordEventId = extractDiscordEventId(ev.signupUrl)
+                    if (!discordEventId) return { evId: ev.id, ids: [] }
+                    const r = await fetch(`/api/discord-event-attendees?discordEventId=${discordEventId}`).catch(() => null)
+                    if (!r?.ok) return { evId: ev.id, ids: [] }
+                    const data = await r.json()
+                    return { evId: ev.id, ids: (data.attendees || []).map(a => a.discordId) }
+                })
+            )
+            const am = {}
+            for (const { evId, ids } of results) am[evId] = ids
+            setAttendeesMap(am)
+
             setLoading(false)
         }
         load()
@@ -277,7 +387,6 @@ export default function EventsPage() {
 
     return (
         <Box px={{ base: 4, md: 6 }} py={8} maxW="960px" mx="auto">
-            {/* Header */}
             <Stack gap={1} mb={8}>
                 <Heading size="3xl" fontWeight="bold" letterSpacing="tight" color="fg">Events</Heading>
                 <Text color="fg.muted">
@@ -305,6 +414,7 @@ export default function EventsPage() {
                             key={event.id || event.title}
                             event={event}
                             discordData={discordMap[event.id]}
+                            isParticipating={!!userDiscordId && (attendeesMap[event.id] || []).includes(String(userDiscordId))}
                         />
                     ))}
                 </Stack>

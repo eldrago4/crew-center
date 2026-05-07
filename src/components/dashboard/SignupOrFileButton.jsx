@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Button, Link, HStack, Text } from '@chakra-ui/react'
+import { Button, Link, HStack, Icon } from '@chakra-ui/react'
+import { TbCheck } from 'react-icons/tb'
 
-export default function SignupOrFileButton({ pushbackIso, flightNumber = '', departureIcao = '', arrivalIcao = '', aircraft = '', signupUrl }) {
+export default function SignupOrFileButton({ pushbackIso, flightNumber = '', departureIcao = '', arrivalIcao = '', aircraft = '', signupUrl, isParticipating = false }) {
     const [ now, setNow ] = useState(() => new Date())
 
     useEffect(() => {
@@ -27,8 +28,17 @@ export default function SignupOrFileButton({ pushbackIso, flightNumber = '', dep
         <HStack spacing={4} align="center">
             {/* Multiplier visual kept in parent if desired; this component only renders CTA */}
             {!showFile ? (
-                <Button as={Link} href={signupUrl} isExternal colorPalette="yellow" variant="surface" size="md" rounded="full">
-                    Sign Up
+                <Button
+                    as={Link}
+                    href={signupUrl}
+                    isExternal
+                    colorPalette={isParticipating ? 'green' : 'yellow'}
+                    variant={isParticipating ? 'subtle' : 'surface'}
+                    size="md"
+                    rounded="full"
+                >
+                    {isParticipating && <Icon as={TbCheck} boxSize={4} />}
+                    {isParticipating ? 'Participating' : 'Sign Up'}
                 </Button>
             ) : (
                 <Button as={Link} href={fileUrl} colorPalette="green" variant="solid" size="md" rounded="full">
