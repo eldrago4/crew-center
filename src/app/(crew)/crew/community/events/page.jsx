@@ -1,7 +1,22 @@
-import { Box, Flex, Grid, Heading, Text, Badge, HStack, Stack, Icon } from '@chakra-ui/react'
-import { TbCalendarEvent, TbClock, TbPlane, TbArrowRight, TbStar } from 'react-icons/tb'
-import { fetchModuleValue } from '@/app/(crew)/crew/pireps/file/fleetModule'
+'use client'
+
+import { useState, useEffect } from 'react'
+import {
+    Box, Flex, Stack, HStack, Heading, Text, Badge,
+    Icon, Button, Spinner, Separator,
+} from '@chakra-ui/react'
+import {
+    TbCalendarEvent, TbClock, TbPlane, TbArrowRight,
+    TbStar, TbUsers, TbExternalLink,
+} from 'react-icons/tb'
 import SignupOrFileButton from '@/components/dashboard/SignupOrFileButton'
+
+// Extract Discord event ID from URL like https://discord.com/events/GUILD/EVENT_ID
+function extractDiscordEventId(url) {
+    if (!url) return null
+    const m = url.match(/discord\.com\/events\/\d+\/(\d+)/)
+    return m ? m[1] : null
+}
 
 function fmtPushback(iso) {
     if (!iso) return null
@@ -16,30 +31,41 @@ function fmtPushback(iso) {
     }
 }
 
-function EventCard({ event, featured = false }) {
+// Parse Discord timestamp tokens to readable strings
+function parseDiscordTimestamps(text) {
+    if (!text) return text
+    return text.replace(/<t:(\d+)(?::([tTdDfFR]))?>/g, (_, unix, fmt) => {
+        const date = new Date(Number(unix) * 1000)
+        if (fmt === 'R') {
+            const diff = date - Date.now()
+            const abs = Math.abs(diff)
+            const future = diff > 0
+            if (abs < 3_600_000) return `${future ? 'in ' : ''}${Math.round(abs / 60_000)} min${future ? '' : ' ago'}`
+            if (abs < 86_400_000) return `${future ? 'in ' : ''}${Math.round(abs / 3_600_000)} hr${future ? '' : ' ago'}`
+            return `${future ? 'in ' : ''}${Math.round(abs / 86_400_000)} day${Math.round(abs / 86_400_000) !== 1 ? 's' : ''}${future ? '' : ' ago'}`
+        }
+        return date.toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    })
+}
+
+function EventCard({ event, discordData }) {
     const pb = fmtPushback(event.pushbackIso)
+    const description = discordData?.description ? parseDiscordTimestamps(discordData.description) : null
+    const userCount = discordData?.user_count ?? null
 
     return (
         <Box
             borderRadius="2xl"
             overflow="hidden"
-            bg={{ base: 'white', _dark: 'gray.800' }}
+            bg={{ base: 'white', _dark: 'gray.900' }}
             borderWidth="1px"
-            borderColor={{ base: event.promoted ? 'purple.200' : 'gray.150', _dark: event.promoted ? 'purple.700' : 'whiteAlpha.100' }}
-            shadow={event.promoted ? 'lg' : 'sm'}
-            display="flex"
-            flexDirection="column"
-            h="100%"
-            position="relative"
-            _dark={{ shadow: 'none' }}
+            borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+            shadow={{ base: event.promoted ? 'xl' : 'md', _dark: 'none' }}
+            transition="box-shadow 0.2s"
+            _hover={{ shadow: { base: '2xl', _dark: 'none' } }}
         >
-            {/* Banner */}
-            <Box
-                position="relative"
-                h={featured ? { base: '220px', md: '300px' } : '200px'}
-                overflow="hidden"
-                flexShrink={0}
-            >
+            {/* ── Banner ── */}
+            <Box position="relative" h={{ base: '220px', md: '340px' }} overflow="hidden">
                 {event.banner ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
@@ -50,65 +76,50 @@ function EventCard({ event, featured = false }) {
                 ) : (
                     <Box
                         w="100%" h="100%"
-                        bgGradient="linear(135deg, {colors.purple.600}, {colors.blue.500})"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
+                        style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)' }}
+                        display="flex" alignItems="center" justifyContent="center"
                     >
-                        <Icon as={TbCalendarEvent} boxSize={16} color="whiteAlpha.300" />
+                        <Icon as={TbCalendarEvent} boxSize={20} color="whiteAlpha.200" />
                     </Box>
                 )}
-                {/* Gradient overlay */}
-                <Box
-                    position="absolute"
-                    inset={0}
-                    bgGradient="linear(to-t, blackAlpha.800 0%, blackAlpha.300 40%, transparent 70%)"
-                />
+                {/* Scrim */}
+                <Box position="absolute" inset={0} style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 45%, transparent 75%)' }} />
 
-                {/* Promoted badge */}
-                {event.promoted && (
-                    <HStack
-                        position="absolute"
-                        top={3}
-                        left={3}
-                        bg="purple.500"
-                        px={3}
-                        py={1}
-                        borderRadius="full"
-                        gap={1.5}
-                    >
-                        <Icon as={TbStar} boxSize={3} color="white" />
-                        <Text fontSize="xs" fontWeight="bold" color="white" letterSpacing="wider" textTransform="uppercase">
-                            Featured
-                        </Text>
-                    </HStack>
-                )}
+                {/* Top badges */}
+                <HStack position="absolute" top={4} left={4} gap={2} flexWrap="wrap">
+                    {event.promoted && (
+                        <HStack bg="purple.500" px={3} py={1.5} borderRadius="full" gap={1.5}>
+                            <Icon as={TbStar} boxSize={3} color="white" />
+                            <Text fontSize="xs" fontWeight="bold" color="white" textTransform="uppercase" letterSpacing="wider">Featured</Text>
+                        </HStack>
+                    )}
+                    {userCount != null && (
+                        <HStack bg="blackAlpha.700" backdropFilter="blur(6px)" px={3} py={1.5} borderRadius="full" gap={1.5}>
+                            <Icon as={TbUsers} boxSize={3.5} color="white" />
+                            <Text fontSize="xs" fontWeight="semibold" color="white">{userCount} interested</Text>
+                        </HStack>
+                    )}
+                </HStack>
 
-                {/* Multiplier badge */}
+                {/* Multiplier badge top-right */}
                 {event.multiplier && Number(event.multiplier) > 1 && (
                     <Box
-                        position="absolute"
-                        top={3}
-                        right={3}
-                        bg="amber.400"
-                        color="gray.900"
-                        px={3}
-                        py={1}
-                        borderRadius="full"
-                        fontSize="sm"
-                        fontWeight="black"
+                        position="absolute" top={4} right={4}
+                        bg="amber.400" color="gray.900"
+                        px={4} py={1.5} borderRadius="full"
+                        fontSize="lg" fontWeight="black" lineHeight="1"
                     >
                         {event.multiplier}×
                     </Box>
                 )}
 
-                {/* Title over image */}
-                <Box position="absolute" bottom={0} left={0} right={0} px={5} pb={4}>
+                {/* Title on image */}
+                <Box position="absolute" bottom={0} left={0} right={0} px={6} pb={5}>
                     <Text
-                        fontSize={featured ? { base: 'xl', md: '2xl' } : 'lg'}
+                        fontSize={{ base: '2xl', md: '3xl' }}
                         fontWeight="bold"
                         color="white"
-                        lineHeight="1.2"
+                        lineHeight="1.15"
                         letterSpacing="tight"
                         noOfLines={2}
                     >
@@ -117,84 +128,83 @@ function EventCard({ event, featured = false }) {
                 </Box>
             </Box>
 
-            {/* Body */}
-            <Stack gap={4} p={5} flex={1}>
-                {/* Route pill */}
-                <HStack
-                    gap={2}
-                    bg={{ base: 'gray.50', _dark: 'whiteAlpha.50' }}
-                    px={3}
-                    py={2}
-                    borderRadius="lg"
-                    borderWidth="1px"
-                    borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.100' }}
-                    alignSelf="flex-start"
-                    flexWrap="wrap"
-                >
-                    <Text fontFamily="mono" fontWeight="bold" fontSize="sm" color="fg">
-                        {event.departureIcao || '—'}
-                    </Text>
-                    <Icon as={TbArrowRight} boxSize={4} color="purple.500" />
-                    <Text fontFamily="mono" fontWeight="bold" fontSize="sm" color="fg">
-                        {event.arrivalIcao || '—'}
-                    </Text>
-                    {event.route && (
-                        <Text fontSize="xs" color="fg.muted" fontFamily="mono">{event.route}</Text>
-                    )}
-                </HStack>
+            {/* ── Body ── */}
+            <Stack gap={5} p={6}>
+                {/* Route + flight meta row */}
+                <Flex gap={4} align="center" flexWrap="wrap">
+                    <HStack
+                        bg={{ base: 'gray.50', _dark: 'whiteAlpha.50' }}
+                        px={4} py={2.5}
+                        borderRadius="xl"
+                        borderWidth="1px"
+                        borderColor={{ base: 'gray.150', _dark: 'whiteAlpha.100' }}
+                        gap={3}
+                    >
+                        <Text fontFamily="mono" fontWeight="bold" fontSize="xl" color="fg" letterSpacing="wider">
+                            {event.departureIcao || '—'}
+                        </Text>
+                        <Icon as={TbArrowRight} boxSize={5} color="purple.500" />
+                        <Text fontFamily="mono" fontWeight="bold" fontSize="xl" color="fg" letterSpacing="wider">
+                            {event.arrivalIcao || '—'}
+                        </Text>
+                    </HStack>
 
-                {/* Metadata grid */}
-                <Grid templateColumns="1fr 1fr" gap={3}>
                     {event.flightNumber && (
-                        <Stack gap={0}>
-                            <Text fontSize="9px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">Flight</Text>
-                            <Text fontSize="sm" fontWeight="semibold" fontFamily="mono" color="fg">{event.flightNumber}</Text>
-                        </Stack>
+                        <Badge colorPalette="purple" variant="subtle" px={3} py={1.5} borderRadius="full" fontSize="sm" fontFamily="mono" fontWeight="bold">
+                            {event.flightNumber}
+                        </Badge>
                     )}
+
                     {event.aircraft && (
-                        <Stack gap={0}>
-                            <Text fontSize="9px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">Aircraft</Text>
-                            <HStack gap={1}>
-                                <Icon as={TbPlane} boxSize={3.5} color="purple.500" />
-                                <Text fontSize="sm" fontWeight="semibold" fontFamily="mono" color="fg">{event.aircraft}</Text>
-                            </HStack>
-                        </Stack>
+                        <HStack color="fg.muted" gap={1.5}>
+                            <Icon as={TbPlane} boxSize={4} />
+                            <Text fontSize="sm" fontWeight="medium">{event.aircraft}</Text>
+                        </HStack>
                     )}
+
                     {event.flightTime && (
-                        <Stack gap={0}>
-                            <Text fontSize="9px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">Flight Time</Text>
-                            <HStack gap={1}>
-                                <Icon as={TbClock} boxSize={3.5} color="purple.500" />
-                                <Text fontSize="sm" fontWeight="semibold" color="fg">{event.flightTime} hrs</Text>
-                            </HStack>
-                        </Stack>
+                        <HStack color="fg.muted" gap={1.5}>
+                            <Icon as={TbClock} boxSize={4} />
+                            <Text fontSize="sm" fontWeight="medium">{event.flightTime} hrs</Text>
+                        </HStack>
                     )}
-                    {event.multiplier && Number(event.multiplier) > 1 && (
-                        <Stack gap={0}>
-                            <Text fontSize="9px" fontWeight="bold" color="fg.muted" textTransform="uppercase" letterSpacing="widest">Multiplier</Text>
-                            <Text fontSize="sm" fontWeight="black" color="amber.500">{event.multiplier}× XP Boost</Text>
-                        </Stack>
-                    )}
-                </Grid>
+                </Flex>
 
                 {/* Pushback */}
                 {pb && (
-                    <Box
+                    <HStack
                         bg={{ base: 'purple.50', _dark: 'purple.950' }}
-                        borderRadius="lg"
-                        px={3}
-                        py={2.5}
+                        px={4} py={3}
+                        borderRadius="xl"
                         borderWidth="1px"
                         borderColor={{ base: 'purple.100', _dark: 'purple.800' }}
+                        gap={3}
                     >
-                        <Text fontSize="9px" fontWeight="bold" color="purple.500" textTransform="uppercase" letterSpacing="widest" mb={0.5}>Pushback</Text>
-                        <Text fontSize="sm" fontWeight="semibold" color={{ base: 'purple.800', _dark: 'purple.200' }}>{pb.date}</Text>
-                        <Text fontSize="xs" color={{ base: 'purple.600', _dark: 'purple.400' }}>{pb.time}</Text>
-                    </Box>
+                        <Icon as={TbCalendarEvent} boxSize={5} color="purple.500" flexShrink={0} />
+                        <Box>
+                            <Text fontSize="sm" fontWeight="bold" color={{ base: 'purple.800', _dark: 'purple.200' }}>{pb.date}</Text>
+                            <Text fontSize="xs" color={{ base: 'purple.600', _dark: 'purple.400' }}>{pb.time}</Text>
+                        </Box>
+                    </HStack>
                 )}
 
-                {/* CTA */}
-                <Box mt="auto">
+                {/* Discord description */}
+                {description && (
+                    <>
+                        <Separator borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.100' }} />
+                        <Text
+                            fontSize="sm"
+                            color={{ base: 'gray.700', _dark: 'gray.300' }}
+                            lineHeight="1.75"
+                            whiteSpace="pre-wrap"
+                        >
+                            {description}
+                        </Text>
+                    </>
+                )}
+
+                {/* CTA row */}
+                <HStack gap={3} pt={1} flexWrap="wrap">
                     <SignupOrFileButton
                         pushbackIso={event.pushbackIso}
                         flightNumber={event.flightNumber}
@@ -203,64 +213,101 @@ function EventCard({ event, featured = false }) {
                         aircraft={event.aircraft}
                         signupUrl={event.signupUrl}
                     />
-                </Box>
+                    {event.signupUrl && (
+                        <Button
+                            as="a"
+                            href={event.signupUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            variant="outline"
+                            colorPalette="gray"
+                            size="md"
+                            borderRadius="full"
+                        >
+                            <Icon as={TbExternalLink} boxSize={4} />
+                            View on Discord
+                        </Button>
+                    )}
+                </HStack>
             </Stack>
         </Box>
     )
 }
 
-export default async function EventsPage() {
-    let events = []
-    try {
-        const data = await fetchModuleValue('events')
-        events = Array.isArray(data) ? data : []
-    } catch { events = [] }
+export default function EventsPage() {
+    const [events, setEvents] = useState([])
+    const [discordMap, setDiscordMap] = useState({})
+    const [loading, setLoading] = useState(true)
 
-    // Promoted first, then sort by pushback date ascending
-    const sorted = [...events].sort((a, b) => {
-        if (a.promoted && !b.promoted) return -1
-        if (!a.promoted && b.promoted) return 1
-        return new Date(a.pushbackIso || 0) - new Date(b.pushbackIso || 0)
-    })
+    useEffect(() => {
+        async function load() {
+            // Fetch INVA events
+            const evRes = await fetch('/api/crewcenter?module=events').catch(() => null)
+            const evData = evRes?.ok ? await evRes.json() : []
+            const evList = Array.isArray(evData) ? evData : []
 
-    const featured = sorted.find(e => e.promoted)
-    const rest = sorted.filter(e => !e.promoted)
+            // Sort: promoted first, then by pushback
+            evList.sort((a, b) => {
+                if (a.promoted && !b.promoted) return -1
+                if (!a.promoted && b.promoted) return 1
+                return new Date(a.pushbackIso || 0) - new Date(b.pushbackIso || 0)
+            })
+            setEvents(evList)
+
+            // Fetch Discord events to cross-reference description + user_count
+            const dRes = await fetch('/api/discord-events').catch(() => null)
+            const dList = dRes?.ok ? await dRes.json() : []
+            const map = {}
+            for (const de of (Array.isArray(dList) ? dList : [])) {
+                map[de.id] = de
+            }
+            // Also map by extracting ID from signupUrl for events not already matched
+            for (const ev of evList) {
+                const id = extractDiscordEventId(ev.signupUrl)
+                if (id && map[id]) {
+                    // keyed by INVA event id for easy lookup in render
+                    map[ev.id] = map[id]
+                }
+            }
+            setDiscordMap(map)
+            setLoading(false)
+        }
+        load()
+    }, [])
 
     return (
-        <Box px={{ base: 4, md: 6 }} py={8} maxW="1400px" mx="auto">
+        <Box px={{ base: 4, md: 6 }} py={8} maxW="960px" mx="auto">
             {/* Header */}
             <Stack gap={1} mb={8}>
-                <Heading size="2xl" fontWeight="bold" letterSpacing="tight" color="fg">Events</Heading>
-                <Text color="fg.muted" fontSize="sm">
-                    Scheduled flights, multiplier events and community operations · {sorted.length} active
+                <Heading size="3xl" fontWeight="bold" letterSpacing="tight" color="fg">Events</Heading>
+                <Text color="fg.muted">
+                    Multiplier events and community operations · {events.length} active
                 </Text>
             </Stack>
 
-            {sorted.length === 0 && (
+            {loading && (
+                <Flex justify="center" align="center" h="40vh">
+                    <Spinner size="xl" color="purple.500" />
+                </Flex>
+            )}
+
+            {!loading && events.length === 0 && (
                 <Flex direction="column" align="center" justify="center" h="40vh" gap={3}>
                     <Icon as={TbCalendarEvent} boxSize={16} color="fg.subtle" />
                     <Text color="fg.muted" fontWeight="medium">No events right now. Check back soon.</Text>
                 </Flex>
             )}
 
-            {/* Featured event — full row */}
-            {featured && (
-                <Box mb={6}>
-                    <EventCard event={featured} featured />
-                </Box>
-            )}
-
-            {/* Remaining events */}
-            {rest.length > 0 && (
-                <Grid
-                    templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)' }}
-                    gap={5}
-                    alignItems="start"
-                >
-                    {rest.map(event => (
-                        <EventCard key={event.id || event.title} event={event} />
+            {!loading && events.length > 0 && (
+                <Stack gap={6}>
+                    {events.map(event => (
+                        <EventCard
+                            key={event.id || event.title}
+                            event={event}
+                            discordData={discordMap[event.id]}
+                        />
                     ))}
-                </Grid>
+                </Stack>
             )}
         </Box>
     )
