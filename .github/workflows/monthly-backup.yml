@@ -24,6 +24,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PGSSLMODE: require
         run: |
+          set -o pipefail
           FILENAME="crew-center-$(date -u +%Y-%m-%d).sql.gz"
           /usr/lib/postgresql/17/bin/pg_dump --dbname="$DATABASE_URL" | gzip > "$FILENAME"
           SIZE=$(du -sh "$FILENAME" | cut -f1)
@@ -33,6 +34,8 @@ jobs:
       - name: Send to Discord
         env:
           DISCORD_BACKUP_WEBHOOK: ${{ secrets.DISCORD_BACKUP_WEBHOOK }}
+          FILENAME: ${{ env.FILENAME }}
+          SIZE: ${{ env.SIZE }}
         run: |
           curl -s -X POST "$DISCORD_BACKUP_WEBHOOK" \
             -F "payload_json={\"content\":\"📦 **Crew Center — PostgreSQL Backup** \`${FILENAME}\` · ${SIZE}\"}" \
