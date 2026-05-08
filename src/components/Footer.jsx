@@ -72,6 +72,11 @@ export default function Footer() {
                                 <Text fontSize="sm" color="gray.500">
                                     Proudly crafted by <Text as="span" color="orange.400" fontWeight="semibold">VortexVolt</Text> & <Text as="span" color="green.400" fontWeight="semibold">eldrago</Text>
                                 </Text>
+                                <HStack mt={3} gap={4} justify={{ base: 'center', lg: 'flex-start' }}>
+                                    <Link href="/privacy" color="gray.500" fontSize="xs" _hover={{ color: 'orange.300', textDecoration: 'none' }}>Privacy Policy</Link>
+                                    <Text color="gray.700" fontSize="xs">·</Text>
+                                    <Link href="/terms" color="gray.500" fontSize="xs" _hover={{ color: 'orange.300', textDecoration: 'none' }}>Terms of Service</Link>
+                                </HStack>
                             </Box>
                             <Box textAlign={{ base: 'center', lg: 'right' }}>
                                 <Text fontSize="xs" color="gray.500" maxW="md" lineHeight="relaxed">
