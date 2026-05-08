@@ -68,7 +68,7 @@ export default function Footer() {
                     <Box borderTop="1px solid" borderColor="gray.700" pt={8}>
                         <Flex direction={{ base: 'column', lg: 'row' }} justify="space-between" align="center" gap={6}>
                             <Box textAlign={{ base: 'center', lg: 'left' }}>
-                                <Text color="gray.400" mb={2}>© 2025 Indian Virtual Airlines. All rights reserved.</Text>
+                                <Text color="gray.400" mb={2}>© 2026 Indian Virtual Airlines. All rights reserved.</Text>
                                 <Text fontSize="sm" color="gray.500">
                                     Proudly crafted by <Text as="span" color="orange.400" fontWeight="semibold">VortexVolt</Text> & <Text as="span" color="green.400" fontWeight="semibold">eldrago</Text>
                                 </Text>
