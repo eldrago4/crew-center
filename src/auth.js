@@ -181,9 +181,10 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
         // Add rank and careerMode, fetched from DB
         try {
-          const userData = await db.select({ rank: users.rank, careerMode: users.careerMode }).from(users).where(eq(users.id, token.callsign)).limit(1);
+          const userData = await db.select({ rank: users.rank, careerMode: users.careerMode, ifcName: users.ifcName }).from(users).where(eq(users.id, token.callsign)).limit(1);
           session.user.rank = userData.length > 0 ? userData[ 0 ].rank : null;
           session.user.careerMode = userData.length > 0 ? (userData[ 0 ].careerMode ?? false) : false;
+          session.user.ifcName = userData.length > 0 ? (userData[ 0 ].ifcName ?? null) : null;
         } catch (error) {
           console.error('Error fetching user rank/careerMode:', error);
           session.user.rank = null;
