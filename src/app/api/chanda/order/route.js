@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { Redis } from '@upstash/redis';
+import { DEFAULT_GOALS, GOALS_REDIS_KEY } from '../_defaultGoals';
 
 export async function POST(req) {
   const keyId     = process.env.RAZORPAY_KEY_ID;
@@ -8,28 +10,33 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Payment gateway not configured' }, { status: 500 });
   }
 
-  const VALID_GOALS = new Set(['domain', 'database', 'hosting', 'bot']);
-
   try {
     const { amount, goalId, discordId, ifcName } = await req.json();
 
-    if (!amount || Number(amount) < 1 || !goalId || !VALID_GOALS.has(goalId)) {
+    if (!amount || Number(amount) < 1 || !goalId) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
+
+    // Validate goalId against live goals config
+    const redis    = Redis.fromEnv();
+    const raw      = await redis.get(GOALS_REDIS_KEY);
+    const goals    = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : DEFAULT_GOALS;
+    const validIds = new Set([...goals.map(g => g.id), 'all']);
+
+    if (!validIds.has(goalId)) {
+      return NextResponse.json({ error: 'Invalid goal' }, { status: 400 });
     }
 
     const basicAuth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
 
     const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
-      headers: {
-        Authorization: `Basic ${basicAuth}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Basic ${basicAuth}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        amount:   Math.round(Number(amount) * 100), // paise
+        amount:   Math.round(Number(amount) * 100),
         currency: 'INR',
         receipt:  `cc_${goalId}_${Date.now()}`.slice(0, 40),
-        notes: { goalId, discordId: discordId || '', ifcName: ifcName || '' },
+        notes:    { goalId, discordId: discordId || '', ifcName: ifcName || '' },
       }),
     });
 
@@ -43,15 +50,9 @@ export async function POST(req) {
     }
 
     const order = await rzpRes.json();
-
-    return NextResponse.json({
-      orderId:  order.id,
-      amount:   order.amount,   // paise — Razorpay canonical value
-      currency: order.currency,
-      key:      keyId,
-    });
+    return NextResponse.json({ orderId: order.id, amount: order.amount, currency: order.currency, key: keyId });
   } catch (err) {
-    console.error('[chanda/order] Unexpected error:', err);
+    console.error('[chanda/order]', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

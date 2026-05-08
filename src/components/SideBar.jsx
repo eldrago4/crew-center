@@ -77,6 +77,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     { label: "User Console", href: "/crew/admin/users", icon: FiUsers },
     { label: "ROTW & Events", href: "/crew/admin/rotw", icon: FiEdit },
     { label: "Pireps", href: "/crew/admin/pireps", icon: FiCheckSquare },
+    { label: "Contributions", href: "/crew/admin/chanda", icon: FiHeart },
     { label: "Statistics", href: "/crew/admin/statistics", icon: FiBarChart2 },
     ...(ceo ? [ { label: "Server Config", href: "/crew/admin/server-config", icon: FiServer } ] : []),
   ];

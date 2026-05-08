@@ -1,19 +1,28 @@
 import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
-
-const GOAL_IDS = ['domain', 'database', 'hosting', 'bot'];
+import { DEFAULT_GOALS, GOALS_REDIS_KEY } from '../_defaultGoals';
 
 export async function GET() {
   try {
     const redis = Redis.fromEnv();
-    const [contributors, rawContribs, ...raised] = await Promise.all([
+
+    // Load goal definitions dynamically
+    const raw       = await redis.get(GOALS_REDIS_KEY);
+    const goalDefs  = raw
+      ? (typeof raw === 'string' ? JSON.parse(raw) : raw)
+      : DEFAULT_GOALS;
+    const goalIds   = goalDefs.map(g => g.id);
+
+    const [contributors, rawContribs, lotusSubscribers, rawLotusMembers, ...raised] = await Promise.all([
       redis.get('chanda:total:contributors'),
       redis.lrange('chanda:contributions', 0, 19),
-      ...GOAL_IDS.map(id => redis.get(`chanda:goal:${id}:raised`)),
+      redis.get('chanda:lotus:subscribers'),
+      redis.lrange('chanda:lotus:members', 0, 49),
+      ...goalIds.map(id => redis.get(`chanda:goal:${id}:raised`)),
     ]);
 
     const goals = {};
-    GOAL_IDS.forEach((id, i) => {
+    goalIds.forEach((id, i) => {
       goals[id] = parseFloat(raised[i] || 0);
     });
 
@@ -22,14 +31,21 @@ export async function GET() {
       catch { return null; }
     }).filter(Boolean);
 
+    const lotusMembers = (rawLotusMembers || []).map(item => {
+      try { return typeof item === 'string' ? JSON.parse(item) : item; }
+      catch { return null; }
+    }).filter(Boolean);
+
     return NextResponse.json({
-      contributors: parseInt(contributors || 0),
+      contributors:  parseInt(contributors || 0),
       goals,
+      goalDefs,
       contributions,
+      lotus: { subscribers: parseInt(lotusSubscribers || 0), members: lotusMembers },
     });
   } catch (err) {
     console.error('Chanda stats error:', err);
-    return NextResponse.json({ contributors: 0, goals: {}, contributions: [] });
+    return NextResponse.json({ contributors: 0, goals: {}, goalDefs: DEFAULT_GOALS, contributions: [], lotus: { subscribers: 0, members: [] } });
   }
 }
 

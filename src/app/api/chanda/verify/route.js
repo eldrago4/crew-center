@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { Redis } from '@upstash/redis';
 import { processConfirmedPayment } from '../_processPayment';
-
-const VALID_GOAL_IDS = new Set(['domain', 'database', 'hosting', 'bot']);
+import { DEFAULT_GOALS, GOALS_REDIS_KEY } from '../_defaultGoals';
 
 export async function POST(req) {
   try {
@@ -14,7 +14,14 @@ export async function POST(req) {
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return NextResponse.json({ error: 'Missing payment fields' }, { status: 400 });
     }
-    if (!VALID_GOAL_IDS.has(goalId)) {
+
+    // Validate goalId against live goals config
+    const redis    = Redis.fromEnv();
+    const raw      = await redis.get(GOALS_REDIS_KEY);
+    const goals    = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : DEFAULT_GOALS;
+    const validIds = new Set([...goals.map(g => g.id), 'all']);
+
+    if (!goalId || !validIds.has(goalId)) {
       return NextResponse.json({ error: 'Invalid goal' }, { status: 400 });
     }
 
