@@ -139,7 +139,7 @@ export default function TermsPage() {
           </P>
         </Section>
 
-        <Section title="6. Voluntary Contributions (Chanda)">
+        <Section title="6. Voluntary Contributions">
           <P>
             The Crew Center offers a voluntary contributions feature through which members may support
             INVA's infrastructure costs. By contributing, you acknowledge:

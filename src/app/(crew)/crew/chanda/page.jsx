@@ -11,7 +11,7 @@ import { ICON_MAP } from './_iconMap';
 
 const Confetti = dynamic(() => import('react-confetti'), { ssr: false });
 
-const AMOUNTS      = [100, 250, 500, 1000];
+const AMOUNTS = [ 100, 250, 500, 1000 ];
 const ALL_GRADIENT = 'linear-gradient(to right, #6366f1, #0ea5e9, #f59e0b, #10b981)';
 
 function timeAgo(ts) {
@@ -104,12 +104,12 @@ function AmountPicker({ color, gradient, selected, custom, onSelect, onCustom, o
 }
 
 function GoalCard({ goal, raised, onContribute }) {
-  const [selected, setSelected] = useState(null);
-  const [custom, setCustom]     = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [ selected, setSelected ] = useState(null);
+  const [ custom, setCustom ] = useState('');
+  const [ loading, setLoading ] = useState(false);
 
-  const pct  = Math.min(100, Math.round((raised / goal.target) * 100));
-  const Icon = ICON_MAP[goal.icon] ?? FiHeart;
+  const pct = Math.min(100, Math.round((raised / goal.target) * 100));
+  const Icon = ICON_MAP[ goal.icon ] ?? FiHeart;
 
   const handleContribute = async () => {
     const amt = selected === 'custom' ? parseFloat(custom) : selected;
@@ -171,15 +171,15 @@ function GoalCard({ goal, raised, onContribute }) {
 }
 
 function SupportAllCard({ goals, goalStats, onContribute }) {
-  const [selected, setSelected] = useState(null);
-  const [custom, setCustom]     = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [ selected, setSelected ] = useState(null);
+  const [ custom, setCustom ] = useState('');
+  const [ loading, setLoading ] = useState(false);
 
   const totalTarget = goals.reduce((a, g) => a + g.target, 0);
-  const totalRaised = goals.reduce((a, g) => a + (goalStats[g.id] || 0), 0);
-  const pct         = totalTarget > 0 ? Math.min(100, Math.round((totalRaised / totalTarget) * 100)) : 0;
-  const activeGoals = goals.filter(g => (goalStats[g.id] || 0) < g.target);
-  const splitGoals  = activeGoals.length > 0 ? activeGoals : goals;
+  const totalRaised = goals.reduce((a, g) => a + (goalStats[ g.id ] || 0), 0);
+  const pct = totalTarget > 0 ? Math.min(100, Math.round((totalRaised / totalTarget) * 100)) : 0;
+  const activeGoals = goals.filter(g => (goalStats[ g.id ] || 0) < g.target);
+  const splitGoals = activeGoals.length > 0 ? activeGoals : goals;
   const fullyFunded = goals.length - activeGoals.length;
 
   const handleContribute = async () => {
@@ -204,13 +204,6 @@ function SupportAllCard({ goals, goalStats, onContribute }) {
           <Box flex={1} minW={0}>
             <Text fontSize="xs" fontWeight="600" color="#6366f1" textTransform="uppercase" letterSpacing="wider" mb={0.5}>General Support</Text>
             <Text fontWeight="700" fontSize="sm" color={{ base: 'gray.800', _dark: 'white' }}>Support All Goals</Text>
-          </Box>
-          <Box textAlign="right" flexShrink={0}>
-            <Text fontSize="xs" color={{ base: 'gray.700', _dark: 'gray.400' }}>Combined Goal</Text>
-            <Text fontWeight="700" fontSize="sm" color={{ base: 'gray.700', _dark: 'gray.200' }}>
-              ₹{totalTarget.toLocaleString('en-IN')}
-              <Text as="span" fontWeight="400" fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.500' }}>/yr</Text>
-            </Text>
           </Box>
         </HStack>
 
@@ -255,12 +248,12 @@ function SupportAllCard({ goals, goalStats, onContribute }) {
 // Always dark — uses style/sx props only for colors, bypasses Chakra theme vars.
 
 const LOTUS_PERKS = [
-  { title: 'Lotus Privé Role',   desc: 'Exclusive Discord badge with a unique gold colour' },
-  { title: 'Beta Access',        desc: 'Try new Crew Center features before anyone else' },
+  { title: 'Lotus Privé Role', desc: 'Exclusive Discord badge with a unique gold colour' },
+  { title: 'Beta Access', desc: 'Try new Crew Center features before anyone else' },
   { title: 'Insider Dispatches', desc: 'Monthly behind-the-scenes from the dev team' },
-  { title: 'Priority PIREPs',    desc: 'Your reports move to the front of the review queue' },
-  { title: 'Supporters Wall',    desc: 'Your IFC name permanently in the app credits' },
-  { title: 'Private Channel',    desc: 'Direct Discord thread with the INVA staff team' },
+  { title: 'Priority PIREPs', desc: 'Your reports move to the front of the review queue' },
+  { title: 'Supporters Wall', desc: 'Your IFC name permanently in the app credits' },
+  { title: 'Private Channel', desc: 'Direct Discord thread with the INVA staff team' },
 ];
 
 function LotusGlyph({ size = 52 }) {
@@ -268,26 +261,78 @@ function LotusGlyph({ size = 52 }) {
     <svg width={size} height={size} viewBox="0 0 56 56" fill="none">
       <defs>
         <linearGradient id="lga" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
-          <stop offset="0%"   stopColor="#e8c97e" />
-          <stop offset="50%"  stopColor="#c9a96e" />
+          <stop offset="0%" stopColor="#e8c97e" />
+          <stop offset="50%" stopColor="#c9a96e" />
           <stop offset="100%" stopColor="#a78bfa" />
         </linearGradient>
         <radialGradient id="lgb" cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#fff8e7" stopOpacity="0.95" />
+          <stop offset="0%" stopColor="#fff8e7" stopOpacity="0.95" />
           <stop offset="100%" stopColor="#e8c97e" />
         </radialGradient>
       </defs>
-      {[0,45,90,135,180,225,270,315].map(a => (
+      {[ 0, 45, 90, 135, 180, 225, 270, 315 ].map(a => (
         <path key={a} d="M28 8 C23 17 21 23 28 28 C35 23 33 17 28 8Z"
           fill="url(#lga)" opacity="0.82" transform={`rotate(${a} 28 28)`} />
       ))}
       <circle cx="28" cy="28" r="6.5" fill="url(#lga)" />
-      <circle cx="28" cy="28" r="3"   fill="url(#lgb)" />
+      <circle cx="28" cy="28" r="3" fill="url(#lgb)" />
     </svg>
   );
 }
 
-function LotusPriveSection({ subscribers, members = [] }) {
+function LotusPriveSection({ subscribers, members = [], discordId, ifcName, showToast }) {
+  const [ subLoading, setSubLoading ] = useState(false);
+  const [ subDone, setSubDone ] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (subLoading || subDone) return;
+    setSubLoading(true);
+    try {
+      await loadRazorpayScript();
+      const res = await fetch('/api/chanda/lotus/subscribe', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ discordId, ifcName }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not initiate subscription');
+
+      const { subscriptionId, key } = data;
+      setSubLoading(false);
+
+      const rzp = new window.Razorpay({
+        key,
+        subscription_id: subscriptionId,
+        name: 'Indian Virtual',
+        description: 'Lotus Privé — Monthly Membership',
+        image: '/invaLogo.svg',
+        notes: { discordId: discordId || '', ifcName: ifcName || '' },
+        theme: { color: '#c9a96e' },
+        async handler(response) {
+          const vRes = await fetch('/api/chanda/lotus/verify', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(response),
+          }).catch(() => null);
+          if (vRes?.ok) {
+            setSubDone(true);
+            showToast?.('Welcome to Lotus Privé. Your membership is now active.', true);
+          } else {
+            // Webhook will activate regardless — treat as success
+            setSubDone(true);
+            showToast?.('Subscription activated. Your Discord role will be assigned shortly.', true);
+          }
+        },
+        modal: { ondismiss: () => {} },
+      });
+      rzp.on('payment.failed', () => {
+        showToast?.('Payment failed. Please try again.', false);
+      });
+      rzp.open();
+    } catch (err) {
+      console.error('[lotus subscribe]', err);
+      setSubLoading(false);
+      showToast?.(err.message || 'Something went wrong — please try again.', false);
+    }
+  };
   const cardBg = [
     'radial-gradient(ellipse at 18% 65%, rgba(124,58,237,0.22) 0%, transparent 55%)',
     'radial-gradient(ellipse at 82% 25%, rgba(201,169,110,0.14) 0%, transparent 50%)',
@@ -299,15 +344,15 @@ function LotusPriveSection({ subscribers, members = [] }) {
     <Box
       position="relative" overflow="hidden" borderRadius="3xl" mt={10}
       style={{
-        background:  cardBg,
-        border:      '1px solid rgba(201,169,110,0.22)',
-        boxShadow:   '0 0 0 1px rgba(201,169,110,0.07), 0 50px 120px rgba(0,0,0,0.55), inset 0 1px 0 rgba(201,169,110,0.12)',
+        background: cardBg,
+        border: '1px solid rgba(201,169,110,0.22)',
+        boxShadow: '0 0 0 1px rgba(201,169,110,0.07), 0 50px 120px rgba(0,0,0,0.55), inset 0 1px 0 rgba(201,169,110,0.12)',
       }}
     >
       {/* Grid overlay */}
       <Box position="absolute" inset={0} pointerEvents="none" style={{
         backgroundImage: 'linear-gradient(rgba(201,169,110,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(201,169,110,0.035) 1px, transparent 1px)',
-        backgroundSize:  '44px 44px',
+        backgroundSize: '44px 44px',
       }} />
       {/* Corner ornaments */}
       <Box position="absolute" top={5} right={7} userSelect="none" aria-hidden
@@ -319,11 +364,6 @@ function LotusPriveSection({ subscribers, members = [] }) {
 
         {/* Header */}
         <Flex direction="column" align="center" mb={10}>
-          <Box px="12px" py="6px" borderRadius="full" mb={7} display="inline-flex" alignItems="center"
-            style={{ background: 'rgba(201,169,110,0.1)', border: '1px solid rgba(201,169,110,0.28)', color: '#c9a96e', fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase' }}>
-            Coming Soon
-          </Box>
-
           <LotusGlyph size={54} />
 
           <Box mt={5} mb={3} textAlign="center">
@@ -347,8 +387,8 @@ function LotusPriveSection({ subscribers, members = [] }) {
             <Box style={{ width: 7, height: 7, borderRadius: '50%', background: 'linear-gradient(135deg, #c9a96e, #a78bfa)', flexShrink: 0 }} />
             <Box as="span" style={{ color: '#c9a96e', fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em' }}>
               {subscribers > 0
-                ? `${subscribers} founding member${subscribers === 1 ? '' : 's'}`
-                : 'Founding members waitlist open'}
+                ? `${subscribers} member${subscribers === 1 ? '' : 's'}`
+                : 'Be the first to join'}
             </Box>
           </Box>
         </Flex>
@@ -384,14 +424,14 @@ function LotusPriveSection({ subscribers, members = [] }) {
             <Flex direction="column" align="center" gap={4}>
               {/* Stacked placeholder avatar slots */}
               <Flex justify="center" align="center">
-                {[0,1,2,3,4].map(i => (
+                {[ 0, 1, 2, 3, 4 ].map(i => (
                   <Box key={i} w="52px" h="52px" borderRadius="full" display="flex" alignItems="center" justifyContent="center"
                     style={{
-                      marginLeft:  i > 0 ? '-16px' : 0,
-                      position:    'relative',
-                      zIndex:      10 - i,
-                      background:  'linear-gradient(135deg, rgba(201,169,110,0.1), rgba(124,58,237,0.08))',
-                      border:      '2px solid rgba(201,169,110,0.2)',
+                      marginLeft: i > 0 ? '-16px' : 0,
+                      position: 'relative',
+                      zIndex: 10 - i,
+                      background: 'linear-gradient(135deg, rgba(201,169,110,0.1), rgba(124,58,237,0.08))',
+                      border: '2px solid rgba(201,169,110,0.2)',
                       backdropFilter: 'blur(4px)',
                     }}>
                     <Box style={{ color: 'rgba(201,169,110,0.45)', fontSize: '15px' }}>✦</Box>
@@ -415,7 +455,7 @@ function LotusPriveSection({ subscribers, members = [] }) {
                       <Flex w="100%" h="100%" align="center" justify="center"
                         style={{ background: 'linear-gradient(135deg, rgba(201,169,110,0.22), rgba(124,58,237,0.18))' }}>
                         <Box style={{ color: '#e8c97e', fontSize: '18px', fontWeight: 900, lineHeight: 1 }}>
-                          {(m.ifcName || '?')[0].toUpperCase()}
+                          {(m.ifcName || '?')[ 0 ].toUpperCase()}
                         </Box>
                       </Flex>
                     )}
@@ -447,11 +487,11 @@ function LotusPriveSection({ subscribers, members = [] }) {
               ₹199
             </Box>
             <Box as="span" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '14px', marginLeft: '6px' }}>
-              / 2 months
+              / month
             </Box>
           </Box>
           <Box mt={1.5} style={{ color: 'rgba(255,255,255,0.42)', fontSize: '12px' }}>
-            Billed bi-monthly · Cancel anytime
+            Billed monthly · Cancel anytime
           </Box>
         </Flex>
 
@@ -459,22 +499,43 @@ function LotusPriveSection({ subscribers, members = [] }) {
         <Box w="100px" h="1px" mx="auto" mb={8}
           style={{ background: 'linear-gradient(to right, transparent, rgba(201,169,110,0.3), transparent)' }} />
 
-        {/* Coming soon CTA */}
+        {/* Subscribe CTA */}
         <Flex direction="column" align="center" gap={4}>
-          <Box display="inline-flex" alignItems="center" gap="10px" px={10} py={4} borderRadius="2xl"
+          <Box
+            as="button"
+            display="inline-flex" alignItems="center" gap="10px" px={10} py={4} borderRadius="2xl"
+            onClick={handleSubscribe}
+            disabled={subLoading || subDone}
             style={{
-              background: 'linear-gradient(135deg, #b8952f, #e8c97e, #c9a96e)',
-              color: '#1a0f00', fontWeight: 800, fontSize: '15px', letterSpacing: '0.06em',
-              cursor: 'not-allowed', opacity: 0.55,
-              boxShadow: '0 8px 32px rgba(201,169,110,0.15)',
+              background: subDone
+                ? 'rgba(201,169,110,0.18)'
+                : 'linear-gradient(135deg, #b8952f, #e8c97e, #c9a96e)',
+              color: subDone ? '#c9a96e' : '#1a0f00',
+              border: subDone ? '1px solid rgba(201,169,110,0.4)' : 'none',
+              fontWeight: 800, fontSize: '15px', letterSpacing: '0.06em',
+              cursor: subLoading || subDone ? 'default' : 'pointer',
+              opacity: subLoading ? 0.75 : 1,
+              boxShadow: subDone ? 'none' : '0 8px 32px rgba(201,169,110,0.25)',
+              transition: 'all 0.2s ease',
             }}>
-            <LotusGlyph size={18} />
-            Launching Soon
+            {subDone ? (
+              <>✦ Membership Active</>
+            ) : subLoading ? (
+              <>
+                <Spinner size="sm" color="blackAlpha.700" />
+                Preparing…
+              </>
+            ) : (
+              <>
+                <LotusGlyph size={18} />
+                Join Lotus Privé
+              </>
+            )}
           </Box>
           <HStack gap={2} align="center">
             <Box style={{ color: 'rgba(201,169,110,0.4)', fontSize: '10px' }}>✦</Box>
             <Box style={{ fontSize: '12px', color: 'rgba(255,255,255,0.38)', letterSpacing: '0.04em' }}>
-              Bi-monthly subscription · Powered by Razorpay
+              Monthly subscription · Powered by Razorpay
             </Box>
             <Box style={{ color: 'rgba(201,169,110,0.4)', fontSize: '10px' }}>✦</Box>
           </HStack>
@@ -488,14 +549,14 @@ function LotusPriveSection({ subscribers, members = [] }) {
 // ── Thank You overlay ──────────────────────────────────────────────────────────
 
 function ThankYouOverlay({ goalLabel, amount, callsign, onClose }) {
-  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+  const [ windowSize, setWindowSize ] = useState({ width: 0, height: 0 });
   useEffect(() => { setWindowSize({ width: window.innerWidth, height: window.innerHeight }); }, []);
 
   return (
     <Box position="fixed" inset={0} zIndex={9999} display="flex" alignItems="center" justifyContent="center"
       bg="blackAlpha.700" backdropFilter="blur(6px)" onClick={onClose}>
       <Confetti width={windowSize.width} height={windowSize.height} numberOfPieces={300} recycle={false}
-        colors={['#6366f1', '#0ea5e9', '#f59e0b', '#10b981', '#f43f5e', '#a78bfa']} />
+        colors={[ '#6366f1', '#0ea5e9', '#f59e0b', '#10b981', '#f43f5e', '#a78bfa' ]} />
       <Box bg={{ base: 'white', _dark: '#111827' }} borderRadius="3xl" p={{ base: 8, md: 12 }} maxW="480px" w="90%"
         textAlign="center" boxShadow="0 40px 80px rgba(0,0,0,0.4)" border="1px solid"
         borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.100' }} onClick={e => e.stopPropagation()}>
@@ -526,9 +587,9 @@ function loadRazorpayScript() {
     if (typeof window === 'undefined') return reject(new Error('SSR'));
     if (window.Razorpay) return resolve();
     const script = document.createElement('script');
-    script.src    = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async  = true;
-    script.onload  = () => resolve();
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve();
     script.onerror = () => reject(new Error('Razorpay script failed to load'));
     document.head.appendChild(script);
   });
@@ -537,11 +598,11 @@ function loadRazorpayScript() {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function ChandaPage({ discordId, callsign, ifcName }) {
-  const [stats, setStats]         = useState({ contributors: 0, goals: {}, goalDefs: [], contributions: [], lotus: { subscribers: 0 } });
-  const [loadingStats, setLoading] = useState(true);
-  const [thankYou, setThankYou]   = useState(null);
-  const [toast, setToast]         = useState(null);
-  const rzpRef                    = useRef(null);
+  const [ stats, setStats ] = useState({ contributors: 0, goals: {}, goalDefs: [], contributions: [], lotus: { subscribers: 0 } });
+  const [ loadingStats, setLoading ] = useState(true);
+  const [ thankYou, setThankYou ] = useState(null);
+  const [ toast, setToast ] = useState(null);
+  const rzpRef = useRef(null);
 
   const goals = stats.goalDefs ?? [];
 
@@ -554,14 +615,14 @@ export default function ChandaPage({ discordId, callsign, ifcName }) {
     try {
       const res = await fetch('/api/chanda/stats');
       if (res.ok) setStats(await res.json());
-    } catch {}
+    } catch { }
     setLoading(false);
   }, []);
 
   useEffect(() => {
     fetchStats();
-    loadRazorpayScript().catch(() => {});
-  }, [fetchStats]);
+    loadRazorpayScript().catch(() => { });
+  }, [ fetchStats ]);
 
   const handleContribute = useCallback(async (goalId, amount) => {
     try {
@@ -610,9 +671,9 @@ export default function ChandaPage({ discordId, callsign, ifcName }) {
       console.error('[Chanda] contribute error:', err);
       showToast(err.message || 'Something went wrong — please try again.', false);
     }
-  }, [discordId, callsign, fetchStats, showToast, goals]);
+  }, [ discordId, callsign, fetchStats, showToast, goals ]);
 
-  const totalRaised  = Object.values(stats.goals).reduce((a, b) => a + b, 0);
+  const totalRaised = Object.values(stats.goals).reduce((a, b) => a + b, 0);
   const thankYouLabel = thankYou?.goalId === 'all'
     ? 'All Goals'
     : goals.find(g => g.id === thankYou?.goalId)?.label || thankYou?.goalId;
@@ -651,7 +712,7 @@ export default function ChandaPage({ discordId, callsign, ifcName }) {
 
         <Text as="h1" fontSize={{ base: '2xl', md: '4xl' }} fontWeight="800" lineHeight="1.25" letterSpacing="-0.5px"
           color={{ base: 'gray.900', _dark: 'white' }} mb={4}>
-          Routes. PIREPs. Community.{' '}
+          Events. Fleet. Community.{' '}
           <Box as="span" display="inline" sx={{ background: 'linear-gradient(to right, #6366f1, #0ea5e9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             All free, forever.
           </Box>
@@ -670,9 +731,9 @@ export default function ChandaPage({ discordId, callsign, ifcName }) {
       {/* Stats bar */}
       <Grid templateColumns={{ base: '1fr 1fr', md: 'repeat(3, 1fr)' }} gap={4} mb={10}>
         {[
-          { icon: FiUsers, value: loadingStats ? '—' : stats.contributors,                             label: 'Contributors',    color: '#6366f1' },
-          { icon: FiHeart, value: loadingStats ? '—' : `₹${totalRaised.toLocaleString('en-IN')}`,     label: 'Total Raised',    color: '#f43f5e' },
-          { icon: FiZap,   value: loadingStats ? '—' : goals.length,                                   label: 'Active Goals',    color: '#f59e0b' },
+          { icon: FiUsers, value: loadingStats ? '—' : stats.contributors, label: 'Contributors', color: '#6366f1' },
+          { icon: FiHeart, value: loadingStats ? '—' : `₹${totalRaised.toLocaleString('en-IN')}`, label: 'Total Raised', color: '#f43f5e' },
+          { icon: FiZap, value: loadingStats ? '—' : goals.length, label: 'Active Goals', color: '#f59e0b' },
         ].map(({ icon: Icon, value, label, color }) => (
           <Box key={label} bg={{ base: 'white', _dark: '#111827' }} border="1px solid"
             borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} borderRadius="2xl" p={5} textAlign="center">
@@ -693,7 +754,7 @@ export default function ChandaPage({ discordId, callsign, ifcName }) {
           <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={5} mb={0}>
             {goals.map((goal, idx) => (
               <Box key={goal.id} gridColumn={goals.length % 2 !== 0 && idx === goals.length - 1 ? { md: 'span 2' } : undefined}>
-                <GoalCard goal={goal} raised={stats.goals[goal.id] || 0} onContribute={handleContribute} />
+                <GoalCard goal={goal} raised={stats.goals[ goal.id ] || 0} onContribute={handleContribute} />
               </Box>
             ))}
           </Grid>
@@ -706,6 +767,9 @@ export default function ChandaPage({ discordId, callsign, ifcName }) {
       <LotusPriveSection
         subscribers={stats.lotus?.subscribers ?? 0}
         members={stats.lotus?.members ?? []}
+        discordId={discordId}
+        ifcName={ifcName || callsign}
+        showToast={showToast}
       />
 
       {/* Contributions feed */}
@@ -719,11 +783,11 @@ export default function ChandaPage({ discordId, callsign, ifcName }) {
           ) : (
             <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }} gap={3}>
               {stats.contributions.map((c, i) => {
-                const isAll    = c.goalId === 'all';
-                const goalDef  = isAll ? null : goals.find(g => g.id === c.goalId);
-                const color    = goalDef?.color ?? '#6366f1';
-                const label    = isAll ? 'All Goals' : (goalDef?.label ?? c.goalId);
-                const GoalIcon = goalDef ? (ICON_MAP[goalDef.icon] ?? FiHeart) : FiHeart;
+                const isAll = c.goalId === 'all';
+                const goalDef = isAll ? null : goals.find(g => g.id === c.goalId);
+                const color = goalDef?.color ?? '#6366f1';
+                const label = isAll ? 'All Goals' : (goalDef?.label ?? c.goalId);
+                const GoalIcon = goalDef ? (ICON_MAP[ goalDef.icon ] ?? FiHeart) : FiHeart;
 
                 return (
                   <HStack key={i} bg={{ base: 'white', _dark: '#111827' }} border="1px solid"

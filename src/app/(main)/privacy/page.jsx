@@ -69,7 +69,9 @@ export default function PrivacyPage() {
         {/* Intro */}
         <Box mb={10}>
           <P>
-            Indian Virtual ("we", "us", "INVA") operates the Crew Center at <A href={SITE}>{SITE}</A>.
+            Indian Virtual ("we", "us", "INVA") operates the Crew Center at{' '}
+            <A href={`${SITE}/crew`}>{SITE}/crew</A> and the main website at{' '}
+            <A href={SITE}>{SITE}</A>.
             This policy explains what personal data we collect when you use our platform, why we collect it,
             how we protect it, and what rights you have over it.
           </P>
