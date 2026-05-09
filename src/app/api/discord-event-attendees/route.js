@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import db from '@/db/client.js'
 import { users } from '@/db/schema'
-import { inArray } from 'drizzle-orm'
+import { inArray, sql } from 'drizzle-orm'
 
 const GUILD_ID = process.env.DISCORD_GUILD_ID
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN
@@ -47,7 +47,11 @@ export async function GET(request) {
 
   // Match against crew DB by discordId
   const discordIds = rawAttendees.map(a => BigInt(a.user.id))
-  const crewRows = await db.select({ discordId: users.discordId, ifcName: users.ifcName })
+  const crewRows = await db.select({
+    discordId: users.discordId,
+    ifcName: users.ifcName,
+    flightTimeSecs: sql`COALESCE(EXTRACT(EPOCH FROM ${users.flightTime})::int, 0)`.as('flightTimeSecs'),
+  })
     .from(users)
     .where(inArray(users.discordId, discordIds))
 
@@ -65,6 +69,7 @@ export async function GET(request) {
         ? `https://cdn.discordapp.com/avatars/${a.user.id}/${a.user.avatar}.png?size=64`
         : null,
       ifcName: crew?.ifcName ?? null,
+      flightTimeSecs: crew?.flightTimeSecs ?? 0,
     }
   })
 

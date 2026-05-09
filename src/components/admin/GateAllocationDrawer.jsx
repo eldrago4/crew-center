@@ -6,7 +6,7 @@ import {
   Drawer,
 } from '@chakra-ui/react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Clipboard } from 'lucide-react';
+import { Clipboard, ArrowDownNarrowWide, ShieldPlus } from 'lucide-react';
 import { toaster } from '@/components/ui/toaster';
 import {
   RAW_BASE, buildAptPath, parseAptDat, getCenter, pr, traceNodes, K,
@@ -322,6 +322,7 @@ export default function GateAllocationDrawer({ event, onClose }) {
 
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [rolesLoading, setRolesLoading] = useState(false);
 
   const currentAllocations = aptMode === 'departure' ? departureAllocations : arrivalAllocations;
   const setCurrentAllocations = aptMode === 'departure' ? setDepartureAllocations : setArrivalAllocations;
@@ -538,6 +539,50 @@ export default function GateAllocationDrawer({ event, onClose }) {
       toaster.create({ title: e.message, type: 'error', duration: 4000 });
     } finally {
       setSimbriefLoading(false);
+    }
+  }
+
+  // Sort attendees by flight time descending
+  function handleSortByFlightTime() {
+    setPilotOrder(() => {
+      const base = attendees.length ? attendees.map(a => a.discordId) : pilotOrder;
+      return [...base].sort((a, b) => {
+        const aFt = attendees.find(x => x.discordId === a)?.flightTimeSecs ?? 0;
+        const bFt = attendees.find(x => x.discordId === b)?.flightTimeSecs ?? 0;
+        return bFt - aFt;
+      });
+    });
+  }
+
+  // Give event role (and round roles) to all attendees
+  async function handleGiveRoles() {
+    if (!attendees.length) {
+      toaster.create({ title: 'No attendees loaded', type: 'error', duration: 3000 });
+      return;
+    }
+    setRolesLoading(true);
+    try {
+      const res = await fetch('/api/gate-event-roles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventTitle: event.title,
+          attendees: attendees.map(a => ({ discordId: a.discordId })),
+          roundByDiscordId,
+          roundCount: Number(roundCount) || 0,
+        }),
+      });
+      const rawText = await res.text();
+      let result;
+      try { result = JSON.parse(rawText); } catch { throw new Error(rawText.slice(0, 120)); }
+      if (!res.ok) throw new Error(result.error || 'Failed to assign roles');
+      const created = result.rolesCreated?.length ? ` · Created: ${result.rolesCreated.join(', ')}` : '';
+      const msg = `Roles assigned: ${result.assigned}${result.failed?.length ? `, failed: ${result.failed.length}` : ''}${created}`;
+      toaster.create({ title: msg, type: result.failed?.length ? 'warning' : 'success', duration: 6000 });
+    } catch (e) {
+      toaster.create({ title: e.message, type: 'error', duration: 4000 });
+    } finally {
+      setRolesLoading(false);
     }
   }
 
@@ -783,6 +828,13 @@ export default function GateAllocationDrawer({ event, onClose }) {
                     <span style={{ fontWeight: 400, marginLeft: 6, color: K.mu }}>drag to reorder</span>
                   </div>
                   <button
+                    onClick={handleSortByFlightTime}
+                    title="Sort by flight time (high → low)"
+                    style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', background: K.pl, border: `1px solid ${K.bd}`, borderRadius: 6, color: K.dm, cursor: 'pointer', flexShrink: 0 }}
+                  >
+                    <ArrowDownNarrowWide size={13} />
+                  </button>
+                  <button
                     onClick={handleCopyAllocations}
                     title={`Copy ${aptMode === 'departure' ? 'departure' : 'arrival'} gates`}
                     style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', background: K.pl, border: `1px solid ${K.bd}`, borderRadius: 6, color: K.dm, cursor: 'pointer', flexShrink: 0 }}
@@ -958,21 +1010,31 @@ export default function GateAllocationDrawer({ event, onClose }) {
               <div style={{ flex: 1 }} />
 
               {/* Actions */}
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  style={{ flex: 1, padding: '8px 0', background: K.pl, border: `1px solid ${K.bd}`, borderRadius: 8, color: K.tx, cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: saving ? 0.6 : 1 }}
+                  onClick={handleGiveRoles}
+                  disabled={rolesLoading || !attendees.length}
+                  style={{ width: '100%', padding: '7px 0', background: '#16a34a', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, opacity: (rolesLoading || !attendees.length) ? 0.55 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                 >
-                  {saving ? 'Saving...' : 'Save'}
+                  <ShieldPlus size={13} />
+                  {rolesLoading ? 'Assigning Roles...' : `Give Event Role${Number(roundCount) > 0 ? ' + Round Roles' : ''}`}
                 </button>
-                <button
-                  onClick={handleSendBriefings}
-                  disabled={sending}
-                  style={{ flex: 1, padding: '8px 0', background: '#6366f1', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: sending ? 0.6 : 1 }}
-                >
-                  {sending ? 'Sending...' : 'Send Briefings'}
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    style={{ flex: 1, padding: '8px 0', background: K.pl, border: `1px solid ${K.bd}`, borderRadius: 8, color: K.tx, cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: saving ? 0.6 : 1 }}
+                  >
+                    {saving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    onClick={handleSendBriefings}
+                    disabled={sending}
+                    style={{ flex: 1, padding: '8px 0', background: '#6366f1', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: sending ? 0.6 : 1 }}
+                  >
+                    {sending ? 'Sending...' : 'Send Briefings'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
