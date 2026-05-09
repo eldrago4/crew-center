@@ -4,7 +4,6 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-import React from 'react';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { Providers } from '@/components/CrewProviders';
@@ -31,13 +30,7 @@ export default async function ChandaLayout({ children }) {
             isAdmin={isAdmin}
             careerMode={careerMode}
           >
-            {React.Children.map(children, child =>
-              React.cloneElement(child, {
-                discordId: session.user.id,
-                callsign: session.user.callsign || 'Anonymous Pilot',
-                ifcName: session.user.ifcName || session.user.callsign || 'Anonymous Pilot',
-              })
-            )}
+            {children}
           </ResponsiveCrewLayout>
         </SidebarProvider>
       </Box>

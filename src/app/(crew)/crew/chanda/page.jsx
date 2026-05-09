@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import {
   Box, Flex, Text, HStack, Grid,
@@ -597,7 +598,12 @@ function loadRazorpayScript() {
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
-export default function ChandaPage({ discordId, callsign, ifcName }) {
+export default function ChandaPage() {
+  const { data: session } = useSession();
+  const discordId = session?.user?.id;
+  const callsign = session?.user?.callsign || 'Anonymous Pilot';
+  const ifcName = session?.user?.ifcName || session?.user?.callsign || 'Anonymous Pilot';
+
   const [ stats, setStats ] = useState({ contributors: 0, goals: {}, goalDefs: [], contributions: [], lotus: { subscribers: 0 } });
   const [ loadingStats, setLoading ] = useState(true);
   const [ thankYou, setThankYou ] = useState(null);
