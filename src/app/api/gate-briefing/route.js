@@ -20,11 +20,11 @@ async function openDmChannel(discordId) {
   return data.id
 }
 
-async function sendDmWithImage({ channelId, embed, imageBuffer }) {
+async function sendDmWithImage({ channelId, embed, imageBuffer, imageFilename = 'gate.jpg', imageMime = 'image/jpeg' }) {
   const boundary = '----FormBoundaryGateBriefing'
   const payloadJson = JSON.stringify({
     embeds: [embed],
-    attachments: [{ id: 0, filename: 'gate.png' }],
+    attachments: [{ id: 0, filename: imageFilename }],
   })
 
   // Build multipart body manually for edge/node compatibility
@@ -36,7 +36,7 @@ async function sendDmWithImage({ channelId, embed, imageBuffer }) {
   ))
   parts.push(enc.encode(payloadJson))
   parts.push(enc.encode(
-    `\r\n--${boundary}\r\nContent-Disposition: form-data; name="files[0]"; filename="gate.png"\r\nContent-Type: image/png\r\n\r\n`
+    `\r\n--${boundary}\r\nContent-Disposition: form-data; name="files[0]"; filename="${imageFilename}"\r\nContent-Type: ${imageMime}\r\n\r\n`
   ))
   parts.push(imageBuffer)
   parts.push(enc.encode(`\r\n--${boundary}--\r\n`))
@@ -75,7 +75,7 @@ function formatPushbackTime(eventMeta = {}) {
   }) + ' IST'
 }
 
-function buildEmbed({ allocation, eventMeta, simbriefData }) {
+function buildEmbed({ allocation, eventMeta, simbriefData, imageFilename = 'gate.jpg' }) {
   const fields = []
 
   if (allocation.sequenceNumber) {
@@ -106,7 +106,7 @@ function buildEmbed({ allocation, eventMeta, simbriefData }) {
     description: `**${eventMeta.title}**`,
     color: 0x6366f1,
     fields,
-    image: { url: 'attachment://gate.png' },
+    image: { url: `attachment://${imageFilename || 'gate.jpg'}` },
     footer: { text: 'Indian Virtual • Pre-Flight Briefing' },
     timestamp: new Date().toISOString(),
   }
@@ -126,19 +126,22 @@ export async function POST(request) {
 
   const results = await Promise.allSettled(
     allocations.map(async (allocation) => {
-      const embed = buildEmbed({ allocation, eventMeta, simbriefData })
-
-      // Convert dataURL base64 to Uint8Array
+      // Convert dataURL base64 to Uint8Array (handles PNG or JPEG)
       let imageBuffer = new Uint8Array(0)
+      let imageMime = 'image/jpeg'
+      let imageFilename = 'gate.jpg'
       if (allocation.imageDataUrl) {
-        const base64 = allocation.imageDataUrl.replace(/^data:image\/png;base64,/, '')
+        const match = allocation.imageDataUrl.match(/^data:(image\/[a-z+]+);base64,/)
+        if (match) { imageMime = match[1]; imageFilename = imageMime === 'image/png' ? 'gate.png' : 'gate.jpg' }
+        const base64 = allocation.imageDataUrl.replace(/^data:image\/[a-z+]+;base64,/, '')
         const binary = atob(base64)
         imageBuffer = new Uint8Array(binary.length)
         for (let i = 0; i < binary.length; i++) imageBuffer[i] = binary.charCodeAt(i)
       }
 
+      const embed = buildEmbed({ allocation, eventMeta, simbriefData, imageFilename })
       const channelId = await openDmChannel(allocation.discordId)
-      await sendDmWithImage({ channelId, embed, imageBuffer })
+      await sendDmWithImage({ channelId, embed, imageBuffer, imageFilename, imageMime })
 
       // Follow-up message: SimBrief chart images
       if (simbriefData?.mapUrls?.length) {

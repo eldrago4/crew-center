@@ -285,7 +285,7 @@ export function generateGateImage(aptData, gateName, icao) {
   ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
   ctx.fillText(`${icao} — Gate Map`, 10, H - 8);
 
-  return cv.toDataURL('image/png');
+  return cv.toDataURL('image/jpeg', 0.75);
 }
 
 // ─── main component ───────────────────────────────────────────────────────────
@@ -600,7 +600,7 @@ export default function GateAllocationDrawer({ event, onClose }) {
         }
       }
 
-      // Generate gate images client-side
+      // Generate gate images client-side (JPEG for smaller payload)
       const allocationsWithImages = await Promise.all(withRoundInfo(combined).map(async (a, i) => {
         const seqIdx = pilotOrder.indexOf(a.discordId);
         const sequenceNumber = seqIdx >= 0 ? seqIdx + 1 : i + 1;
@@ -612,29 +612,57 @@ export default function GateAllocationDrawer({ event, onClose }) {
         return { ...a, imageDataUrl, sequenceNumber };
       }));
 
-      const res = await fetch('/api/gate-briefing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId: event.id,
-          allocations: allocationsWithImages,
-          eventMeta: {
-            title: event.title,
-            flightNumber: event.flightNumber,
-            departureIcao: event.departureIcao,
-            arrivalIcao: event.arrivalIcao,
-            aircraft: event.aircraft,
-            pushbackTime,
-            pushbackIso: event.pushbackIso,
-            pushback: event.pushback,
-          },
-          simbriefData,
-        }),
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Send failed');
-      const msg = `Briefings sent: ${result.sent}${result.failed?.length ? `, failed: ${result.failed.length}` : ''}`;
-      toaster.create({ title: msg, type: result.failed?.length ? 'warning' : 'success', duration: 5000 });
+      const eventMeta = {
+        title: event.title,
+        flightNumber: event.flightNumber,
+        departureIcao: event.departureIcao,
+        arrivalIcao: event.arrivalIcao,
+        aircraft: event.aircraft,
+        pushbackTime,
+        pushbackIso: event.pushbackIso,
+        pushback: event.pushback,
+      };
+
+      // Send in batches of 4 to stay well under the 4 MB request body limit
+      const BATCH = 4;
+      let totalSent = 0;
+      const totalFailed = [];
+
+      for (let i = 0; i < allocationsWithImages.length; i += BATCH) {
+        const chunk = allocationsWithImages.slice(i, i + BATCH);
+        let res, rawText;
+        try {
+          res = await fetch('/api/gate-briefing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ eventId: event.id, allocations: chunk, eventMeta, simbriefData }),
+          });
+          rawText = await res.text();
+        } catch (fetchErr) {
+          chunk.forEach(a => totalFailed.push({ discordId: a.discordId, error: fetchErr.message }));
+          continue;
+        }
+
+        let result;
+        try { result = JSON.parse(rawText); } catch {
+          // Server returned non-JSON (e.g. 413 Entity Too Large)
+          const hint = res.status === 413
+            ? 'Request too large — try fewer pilots per batch'
+            : rawText.slice(0, 120);
+          chunk.forEach(a => totalFailed.push({ discordId: a.discordId, error: hint }));
+          continue;
+        }
+
+        if (!res.ok) {
+          chunk.forEach(a => totalFailed.push({ discordId: a.discordId, error: result.error || `HTTP ${res.status}` }));
+        } else {
+          totalSent += result.sent ?? 0;
+          if (result.failed?.length) totalFailed.push(...result.failed);
+        }
+      }
+
+      const msg = `Briefings sent: ${totalSent}${totalFailed.length ? `, failed: ${totalFailed.length}` : ''}`;
+      toaster.create({ title: msg, type: totalFailed.length ? 'warning' : 'success', duration: 5000 });
     } catch (e) {
       toaster.create({ title: e.message, type: 'error', duration: 4000 });
     } finally {
