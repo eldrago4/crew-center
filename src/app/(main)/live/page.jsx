@@ -15,9 +15,10 @@ import { Box } from "@chakra-ui/react"
 export default function LivePage() {
     return (
         <Box
-            mt={{ base: '60px', '705px': '0' }}
-            h={{ base: 'calc(100dvh - 60px)', '705px': 'calc(100dvh - 3.5em)' }}
+            mt={{ base: '59px', '705px': '-1px' }}
+            h={{ base: 'calc(100dvh - 59px)', '705px': 'calc(100dvh - 3.5em + 1px)' }}
             overflow="hidden"
+            bg="black"
         >
             <iframe
                 src="https://live.indianvirtual.site/embed"

@@ -231,10 +231,11 @@ export function MobileNavMenu() {
               pt={dropdownOpen ? 2 : 0}
             >
               <VStack align="stretch" spacing={2}>
-                <Link href="/routes" color="gray.300">Routes</Link>
-                <Link href="/ranks" color="gray.300">Ranks</Link>
-                <Link href="/briefings" color="gray.300">Briefings</Link>
-                <Link href="/fleet" color="gray.300">Fleet</Link>
+                {MENU_LINKS.flat().map(item => (
+                  <Link key={item.href} href={item.href} color="gray.300">
+                    {item.label}
+                  </Link>
+                ))}
               </VStack>
             </Box>
           </Box>
