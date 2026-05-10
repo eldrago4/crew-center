@@ -27,7 +27,7 @@ const MENU_LINKS = [
     { label: "Ranks", href: "/ranks" },
   ],
   [
-    { label: "Live", href: "/live" },
+    { label: "Fleet", href: "/fleet" },
     { label: "Stats", href: "/stats" },
     { label: "Briefings", href: "/briefings" },
   ],
@@ -169,7 +169,7 @@ export function MobileNavMenu() {
               size="lg"
               zIndex={51}
               onClick={() => {
-                setMenuOpen((open) => !open);
+                setMenuOpen(open => !open);
                 if (menuOpen) setDropdownOpen(false);
               }}
             >
