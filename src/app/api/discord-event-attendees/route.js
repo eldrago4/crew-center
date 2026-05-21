@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
+import { Redis } from '@upstash/redis'
 import db from '@/db/client.js'
 import { users } from '@/db/schema'
 import { inArray, sql } from 'drizzle-orm'
 
 const GUILD_ID = process.env.DISCORD_GUILD_ID
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN
+const redis = Redis.fromEnv()
+const CACHE_TTL_SECONDS = 180
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
@@ -12,6 +15,18 @@ export async function GET(request) {
 
   if (!discordEventId) {
     return NextResponse.json({ error: 'discordEventId is required' }, { status: 400 })
+  }
+
+  const cacheKey = `discord:event:${discordEventId}:attendees:v1`
+  try {
+    const cached = await redis.get(cacheKey)
+    if (cached) {
+      return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached, {
+        headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=180' },
+      })
+    }
+  } catch (error) {
+    console.warn('Discord attendees Redis cache read failed:', error)
   }
 
   // Fetch all attendees with pagination
@@ -42,7 +57,15 @@ export async function GET(request) {
   }
 
   if (rawAttendees.length === 0) {
-    return NextResponse.json({ attendees: [] })
+    const emptyPayload = { attendees: [] }
+    try {
+      await redis.set(cacheKey, emptyPayload, { ex: CACHE_TTL_SECONDS })
+    } catch (error) {
+      console.warn('Discord attendees Redis cache write failed:', error)
+    }
+    return NextResponse.json(emptyPayload, {
+      headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=180' },
+    })
   }
 
   // Match against crew DB by discordId
@@ -73,5 +96,14 @@ export async function GET(request) {
     }
   })
 
-  return NextResponse.json({ attendees })
+  const payload = { attendees }
+  try {
+    await redis.set(cacheKey, payload, { ex: CACHE_TTL_SECONDS })
+  } catch (error) {
+    console.warn('Discord attendees Redis cache write failed:', error)
+  }
+
+  return NextResponse.json(payload, {
+    headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=180' },
+  })
 }

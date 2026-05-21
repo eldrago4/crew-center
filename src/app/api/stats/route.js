@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm'
 import db from '@/db/client'
 import { db as fireDb } from '@/lib/firebase'
 import admin from 'firebase-admin'
+import { Redis } from '@upstash/redis'
 
 // ── Helpers ─────────────────────────────────────────────────
 function pad(label, width = 30) {
@@ -273,23 +274,80 @@ function formatOutput(monthLabel, cc, cm) {
 // ── In-memory cache ──────────────────────────────────────────
 const statsCache = new Map() // key: 'YYYY-MM', value: { text, expiresAt }
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
+const CACHE_TTL_SECONDS = CACHE_TTL_MS / 1000
+const redis = Redis.fromEnv()
+
+function statsCacheKey(monthKey) {
+    return `stats:monthly:${monthKey}`
+}
+
+function respondWithStats(payload, format) {
+    if (format === 'json') {
+        return NextResponse.json(payload.json, {
+            headers: {
+                'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400',
+            },
+        })
+    }
+
+    return new Response(payload.text, {
+        headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400',
+        },
+    })
+}
+
+async function readStatsCache(monthKey) {
+    const memoryCached = statsCache.get(monthKey)
+    if (memoryCached && Date.now() < memoryCached.expiresAt) {
+        return memoryCached
+    }
+
+    try {
+        const cached = await redis.get(statsCacheKey(monthKey))
+        if (!cached) return null
+
+        const payload = typeof cached === 'string' ? JSON.parse(cached) : cached
+        if (!payload?.text || !payload?.json) return null
+
+        statsCache.set(monthKey, {
+            ...payload,
+            expiresAt: Date.now() + CACHE_TTL_MS,
+        })
+        return payload
+    } catch (error) {
+        console.warn('Stats Redis cache read failed:', error)
+        return null
+    }
+}
+
+async function writeStatsCache(monthKey, payload) {
+    statsCache.set(monthKey, {
+        ...payload,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+    })
+
+    try {
+        await redis.set(statsCacheKey(monthKey), payload, { ex: CACHE_TTL_SECONDS })
+    } catch (error) {
+        console.warn('Stats Redis cache write failed:', error)
+    }
+}
 
 // ── GET /api/stats?month=2026-01 ────────────────────────────
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url)
         const monthParam = searchParams.get('month')
+        const format = searchParams.get('format')
 
         const { year, month } = parseMonth(monthParam)
         const cacheKey = `${year}-${String(month).padStart(2, '0')}`
 
-        const cached = statsCache.get(cacheKey)
-        if (cached && Date.now() < cached.expiresAt) {
-            const format = searchParams.get('format')
-            if (format === 'json') return NextResponse.json(cached.json)
-            return new Response(cached.text, {
-                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-            })
+        const cached = await readStatsCache(cacheKey)
+        if (cached) {
+            return respondWithStats(cached, format)
         }
 
         const monthStart = new Date(Date.UTC(year, month - 1, 1))
@@ -340,15 +398,10 @@ export async function GET(request) {
             },
         }
 
-        statsCache.set(cacheKey, { text, json, expiresAt: Date.now() + CACHE_TTL_MS })
+        const payload = { text, json }
+        await writeStatsCache(cacheKey, payload)
 
-        const format = searchParams.get('format')
-        if (format === 'json') {
-            return NextResponse.json(json)
-        }
-        return new Response(text, {
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-        })
+        return respondWithStats(payload, format)
     } catch (error) {
         console.error('Stats API error:', error)
         return NextResponse.json({ error: error.message }, { status: 500 })

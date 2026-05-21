@@ -619,14 +619,14 @@ export default function SimbriefPlanner() {
 
     const pollForOfp = useCallback((ofpId, routeSnapshot = {}) => {
         let attempts = 0;
-        const maxAttempts = 60; // 5 min at 5s intervals
+        const maxAttempts = 18; // 3 min at 10s intervals
 
         pollRef.current = setInterval(async () => {
             attempts++;
             if (attempts > maxAttempts) {
                 stopPolling();
                 setPolling(false);
-                setDispatchError('SimBrief did not generate the OFP within the expected time. Check SimBrief directly.');
+                setDispatchError('SimBrief is still generating the OFP. Wait a moment, then open it from SimBrief directly or dispatch again.');
                 return;
             }
 
@@ -640,7 +640,7 @@ export default function SimbriefPlanner() {
             } catch {
                 // network hiccup, keep polling
             }
-        }, 5000);
+        }, 10000);
     }, [loadOfp]);
 
     useEffect(() => () => stopPolling(), []);

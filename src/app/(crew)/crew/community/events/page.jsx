@@ -12,12 +12,6 @@ import {
 } from 'react-icons/tb'
 import SignupOrFileButton from '@/components/dashboard/SignupOrFileButton'
 
-function extractDiscordEventId(url) {
-    if (!url) return null
-    const m = url.match(/discord\.com\/events\/\d+\/(\d+)/)
-    return m ? m[1] : null
-}
-
 function fmtPushback(iso) {
     if (!iso) return null
     try {
@@ -341,45 +335,11 @@ export default function EventsPage() {
 
     useEffect(() => {
         async function load() {
-            const [evRes, dRes] = await Promise.all([
-                fetch('/api/crewcenter?module=events').catch(() => null),
-                fetch('/api/discord-events').catch(() => null),
-            ])
-
-            const evData = evRes?.ok ? await evRes.json() : []
-            const evList = Array.isArray(evData) ? evData : []
-            evList.sort((a, b) => {
-                if (a.promoted && !b.promoted) return -1
-                if (!a.promoted && b.promoted) return 1
-                return new Date(a.pushbackIso || 0) - new Date(b.pushbackIso || 0)
-            })
-            setEvents(evList)
-
-            // Build Discord event map
-            const dList = dRes?.ok ? await dRes.json() : []
-            const map = {}
-            for (const de of (Array.isArray(dList) ? dList : [])) map[de.id] = de
-            for (const ev of evList) {
-                const id = extractDiscordEventId(ev.signupUrl)
-                if (id && map[id]) map[ev.id] = map[id]
-            }
-            setDiscordMap(map)
-
-            // Fetch attendees for all events in parallel
-            const results = await Promise.all(
-                evList.map(async ev => {
-                    const discordEventId = extractDiscordEventId(ev.signupUrl)
-                    if (!discordEventId) return { evId: ev.id, ids: [] }
-                    const r = await fetch(`/api/discord-event-attendees?discordEventId=${discordEventId}`).catch(() => null)
-                    if (!r?.ok) return { evId: ev.id, ids: [] }
-                    const data = await r.json()
-                    return { evId: ev.id, ids: (data.attendees || []).map(a => a.discordId) }
-                })
-            )
-            const am = {}
-            for (const { evId, ids } of results) am[evId] = ids
-            setAttendeesMap(am)
-
+            const res = await fetch('/api/events/summary').catch(() => null)
+            const data = res?.ok ? await res.json() : null
+            setEvents(Array.isArray(data?.events) ? data.events : [])
+            setDiscordMap(data?.discordMap || {})
+            setAttendeesMap(data?.attendeesMap || {})
             setLoading(false)
         }
         load()

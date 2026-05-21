@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
+import { Redis } from '@upstash/redis'
 
 export const dynamic = 'force-dynamic'
+
+const redis = Redis.fromEnv()
+const EXISTS_TTL_SECONDS = 10 * 60
+const MISSING_TTL_SECONDS = 12
+const OFP_TTL_SECONDS = 24 * 60 * 60
 
 function extractField(xml, tag) {
     const m = xml.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, 'i'))
@@ -32,14 +38,45 @@ export async function GET(request) {
 
     const normalizedOfpId = ofpId.toUpperCase()
     const xmlUrl = `https://www.simbrief.com/ofp/flightplans/xml/${normalizedOfpId}.xml`
+    const existsCacheKey = `simbrief:ofp:${normalizedOfpId}:exists`
+    const dataCacheKey = `simbrief:ofp:${normalizedOfpId}:data`
 
     if (check) {
+        try {
+            const cached = await redis.get(existsCacheKey)
+            if (cached !== null && cached !== undefined) {
+                return NextResponse.json({ exists: cached === true || cached === 'true' }, {
+                    headers: { 'Cache-Control': 'private, max-age=10' },
+                })
+            }
+        } catch (error) {
+            console.warn('SimBrief OFP exists cache read failed:', error)
+        }
+
         // HEAD check — just tell client if OFP exists yet
         const res = await fetch(xmlUrl, { method: 'HEAD' })
-        return NextResponse.json({ exists: res.ok })
+        try {
+            await redis.set(existsCacheKey, res.ok, { ex: res.ok ? EXISTS_TTL_SECONDS : MISSING_TTL_SECONDS })
+        } catch (error) {
+            console.warn('SimBrief OFP exists cache write failed:', error)
+        }
+        return NextResponse.json({ exists: res.ok }, {
+            headers: { 'Cache-Control': 'private, max-age=10' },
+        })
     }
 
     try {
+        try {
+            const cached = await redis.get(dataCacheKey)
+            if (cached) {
+                return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached, {
+                    headers: { 'Cache-Control': 'private, max-age=300' },
+                })
+            }
+        } catch (error) {
+            console.warn('SimBrief OFP data cache read failed:', error)
+        }
+
         const res = await fetch(xmlUrl)
         if (!res.ok) return NextResponse.json({ error: 'OFP not found' }, { status: 404 })
 
@@ -58,13 +95,26 @@ export async function GET(request) {
             .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
             .trim()
 
-        return NextResponse.json({
+        const payload = {
             planHtml,
             planText,
             origin: get('icao_code') || '',
             flightNumber: get('flight_number') || '',
             route: get('route') || '',
             flightTime: get('est_time_enroute') || '',
+        }
+
+        try {
+            await Promise.all([
+                redis.set(dataCacheKey, payload, { ex: OFP_TTL_SECONDS }),
+                redis.set(existsCacheKey, true, { ex: EXISTS_TTL_SECONDS }),
+            ])
+        } catch (error) {
+            console.warn('SimBrief OFP cache write failed:', error)
+        }
+
+        return NextResponse.json(payload, {
+            headers: { 'Cache-Control': 'private, max-age=300' },
         })
     } catch (err) {
         return NextResponse.json({ error: err.message }, { status: 500 })
