@@ -149,15 +149,13 @@ export default function TermsPage() {
             They do not entitle you to any specific benefit, privilege, or influence in INVA operations.
           </Li>
           <Li>
-            All payments are processed by <Strong>Razorpay Software Private Limited</Strong>. By
-            completing a payment, you agree to{' '}
-            <A href="https://razorpay.com/terms/">Razorpay's Terms of Service</A>.
+            Payments are made manually through UPI. By tapping the confirmation button, you confirm
+            that your UPI app showed the payment as successful.
           </Li>
           <Li>
             <Strong>Refunds:</Strong> contributions are generally non-refundable as they are applied
             immediately to running costs. In the event of a verified duplicate or erroneous charge,
-            contact <A href={`mailto:${CONTACT}`}>{CONTACT}</A> within 7 days and we will process a
-            refund via Razorpay.
+            contact <A href={`mailto:${CONTACT}`}>{CONTACT}</A> within 7 days and we will review it manually.
           </Li>
           <Li>
             Contribution amounts are used solely to cover the domain, database, hosting, and bot
@@ -165,16 +163,16 @@ export default function TermsPage() {
           </Li>
         </Section>
 
-        <Section title="7. Lotus Privé Subscription">
+        <Section title="7. Lotus Privé Pledge">
           <P>
-            Lotus Privé is an optional monthly subscription. By subscribing, you agree to the
+            Lotus Privé is an optional monthly supporter pledge. By joining, you agree to the
             following in addition to Section 6:
           </P>
-          <Li>Subscriptions are billed at ₹199 per month via Razorpay's subscription service. The first payment is charged at activation.</Li>
-          <Li>Benefits such as a designated Discord role and appearance in the member showcase are active only during an active subscription and are removed within 7 days of cancellation.</Li>
-          <Li>You may cancel at any time through Razorpay. Cancellation stops future billing; no partial-month refunds are issued.</Li>
-          <Li>We reserve the right to modify the price or benefits with 30 days' notice via a Discord announcement. Continued subscription after the notice period constitutes acceptance.</Li>
-          <Li>If a payment fails, Razorpay may retry the charge. Benefits will be suspended if the subscription enters a halted state.</Li>
+          <Li>Lotus Privé is limited to 4 active members and is renewed manually at ₹190 per month through UPI.</Li>
+          <Li>Benefits such as a designated Discord role and appearance in the member showcase are active only while the current month's pledge is marked paid.</Li>
+          <Li>Members get a first-week grace period each month. If the pledge remains unpaid after that window, the membership slot is freed and Discord roles may be revoked.</Li>
+          <Li>You can stop participating simply by not renewing for the next month; no partial-month refunds are issued.</Li>
+          <Li>We reserve the right to modify the price, seat count, or benefits with notice via a Discord announcement.</Li>
           <Note>
             Lotus Privé is a supporter programme. It does not grant administrative authority,
             guaranteed PIREP approval, or any competitive advantage over other members.

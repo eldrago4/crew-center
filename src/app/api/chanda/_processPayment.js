@@ -21,6 +21,31 @@ async function grantRole(discordId, roleId) {
   ).catch(() => {});
 }
 
+async function revokeRole(discordId, roleId) {
+  return fetch(
+    `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${discordId}/roles/${roleId}`,
+    {
+      method:  'DELETE',
+      headers: { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` },
+    }
+  ).catch(() => {});
+}
+
+async function fetchDiscordAvatarUrl(discordId) {
+  try {
+    const res = await fetch(`https://discord.com/api/v10/users/${discordId}`, {
+      headers: { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.avatar) return null;
+    return `https://cdn.discordapp.com/avatars/${discordId}/${data.avatar}.webp?size=128`;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Idempotently records a confirmed payment in Redis and grants Discord role.
  * Safe to call from both the client-side verify route and the server-side webhook.
@@ -78,4 +103,4 @@ export async function processConfirmedPayment({ paymentId, goalId, amountPaise, 
   if (discordId) await grantRole(discordId, SUPPORTER_ROLE);
 }
 
-export { grantRole };
+export { grantRole, revokeRole, fetchDiscordAvatarUrl, GUILD_ID, SUPPORTER_ROLE };

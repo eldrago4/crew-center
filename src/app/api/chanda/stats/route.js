@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
 import { DEFAULT_GOALS, GOALS_REDIS_KEY } from '../_defaultGoals';
+import { LOTUS_MEMBER_LIMIT, reconcileLotusMembers } from '../_lotus';
 
 export async function GET() {
   try {
@@ -13,11 +14,11 @@ export async function GET() {
       : DEFAULT_GOALS;
     const goalIds   = goalDefs.map(g => g.id);
 
-    const [contributors, rawContribs, lotusSubscribers, rawLotusMembers, ...raised] = await Promise.all([
+    const lotus = await reconcileLotusMembers(redis);
+
+    const [contributors, rawContribs, ...raised] = await Promise.all([
       redis.get('chanda:total:contributors'),
       redis.lrange('chanda:contributions', 0, 19),
-      redis.get('chanda:lotus:subscribers'),
-      redis.lrange('chanda:lotus:members', 0, 49),
       ...goalIds.map(id => redis.get(`chanda:goal:${id}:raised`)),
     ]);
 
@@ -31,17 +32,17 @@ export async function GET() {
       catch { return null; }
     }).filter(Boolean);
 
-    const lotusMembers = (rawLotusMembers || []).map(item => {
-      try { return typeof item === 'string' ? JSON.parse(item) : item; }
-      catch { return null; }
-    }).filter(Boolean);
-
     return NextResponse.json({
       contributors:  parseInt(contributors || 0),
       goals,
       goalDefs,
       contributions,
-      lotus: { subscribers: parseInt(lotusSubscribers || 0), members: lotusMembers },
+      lotus: {
+        subscribers: lotus.members.length,
+        members: lotus.members,
+        limit: LOTUS_MEMBER_LIMIT,
+        slotsRemaining: Math.max(0, LOTUS_MEMBER_LIMIT - lotus.members.length),
+      },
     });
   } catch (err) {
     console.error('Chanda stats error:', err);

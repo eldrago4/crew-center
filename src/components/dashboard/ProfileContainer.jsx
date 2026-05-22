@@ -7,6 +7,7 @@ import SignupOrFileButton from './SignupOrFileButton'
 import db from '@/db/client'
 import { users, pireps, notams, crewcenter } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
+import { getLotusStatus } from '@/app/api/chanda/_lotus'
 
 async function getUserData(callsign) {
   try {
@@ -93,17 +94,44 @@ async function getPromotedEvent() {
 
 export default async function ProfileContainer({ user }) {
   if (!user) return null
+  const userDiscordId = user.discordId || user.id
 
-  const [ userData, notamsData, promotedEvent ] = await Promise.all([
+  const [ userData, notamsData, promotedEvent, lotusStatus ] = await Promise.all([
     getUserData(user.callsign),
     getNotams(),
-    getPromotedEvent()
+    getPromotedEvent(),
+    userDiscordId ? getLotusStatus(userDiscordId).catch(() => null) : null
   ])
 
   if (!userData) return null
 
   return (
     <>
+      {lotusStatus?.needsPayment && (
+        <Container maxW="100%" py="4" px="4">
+          <Box
+            borderRadius="xl"
+            border="1px solid rgba(201,169,110,0.35)"
+            bg="linear-gradient(135deg, rgba(201,169,110,0.16), rgba(99,102,241,0.10))"
+            px={{ base: 4, md: 6 }}
+            py={4}
+          >
+            <Flex direction={{ base: 'column', md: 'row' }} align={{ base: 'flex-start', md: 'center' }} justify="space-between" gap={3}>
+              <Box>
+                <Text fontWeight="800" color={{ base: 'gray.900', _dark: 'white' }}>
+                  Lotus Privé pledge due for this month
+                </Text>
+                <Text fontSize="sm" color={{ base: 'gray.700', _dark: 'gray.300' }} mt={1}>
+                  Keep your Lotus Privé seat and Discord role active by completing this month&apos;s ₹{lotusStatus.priceRupees} UPI pledge within the first week.
+                </Text>
+              </Box>
+              <Button as={Link} href="/crew/chanda" colorPalette="yellow" variant="solid" borderRadius="xl" fontWeight="800">
+                Pay now
+              </Button>
+            </Flex>
+          </Box>
+        </Container>
+      )}
       <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={1}>
         <BasicInfo
           ifcName={userData.ifcName}

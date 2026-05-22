@@ -5,6 +5,8 @@ import { auth } from '@/auth';
 const PRICE_REDIS_KEY   = 'chanda:lotus:price';
 const ROLE_REDIS_KEY    = 'chanda:lotus:discord_role_id';
 const PLAN_REDIS_KEY    = 'chanda:lotus:plan_id';
+const DEFAULT_PRICE     = 19000;
+const DEFAULT_ROLE_ID   = '1507426495163793680';
 
 export async function GET() {
   try {
@@ -15,13 +17,13 @@ export async function GET() {
       redis.get(PLAN_REDIS_KEY),
     ]);
     return NextResponse.json({
-      price:  price  ? parseInt(price)  : 19900,
-      roleId: roleId ? String(roleId)   : '',
+      price:  price  ? parseInt(price)  : DEFAULT_PRICE,
+      roleId: roleId ? String(roleId)   : DEFAULT_ROLE_ID,
       planId: planId ? String(planId)   : null,
     });
   } catch (err) {
     console.error('[lotus/settings GET]', err);
-    return NextResponse.json({ price: 19900, roleId: '', planId: null });
+    return NextResponse.json({ price: DEFAULT_PRICE, roleId: DEFAULT_ROLE_ID, planId: null });
   }
 }
 
@@ -47,7 +49,7 @@ export async function PUT(req) {
   }
 }
 
-// DELETE clears the cached plan ID so a new one is created with the updated price
+// DELETE clears the legacy gateway plan ID kept from the old checkout flow.
 export async function DELETE(req) {
   const session = await auth();
   if (!session?.user?.permissions?.includes('staff')) {

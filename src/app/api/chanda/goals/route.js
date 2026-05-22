@@ -33,8 +33,6 @@ export async function PUT(req) {
     const redis = Redis.fromEnv();
     await redis.set(GOALS_REDIS_KEY, JSON.stringify(goals));
 
-    // If goals changed, invalidate the cached Razorpay plan
-    // (plan is not affected by goal changes — it's a subscription plan)
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[chanda/goals PUT]', err);

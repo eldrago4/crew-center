@@ -306,7 +306,7 @@ function ManualContributeSection({ goals, showToast }) {
     <Card>
       <SectionTitle>Manual Contribution</SectionTitle>
       <Text fontSize="sm" color={{ base: 'gray.500', _dark: 'gray.400' }} mb={5}>
-        Record an offline/manual payment. This directly credits the goal without Razorpay.
+        Record a manual UPI payment. This directly credits the goal and can grant the supporter role when a Discord ID is provided.
       </Text>
 
       <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4}>
@@ -340,7 +340,7 @@ function ManualContributeSection({ goals, showToast }) {
 // ── Lotus Privé section ────────────────────────────────────────────────────────
 
 function LotusAdminSection({ showToast, subscribers }) {
-  const [form, setForm]     = useState({ price: '199', roleId: '' });
+  const [form, setForm]     = useState({ price: '190', roleId: '' });
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resetting, setRes] = useState(false);
@@ -348,7 +348,7 @@ function LotusAdminSection({ showToast, subscribers }) {
   useEffect(() => {
     fetch('/api/chanda/lotus/settings')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setForm({ price: String(Math.round((d.price || 19900) / 100)), roleId: d.roleId || '' }); })
+      .then(d => { if (d) setForm({ price: String(Math.round((d.price || 19000) / 100)), roleId: d.roleId || '' }); })
       .catch(() => {})
       .finally(() => setLoaded(true));
   }, []);
@@ -362,20 +362,20 @@ function LotusAdminSection({ showToast, subscribers }) {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ price: Math.round(Number(form.price) * 100), roleId: form.roleId }),
       });
-      if (res.ok) showToast('Lotus settings saved. Note: price changes take effect on next plan creation.');
+      if (res.ok) showToast('Lotus settings saved. New manual confirmations will use the updated settings.');
       else showToast('Failed to save.', false);
     } catch { showToast('Network error.', false); }
     setSaving(false);
   };
 
   const resetPlan = async () => {
-    if (!confirm('This deletes the cached Razorpay plan ID. A new plan will be created on next subscription with the updated price. Continue?')) return;
+    if (!confirm('This clears the legacy gateway plan ID. Manual UPI payments are not affected. Continue?')) return;
     setRes(true);
     try {
       const res = await fetch('/api/chanda/lotus/settings', {
         method: 'DELETE',
       });
-      if (res.ok) showToast('Plan ID cleared. New plan will be created with updated price on next subscription.');
+      if (res.ok) showToast('Legacy plan ID cleared.');
       else showToast('Failed.', false);
     } catch { showToast('Network error.', false); }
     setRes(false);
@@ -398,7 +398,7 @@ function LotusAdminSection({ showToast, subscribers }) {
         </Box>
         <Badge px={2.5} py={1} borderRadius="full" fontSize="10px" fontWeight="700" letterSpacing="wide"
           style={{ background: 'rgba(201,169,110,0.12)', color: '#c9a96e', border: '1px solid rgba(201,169,110,0.28)' }}>
-          Bi-monthly
+          Monthly
         </Badge>
       </Flex>
 
@@ -410,11 +410,11 @@ function LotusAdminSection({ showToast, subscribers }) {
             <Field label="Price per cycle (₹)">
               <Input
                 value={form.price} onChange={e => upd('price', e.target.value)} type="number" size="sm"
-                borderRadius="lg" placeholder="199"
+                borderRadius="lg" placeholder="190"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(201,169,110,0.25)', color: 'rgba(255,255,255,0.8)', borderRadius: 8 }}
               />
               <Text fontSize="11px" mt={1} style={{ color: 'rgba(255,255,255,0.3)' }}>
-                Every 2 months. Changes require plan reset.
+                Monthly pledge amount shown to Lotus Privé members.
               </Text>
             </Field>
             <Field label="Lotus Privé Discord Role ID">
@@ -424,7 +424,7 @@ function LotusAdminSection({ showToast, subscribers }) {
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(201,169,110,0.25)', color: 'rgba(255,255,255,0.8)', borderRadius: 8 }}
               />
               <Text fontSize="11px" mt={1} style={{ color: 'rgba(255,255,255,0.3)' }}>
-                Granted on subscription.activated + renewal.
+                Granted after trusted UPI confirmation and revoked when the monthly pledge lapses.
               </Text>
             </Field>
           </Grid>
@@ -432,7 +432,7 @@ function LotusAdminSection({ showToast, subscribers }) {
           <HStack justify="flex-end" gap={3}>
             <Btn variant="ghost" size="sm" onClick={resetPlan} loading={resetting}
               style={{ color: 'rgba(201,169,110,0.6)', border: '1.5px solid rgba(201,169,110,0.2)', background: 'transparent' }}>
-              <FiRefreshCw size={12} /> Reset Plan
+              <FiRefreshCw size={12} /> Clear Legacy Plan
             </Btn>
             <Btn onClick={save} loading={saving} style={{ background: 'linear-gradient(135deg, #b8952f, #e8c97e)', color: '#1a0f00', padding: '8px 18px', borderRadius: 10, fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', border: 'none' }}>
               <FiCheck size={13} /> Save Settings

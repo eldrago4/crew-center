@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import {
@@ -14,6 +14,21 @@ const Confetti = dynamic(() => import('react-confetti'), { ssr: false });
 
 const AMOUNTS = [ 100, 250, 500, 1000 ];
 const ALL_GRADIENT = 'linear-gradient(to right, #6366f1, #0ea5e9, #f59e0b, #10b981)';
+const LOTUS_PRICE = 190;
+const UPI_PAYEE = 'tred38434-1@okhdfcbank';
+const UPI_NAME = 'Ved B';
+const UPI_AID = 'uGICAgIDjpaH5Aw';
+
+function buildUpiLink(amount) {
+  const params = new URLSearchParams({
+    pa: UPI_PAYEE,
+    pn: UPI_NAME,
+    am: Number(amount || 0).toFixed(2),
+    cu: 'INR',
+    aid: UPI_AID,
+  });
+  return `upi://pay?${params.toString()}`;
+}
 
 function timeAgo(ts) {
   const s = Math.floor((Date.now() - ts) / 1000);
@@ -281,58 +296,22 @@ function LotusGlyph({ size = 52 }) {
   );
 }
 
-function LotusPriveSection({ subscribers, members = [], discordId, ifcName, showToast }) {
+function LotusPriveSection({ subscribers, members = [], slotsRemaining = 4, onSubscribe }) {
   const [ subLoading, setSubLoading ] = useState(false);
   const [ subDone, setSubDone ] = useState(false);
+  const isFull = slotsRemaining <= 0;
 
   const handleSubscribe = async () => {
-    if (subLoading || subDone) return;
+    if (subLoading || subDone || isFull) return;
     setSubLoading(true);
-    try {
-      await loadRazorpayScript();
-      const res = await fetch('/api/chanda/lotus/subscribe', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ discordId, ifcName }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Could not initiate subscription');
-
-      const { subscriptionId, key } = data;
-      setSubLoading(false);
-
-      const rzp = new window.Razorpay({
-        key,
-        subscription_id: subscriptionId,
-        name: 'Indian Virtual',
-        description: 'Lotus Privé — Monthly Membership',
-        image: '/invaLogo.svg',
-        notes: { discordId: discordId || '', ifcName: ifcName || '' },
-        theme: { color: '#c9a96e' },
-        async handler(response) {
-          const vRes = await fetch('/api/chanda/lotus/verify', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(response),
-          }).catch(() => null);
-          if (vRes?.ok) {
-            setSubDone(true);
-            showToast?.('Welcome to Lotus Privé. Your membership is now active.', true);
-          } else {
-            // Webhook will activate regardless — treat as success
-            setSubDone(true);
-            showToast?.('Subscription activated. Your Discord role will be assigned shortly.', true);
-          }
-        },
-        modal: { ondismiss: () => {} },
-      });
-      rzp.on('payment.failed', () => {
-        showToast?.('Payment failed. Please try again.', false);
-      });
-      rzp.open();
-    } catch (err) {
-      console.error('[lotus subscribe]', err);
-      setSubLoading(false);
-      showToast?.(err.message || 'Something went wrong — please try again.', false);
-    }
+    onSubscribe?.({
+      amount: LOTUS_PRICE,
+      onClose: () => setSubLoading(false),
+      onSuccess: () => {
+        setSubLoading(false);
+        setSubDone(true);
+      },
+    });
   };
   const cardBg = [
     'radial-gradient(ellipse at 18% 65%, rgba(124,58,237,0.22) 0%, transparent 55%)',
@@ -388,8 +367,8 @@ function LotusPriveSection({ subscribers, members = [], discordId, ifcName, show
             <Box style={{ width: 7, height: 7, borderRadius: '50%', background: 'linear-gradient(135deg, #c9a96e, #a78bfa)', flexShrink: 0 }} />
             <Box as="span" style={{ color: '#c9a96e', fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em' }}>
               {subscribers > 0
-                ? `${subscribers} member${subscribers === 1 ? '' : 's'}`
-                : 'Be the first to join'}
+                ? `${subscribers}/4 member${subscribers === 1 ? '' : 's'}`
+                : '4 seats available'}
             </Box>
           </Box>
         </Flex>
@@ -485,14 +464,14 @@ function LotusPriveSection({ subscribers, members = [], discordId, ifcName, show
               background: 'linear-gradient(135deg, #e8c97e, #c9a96e)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>
-              ₹199
+              ₹{LOTUS_PRICE}
             </Box>
             <Box as="span" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '14px', marginLeft: '6px' }}>
               / month
             </Box>
           </Box>
           <Box mt={1.5} style={{ color: 'rgba(255,255,255,0.42)', fontSize: '12px' }}>
-            Billed monthly · Cancel anytime
+            Manual monthly pledge · 4 seats only
           </Box>
         </Flex>
 
@@ -506,7 +485,7 @@ function LotusPriveSection({ subscribers, members = [], discordId, ifcName, show
             as="button"
             display="inline-flex" alignItems="center" gap="10px" px={10} py={4} borderRadius="2xl"
             onClick={handleSubscribe}
-            disabled={subLoading || subDone}
+            disabled={subLoading || subDone || isFull}
             style={{
               background: subDone
                 ? 'rgba(201,169,110,0.18)'
@@ -514,13 +493,15 @@ function LotusPriveSection({ subscribers, members = [], discordId, ifcName, show
               color: subDone ? '#c9a96e' : '#1a0f00',
               border: subDone ? '1px solid rgba(201,169,110,0.4)' : 'none',
               fontWeight: 800, fontSize: '15px', letterSpacing: '0.06em',
-              cursor: subLoading || subDone ? 'default' : 'pointer',
+              cursor: subLoading || subDone || isFull ? 'default' : 'pointer',
               opacity: subLoading ? 0.75 : 1,
               boxShadow: subDone ? 'none' : '0 8px 32px rgba(201,169,110,0.25)',
               transition: 'all 0.2s ease',
             }}>
             {subDone ? (
               <>✦ Membership Active</>
+            ) : isFull ? (
+              <>Lotus Privé Full</>
             ) : subLoading ? (
               <>
                 <Spinner size="sm" color="blackAlpha.700" />
@@ -536,7 +517,7 @@ function LotusPriveSection({ subscribers, members = [], discordId, ifcName, show
           <HStack gap={2} align="center">
             <Box style={{ color: 'rgba(201,169,110,0.4)', fontSize: '10px' }}>✦</Box>
             <Box style={{ fontSize: '12px', color: 'rgba(255,255,255,0.38)', letterSpacing: '0.04em' }}>
-              Monthly subscription · Powered by Razorpay
+              Pay by UPI · Confirmed on trust
             </Box>
             <Box style={{ color: 'rgba(201,169,110,0.4)', fontSize: '10px' }}>✦</Box>
           </HStack>
@@ -551,13 +532,22 @@ function LotusPriveSection({ subscribers, members = [], discordId, ifcName, show
 
 function ThankYouOverlay({ goalLabel, amount, callsign, onClose }) {
   const [ windowSize, setWindowSize ] = useState({ width: 0, height: 0 });
-  useEffect(() => { setWindowSize({ width: window.innerWidth, height: window.innerHeight }); }, []);
+  useEffect(() => { 
+    try {
+      console.log('[Chanda] Setting window size for Confetti');
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight }); 
+    } catch (err) {
+      console.error('[Chanda] Error setting window size:', err);
+    }
+  }, []);
 
   return (
     <Box position="fixed" inset={0} zIndex={9999} display="flex" alignItems="center" justifyContent="center"
       bg="blackAlpha.700" backdropFilter="blur(6px)" onClick={onClose}>
-      <Confetti width={windowSize.width} height={windowSize.height} numberOfPieces={300} recycle={false}
-        colors={[ '#6366f1', '#0ea5e9', '#f59e0b', '#10b981', '#f43f5e', '#a78bfa' ]} />
+      {windowSize.width > 0 && windowSize.height > 0 && (
+        <Confetti width={windowSize.width} height={windowSize.height} numberOfPieces={300} recycle={false}
+          colors={[ '#6366f1', '#0ea5e9', '#f59e0b', '#10b981', '#f43f5e', '#a78bfa' ]} />
+      )}
       <Box bg={{ base: 'white', _dark: '#111827' }} borderRadius="3xl" p={{ base: 8, md: 12 }} maxW="480px" w="90%"
         textAlign="center" boxShadow="0 40px 80px rgba(0,0,0,0.4)" border="1px solid"
         borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.100' }} onClick={e => e.stopPropagation()}>
@@ -583,32 +573,104 @@ function ThankYouOverlay({ goalLabel, amount, callsign, onClose }) {
   );
 }
 
-function loadRazorpayScript() {
-  return new Promise((resolve, reject) => {
-    if (typeof window === 'undefined') return reject(new Error('SSR'));
-    if (window.Razorpay) return resolve();
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Razorpay script failed to load'));
-    document.head.appendChild(script);
-  });
+function UpiPaymentModal({ intent, onClose, onConfirm }) {
+  const [ confirming, setConfirming ] = useState(false);
+  if (!intent) return null;
+
+  const upiLink = buildUpiLink(intent.amount);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(upiLink)}`;
+
+  const handleConfirm = async () => {
+    if (confirming) return;
+    setConfirming(true);
+    await onConfirm(intent);
+    setConfirming(false);
+  };
+
+  return (
+    <Box position="fixed" inset={0} zIndex={9999} bg="blackAlpha.700" backdropFilter="blur(8px)"
+      display="flex" alignItems="center" justifyContent="center" px={4}>
+      <Box bg={{ base: 'white', _dark: '#0f172a' }} borderRadius="28px" maxW="430px" w="100%"
+        overflow="hidden" boxShadow="0 40px 100px rgba(0,0,0,0.45)" border="1px solid"
+        borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.100' }}>
+        <Box px={6} py={5} borderBottom="1px solid" borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.100' }}>
+          <HStack justify="space-between" align="flex-start">
+            <Box>
+              <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.400' }} fontWeight="700" textTransform="uppercase" letterSpacing="wider">
+                Indian Virtual
+              </Text>
+              <Text fontSize="lg" fontWeight="800" color={{ base: 'gray.900', _dark: 'white' }}>
+                Complete UPI Payment
+              </Text>
+            </Box>
+            <Box as="button" onClick={onClose} color={{ base: 'gray.500', _dark: 'gray.400' }} fontSize="20px" lineHeight="1" cursor="pointer">
+              ×
+            </Box>
+          </HStack>
+        </Box>
+
+        <Box p={6}>
+          <Box borderRadius="2xl" bg={{ base: 'gray.50', _dark: 'whiteAlpha.50' }} border="1px solid"
+            borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.100' }} p={4} mb={5}>
+            <HStack justify="space-between" mb={2}>
+              <Text fontSize="sm" color={{ base: 'gray.600', _dark: 'gray.400' }}>Paying for</Text>
+              <Text fontSize="sm" fontWeight="700" color={{ base: 'gray.900', _dark: 'white' }}>{intent.title}</Text>
+            </HStack>
+            <HStack justify="space-between">
+              <Text fontSize="sm" color={{ base: 'gray.600', _dark: 'gray.400' }}>Amount</Text>
+              <Text fontSize="2xl" fontWeight="900" color={intent.color || '#111827'}>₹{intent.amount.toLocaleString('en-IN')}</Text>
+            </HStack>
+          </Box>
+
+          <Flex direction="column" align="center" gap={3} mb={5}>
+            <Box bg="white" borderRadius="20px" p={3} border="1px solid #e5e7eb" boxShadow="0 10px 30px rgba(15,23,42,0.08)">
+              <Box as="img" src={qrUrl} alt="UPI payment QR code" w="220px" h="220px" />
+            </Box>
+            <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.400' }} textAlign="center">
+              Scan with any UPI app or use the button below. Payee: {UPI_PAYEE}
+            </Text>
+          </Flex>
+
+          <Box as="a" href={upiLink} w="100%" py="13px" borderRadius="xl" display="flex" alignItems="center"
+            justifyContent="center" fontWeight="800" color="white" mb={3}
+            style={{ background: intent.gradient || 'linear-gradient(to right, #2563eb, #06b6d4)' }}>
+            Pay in UPI app
+          </Box>
+
+          <Box as="button" w="100%" py="12px" borderRadius="xl" border="1.5px solid"
+            borderColor={{ base: 'gray.300', _dark: 'whiteAlpha.200' }} color={{ base: 'gray.800', _dark: 'white' }}
+            fontWeight="700" cursor="pointer" onClick={handleConfirm} disabled={confirming}
+            display="flex" alignItems="center" justifyContent="center" gap="8px">
+            {confirming ? <Spinner size="sm" /> : 'I have paid'}
+          </Box>
+
+          <Text mt={4} fontSize="11px" lineHeight="1.6" color={{ base: 'gray.500', _dark: 'gray.500' }} textAlign="center">
+            This is a manual UPI confirmation. Please only tap “I have paid” after your UPI app shows the payment as successful.
+          </Text>
+        </Box>
+      </Box>
+    </Box>
+  );
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function ChandaPage() {
   const { data: session } = useSession();
-  const discordId = session?.user?.id;
+  const discordId = session?.user?.discordId || session?.user?.id;
   const callsign = session?.user?.callsign || 'Anonymous Pilot';
   const ifcName = session?.user?.ifcName || session?.user?.callsign || 'Anonymous Pilot';
 
+  const [ mounted, setMounted ] = useState(false);
   const [ stats, setStats ] = useState({ contributors: 0, goals: {}, goalDefs: [], contributions: [], lotus: { subscribers: 0 } });
   const [ loadingStats, setLoading ] = useState(true);
   const [ thankYou, setThankYou ] = useState(null);
   const [ toast, setToast ] = useState(null);
-  const rzpRef = useRef(null);
+  const [ paymentIntent, setPaymentIntent ] = useState(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const goals = stats.goalDefs ?? [];
 
@@ -619,73 +681,102 @@ export default function ChandaPage() {
 
   const fetchStats = useCallback(async () => {
     try {
+      console.log('[Chanda] Fetching stats...');
       const res = await fetch('/api/chanda/stats');
-      if (res.ok) setStats(await res.json());
-    } catch { }
+      console.log('[Chanda] Stats response status:', res.status);
+      if (res.ok) {
+        const data = await res.json();
+        console.log('[Chanda] Stats loaded:', data);
+        setStats(data);
+      } else {
+        console.warn('[Chanda] Stats API returned:', res.status);
+      }
+    } catch (err) {
+      console.error('[Chanda] Fetch error:', err);
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => {
     fetchStats();
-    loadRazorpayScript().catch(() => { });
   }, [ fetchStats ]);
 
   const handleContribute = useCallback(async (goalId, amount) => {
+    const goal = goalId === 'all'
+      ? { title: 'All Goals', label: 'All Goals', color: '#6366f1', gradient: ALL_GRADIENT }
+      : goals.find(g => g.id === goalId);
+
+    setPaymentIntent({
+      type: 'contribution',
+      goalId,
+      amount: Number(amount),
+      title: goal?.title || goal?.label || goalId,
+      color: goal?.color || '#6366f1',
+      gradient: goal?.gradient || ALL_GRADIENT,
+    });
+  }, [ goals ]);
+
+  const handleLotusSubscribe = useCallback(({ amount, onClose, onSuccess }) => {
+    setPaymentIntent({
+      type: 'lotus',
+      amount: Number(amount),
+      title: 'Lotus Privé',
+      color: '#c9a96e',
+      gradient: 'linear-gradient(135deg, #b8952f, #e8c97e, #c9a96e)',
+      onClose,
+      onSuccess,
+    });
+  }, []);
+
+  const confirmPayment = useCallback(async (intent) => {
     try {
-      await loadRazorpayScript();
+      const endpoint = intent.type === 'lotus'
+        ? '/api/chanda/lotus/verify'
+        : '/api/chanda/verify';
+      const body = intent.type === 'lotus'
+        ? { discordId, ifcName: ifcName || callsign }
+        : { goalId: intent.goalId, amount: intent.amount, discordId, ifcName: ifcName || callsign };
 
-      const orderRes = await fetch('/api/chanda/order', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, goalId, discordId, ifcName: ifcName || callsign }),
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
-      const orderData = await orderRes.json();
-      if (!orderRes.ok) throw new Error(orderData.error || `Order failed (${orderRes.status})`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Confirmation failed');
 
-      const { orderId, currency, key } = orderData;
-      if (!key || !orderId) throw new Error('Invalid order response from server');
+      setPaymentIntent(null);
+      intent.onSuccess?.();
+      await fetchStats();
 
-      const goal = goalId === 'all'
-        ? { title: 'All Goals', color: '#6366f1' }
-        : goals.find(g => g.id === goalId);
-
-      await new Promise((resolve) => {
-        rzpRef.current = new window.Razorpay({
-          key, order_id: orderId, currency,
-          name: 'Indian Virtual', description: goal?.title ?? goalId,
-          theme: { color: goal?.color ?? '#6366f1' },
-          handler(response) {
-            fetch('/api/chanda/verify', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...response, goalId, amount: orderData.amount, discordId, ifcName: ifcName || callsign }),
-            })
-              .then(r => {
-                if (r.ok) { setThankYou({ goalId, amount: Math.round(orderData.amount / 100) }); fetchStats(); }
-                else showToast('Payment received but confirmation failed — contact staff.', false);
-              })
-              .catch(() => showToast('Network error during confirmation — contact staff.', false))
-              .finally(resolve);
-          },
-          modal: { ondismiss: resolve, escape: true },
-        });
-        rzpRef.current.on('payment.failed', resp => {
-          showToast(`Payment failed: ${resp?.error?.description ?? 'Payment declined'}`, false);
-          resolve();
-        });
-        rzpRef.current.open();
-      });
+      if (intent.type === 'lotus') {
+        showToast('Welcome to Lotus Privé. Your membership is active for this month.', true);
+      } else {
+        setThankYou({ goalId: intent.goalId, amount: intent.amount });
+      }
     } catch (err) {
-      console.error('[Chanda] contribute error:', err);
-      showToast(err.message || 'Something went wrong — please try again.', false);
+      console.error('[Chanda] payment confirmation error:', err);
+      intent.onClose?.();
+      showToast(err.message || 'Could not confirm payment. Please contact staff.', false);
     }
-  }, [ discordId, callsign, fetchStats, showToast, goals ]);
+  }, [ discordId, callsign, ifcName, fetchStats, showToast ]);
 
   const totalRaised = Object.values(stats.goals).reduce((a, b) => a + b, 0);
   const thankYouLabel = thankYou?.goalId === 'all'
     ? 'All Goals'
     : goals.find(g => g.id === thankYou?.goalId)?.label || thankYou?.goalId;
 
+  // Only render content after hydration
+  if (!mounted) {
+    return (
+      <Box maxW="1100px" mx="auto" px={{ base: 4, md: 6 }} py={{ base: 6, md: 10 }}>
+        <Flex justify="center" py={16}><Spinner color="#6366f1" /></Flex>
+      </Box>
+    );
+  }
+
   return (
-    <Box maxW="1100px" mx="auto" px={{ base: 4, md: 6 }} py={{ base: 6, md: 10 }}>
+    <Box maxW="1100px" mx="auto" px={{ base: 4, md: 6 }} py={{ base: 6, md: 10 }} suppressHydrationWarning>
 
       {toast && (
         <Box position="fixed" bottom="24px" right="24px" zIndex={9998}
@@ -696,10 +787,21 @@ export default function ChandaPage() {
         </Box>
       )}
 
-      {thankYou && (
+      {mounted && thankYou && (
         <ThankYouOverlay
           goalLabel={thankYouLabel} amount={thankYou.amount} callsign={callsign}
           onClose={() => setThankYou(null)}
+        />
+      )}
+
+      {mounted && paymentIntent && (
+        <UpiPaymentModal
+          intent={paymentIntent}
+          onClose={() => {
+            paymentIntent.onClose?.();
+            setPaymentIntent(null);
+          }}
+          onConfirm={confirmPayment}
         />
       )}
 
@@ -773,9 +875,8 @@ export default function ChandaPage() {
       <LotusPriveSection
         subscribers={stats.lotus?.subscribers ?? 0}
         members={stats.lotus?.members ?? []}
-        discordId={discordId}
-        ifcName={ifcName || callsign}
-        showToast={showToast}
+        slotsRemaining={stats.lotus?.slotsRemaining ?? Math.max(0, 4 - (stats.lotus?.subscribers ?? 0))}
+        onSubscribe={handleLotusSubscribe}
       />
 
       {/* Contributions feed */}
@@ -827,7 +928,7 @@ export default function ChandaPage() {
       <Separator mb={6} borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} />
       <Flex direction={{ base: 'column', md: 'row' }} align="center" justify="space-between" gap={4} px={2}>
         <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.600' }}>
-          Payments processed securely by Razorpay. Contributions are voluntary and non-refundable.
+          Payments are made manually through UPI and confirmed on trust. Contributions are voluntary and non-refundable.
         </Text>
         <Text fontSize="xs" color={{ base: 'gray.600', _dark: 'gray.500' }} textAlign={{ base: 'center', md: 'right' }}>
           <Box as="span" position="relative" display="inline-block" pb="6px">

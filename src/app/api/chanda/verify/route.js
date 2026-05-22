@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { Redis } from '@upstash/redis';
+import { auth } from '@/auth';
 import { processConfirmedPayment } from '../_processPayment';
 import { DEFAULT_GOALS, GOALS_REDIS_KEY } from '../_defaultGoals';
 
 export async function POST(req) {
   try {
+    const session = await auth();
     const {
-      razorpay_order_id, razorpay_payment_id, razorpay_signature,
-      goalId, amount, discordId, ifcName,
+      goalId, amount, ifcName,
     } = await req.json();
+    const sessionDiscordId = session?.user?.discordId || session?.user?.id || null;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return NextResponse.json({ error: 'Missing payment fields' }, { status: 400 });
+    if (!goalId || !amount || Number(amount) < 1) {
+      return NextResponse.json({ error: 'Invalid payment confirmation' }, { status: 400 });
     }
 
     // Validate goalId against live goals config
@@ -25,21 +26,12 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Invalid goal' }, { status: 400 });
     }
 
-    const expected = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest('hex');
-
-    if (expected !== razorpay_signature) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
-    }
-
     await processConfirmedPayment({
-      paymentId:   razorpay_payment_id,
+      paymentId:   `upi_${goalId}_${sessionDiscordId || 'anon'}_${Date.now()}`,
       goalId,
-      amountPaise: amount,
+      amountPaise: Math.round(Number(amount) * 100),
       ifcName,
-      discordId,
+      discordId: sessionDiscordId,
     });
 
     return NextResponse.json({ success: true });
