@@ -39,11 +39,12 @@ export async function GET() {
       const contributorsCount = (uniqueCount && Number(uniqueCount) > 0)
         ? Number(uniqueCount)
         : parseInt(legacyTotal || 0);
-    return NextResponse.json({
-      contributors: parseInt(contributors || 0),
+
+      return NextResponse.json({
         contributors: contributorsCount,
-      goalDefs,
-      contributions,
+        goals,
+        goalDefs,
+        contributions,
       lotus: {
         subscribers: lotus.members.length,
         members: lotus.members,
