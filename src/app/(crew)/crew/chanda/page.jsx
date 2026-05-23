@@ -19,7 +19,7 @@ const UPI_PAYEE = 'tred38434-1@okhdfcbank';
 const UPI_NAME = 'Ved B';
 const UPI_AID = 'uGICAgIDjpaH5Aw';
 
-function buildUpiLink(amount) {
+function buildUpiLink(amount, note) {
   const params = new URLSearchParams({
     pa: UPI_PAYEE,
     pn: UPI_NAME,
@@ -27,6 +27,7 @@ function buildUpiLink(amount) {
     cu: 'INR',
     aid: UPI_AID,
   });
+  if (note) params.set('tn', note);
   return `upi://pay?${params.toString()}`;
 }
 
@@ -532,12 +533,11 @@ function LotusPriveSection({ subscribers, members = [], slotsRemaining = 4, onSu
 
 function ThankYouOverlay({ goalLabel, amount, callsign, onClose }) {
   const [ windowSize, setWindowSize ] = useState({ width: 0, height: 0 });
-  useEffect(() => { 
+  useEffect(() => {
     try {
-      console.log('[Chanda] Setting window size for Confetti');
-      setWindowSize({ width: window.innerWidth, height: window.innerHeight }); 
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
     } catch (err) {
-      console.error('[Chanda] Error setting window size:', err);
+      // ignore sizing errors
     }
   }, []);
 
@@ -577,7 +577,7 @@ function UpiPaymentModal({ intent, onClose, onConfirm }) {
   const [ confirming, setConfirming ] = useState(false);
   if (!intent) return null;
 
-  const upiLink = buildUpiLink(intent.amount);
+  const upiLink = buildUpiLink(intent.amount, intent.note);
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(upiLink)}`;
 
   const handleConfirm = async () => {
@@ -637,6 +637,14 @@ function UpiPaymentModal({ intent, onClose, onConfirm }) {
             Pay in UPI app
           </Box>
 
+          {intent.amount && (
+            <Box as="a" href={`https://paypal.me/tred38434/${Number(intent.amount).toFixed(2)}`} target="_blank" rel="noopener noreferrer"
+              w="100%" py="13px" borderRadius="xl" display="flex" alignItems="center" justifyContent="center" fontWeight="800"
+              color="white" mb={3} style={{ background: 'linear-gradient(to right, #003087, #009cde)' }}>
+              Pay with PayPal (tred38434)
+            </Box>
+          )}
+
           <Box as="button" w="100%" py="12px" borderRadius="xl" border="1.5px solid"
             borderColor={{ base: 'gray.300', _dark: 'whiteAlpha.200' }} color={{ base: 'gray.800', _dark: 'white' }}
             fontWeight="700" cursor="pointer" onClick={handleConfirm} disabled={confirming}
@@ -681,18 +689,15 @@ export default function ChandaPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      console.log('[Chanda] Fetching stats...');
       const res = await fetch('/api/chanda/stats');
-      console.log('[Chanda] Stats response status:', res.status);
       if (res.ok) {
         const data = await res.json();
-        console.log('[Chanda] Stats loaded:', data);
         setStats(data);
       } else {
-        console.warn('[Chanda] Stats API returned:', res.status);
+        // stats API returned non-ok
       }
     } catch (err) {
-      console.error('[Chanda] Fetch error:', err);
+      // ignore fetch errors
     }
     setLoading(false);
   }, []);
@@ -713,6 +718,7 @@ export default function ChandaPage() {
       title: goal?.title || goal?.label || goalId,
       color: goal?.color || '#6366f1',
       gradient: goal?.gradient || ALL_GRADIENT,
+      note: `${goalId}|${ifcName || callsign}`,
     });
   }, [ goals ]);
 
@@ -725,8 +731,9 @@ export default function ChandaPage() {
       gradient: 'linear-gradient(135deg, #b8952f, #e8c97e, #c9a96e)',
       onClose,
       onSuccess,
+      note: `lotus|${ifcName || callsign}`,
     });
-  }, []);
+  }, [ ifcName, callsign ]);
 
   const confirmPayment = useCallback(async (intent) => {
     try {
@@ -755,7 +762,6 @@ export default function ChandaPage() {
         setThankYou({ goalId: intent.goalId, amount: intent.amount });
       }
     } catch (err) {
-      console.error('[Chanda] payment confirmation error:', err);
       intent.onClose?.();
       showToast(err.message || 'Could not confirm payment. Please contact staff.', false);
     }
@@ -915,6 +921,29 @@ export default function ChandaPage() {
                     <HStack gap={1} align="center" flexShrink={0}>
                       <FiClock size={11} color="#9ca3af" />
                       <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.600' }}>{timeAgo(c.time)}</Text>
+                      {session?.user?.permissions?.length > 0 && c.paymentId && (
+                        <Box as="button" ml={3} py={1} px={3} borderRadius="md" fontSize="12px" fontWeight="700"
+                          border="1px solid" borderColor="#ef4444" color="#ef4444" bg="transparent" cursor="pointer"
+                          onClick={async () => {
+                            if (!confirm('Reverse this contribution?')) return;
+                            try {
+                              const res = await fetch('/api/chanda/reverse', {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ paymentId: c.paymentId }),
+                              });
+                              const data = await res.json().catch(() => ({}));
+                              if (res.ok) {
+                                showToast('Contribution reversed', true);
+                                fetchStats();
+                              } else {
+                                showToast(data.error || 'Reverse failed', false);
+                              }
+                            } catch (e) {
+                              showToast('Reverse failed', false);
+                            }
+                          }}
+                        >Reverse</Box>
+                      )}
                     </HStack>
                   </HStack>
                 );

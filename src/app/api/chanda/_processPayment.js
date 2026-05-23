@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { DEFAULT_GOALS, GOALS_REDIS_KEY } from './_defaultGoals';
 
-const GUILD_ID       = '1246895842581938276';
+const GUILD_ID = '1246895842581938276';
 const SUPPORTER_ROLE = '1502237694271557632';
 
 async function fetchGoals(redis) {
@@ -15,20 +15,20 @@ async function grantRole(discordId, roleId) {
   return fetch(
     `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${discordId}/roles/${roleId}`,
     {
-      method:  'PUT',
+      method: 'PUT',
       headers: { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`, 'Content-Type': 'application/json' },
     }
-  ).catch(() => {});
+  ).catch(() => { });
 }
 
 async function revokeRole(discordId, roleId) {
   return fetch(
     `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${discordId}/roles/${roleId}`,
     {
-      method:  'DELETE',
+      method: 'DELETE',
       headers: { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` },
     }
-  ).catch(() => {});
+  ).catch(() => { });
 }
 
 async function fetchDiscordAvatarUrl(discordId) {
@@ -62,21 +62,21 @@ export async function processConfirmedPayment({ paymentId, goalId, amountPaise, 
   if (!isNew) return;
 
   const amountRupees = Math.round(amountPaise / 100);
-  const contributor  = ifcName || 'Anonymous Pilot';
+  const contributor = ifcName || 'Anonymous Pilot';
 
   if (goalId === 'all') {
-    const goals      = await fetchGoals(redis);
-    const goalIds    = goals.map(g => g.id);
-    const raisedArr  = await Promise.all(goalIds.map(id => redis.get(`chanda:goal:${id}:raised`)));
+    const goals = await fetchGoals(redis);
+    const goalIds = goals.map(g => g.id);
+    const raisedArr = await Promise.all(goalIds.map(id => redis.get(`chanda:goal:${id}:raised`)));
 
     // Skip goals that are fully funded
     let targets = goalIds.filter((id, i) => {
       const g = goals.find(x => x.id === id);
-      return parseFloat(raisedArr[i] || '0') < (g?.target ?? Infinity);
+      return parseFloat(raisedArr[ i ] || '0') < (g?.target ?? Infinity);
     });
-    if (targets.length === 0) targets = [...goalIds]; // edge: all full
+    if (targets.length === 0) targets = [ ...goalIds ]; // edge: all full
 
-    const share    = Math.floor(amountRupees / targets.length);
+    const share = Math.floor(amountRupees / targets.length);
     const leftover = amountRupees - share * targets.length;
 
     await Promise.all([
@@ -85,7 +85,7 @@ export async function processConfirmedPayment({ paymentId, goalId, amountPaise, 
       ),
       redis.incr('chanda:total:contributors'),
       redis.lpush('chanda:contributions', JSON.stringify({
-        ifcName: contributor, goalId: 'all', amount: amountRupees, time: Date.now(),
+        paymentId, ifcName: contributor, goalId: 'all', amount: amountRupees, time: Date.now(), discordId: discordId || null,
       })),
     ]);
     await redis.ltrim('chanda:contributions', 0, 49);
@@ -94,10 +94,23 @@ export async function processConfirmedPayment({ paymentId, goalId, amountPaise, 
       redis.incrbyfloat(`chanda:goal:${goalId}:raised`, amountRupees),
       redis.incr('chanda:total:contributors'),
       redis.lpush('chanda:contributions', JSON.stringify({
-        ifcName: contributor, goalId, amount: amountRupees, time: Date.now(),
+        paymentId, ifcName: contributor, goalId, amount: amountRupees, time: Date.now(), discordId: discordId || null,
       })),
     ]);
     await redis.ltrim('chanda:contributions', 0, 49);
+  }
+
+  // Notify staff channel about the new contribution (best-effort)
+  try {
+    const channelId = process.env.CHANDA_NOTIFY_CHANNEL_ID || '1288773676052779093';
+    const content = `New contribution: ₹${amountRupees} to ${goalId} by ${contributor} (${discordId || 'anon'})\nPayment ID: ${paymentId}`;
+    await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    }).catch(() => { });
+  } catch (e) {
+    // ignore notify errors
   }
 
   if (discordId) await grantRole(discordId, SUPPORTER_ROLE);
