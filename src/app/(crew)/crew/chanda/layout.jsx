@@ -9,7 +9,6 @@ export const revalidate = 0;
 
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import { Providers } from '@/components/CrewProviders';
 import { SidebarProvider } from '@/components/SidebarContext';
 import ResponsiveCrewLayout from '@/components/ResponsiveCrewLayout';
 import { Box } from '@chakra-ui/react';
@@ -25,18 +24,16 @@ export default async function ChandaLayout({ children }) {
   const careerMode = session.user.careerMode || false;
 
   return (
-    <Providers>
-      <Box minH="100vh" bg="bg.default">
-        <SidebarProvider>
-          <ResponsiveCrewLayout
-            callsign={session.user.callsign}
-            isAdmin={isAdmin}
-            careerMode={careerMode}
-          >
-            {children}
-          </ResponsiveCrewLayout>
-        </SidebarProvider>
-      </Box>
-    </Providers>
+    <Box minH="100vh" bg="bg.default">
+      <SidebarProvider>
+        <ResponsiveCrewLayout
+          callsign={session.user.callsign}
+          isAdmin={isAdmin}
+          careerMode={careerMode}
+        >
+          {children}
+        </ResponsiveCrewLayout>
+      </SidebarProvider>
+    </Box>
   );
 }

@@ -78,6 +78,20 @@ export default function RootLayout({ children }) {
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
+                <script
+                    dangerouslySetInnerHTML={{
+                      __html: `
+                        (function() {
+                          try {
+                            var theme = localStorage.getItem('chakra-ui-color-mode');
+                            if (theme === 'dark') {
+                              document.documentElement.classList.add('dark');
+                            }
+                          } catch (e) {}
+                        })();
+                      `,
+                    }}
+                />
             </head>
             <body>
                 <ChakraProvider>

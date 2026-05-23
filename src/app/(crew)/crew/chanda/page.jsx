@@ -640,10 +640,10 @@ function UpiPaymentModal({ intent, onClose, onConfirm }) {
           </Box>
 
           {intent.amount && (
-            <Box as="a" href={`https://paypal.me/tred38434/${Number(intent.amount).toFixed(2)}`} target="_blank" rel="noopener noreferrer"
+            <Box as="a" href={`https://paypal.me/PritishDewan/${Number(intent.amount).toFixed(2)}inr`} target="_blank" rel="noopener noreferrer"
               w="100%" py="13px" borderRadius="xl" display="flex" alignItems="center" justifyContent="center" fontWeight="800"
               color="white" mb={3} style={{ background: 'linear-gradient(to right, #003087, #009cde)' }}>
-              Pay with PayPal (tred38434)
+              Pay with PayPal
             </Box>
           )}
 
