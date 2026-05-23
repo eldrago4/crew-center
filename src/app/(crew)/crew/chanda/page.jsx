@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import {
@@ -774,6 +774,22 @@ export default function ChandaPage() {
     ? 'All Goals'
     : goals.find(g => g.id === thankYou?.goalId)?.label || thankYou?.goalId;
 
+  const uniqueContributions = useMemo(() => {
+    const seen = new Map();
+    for (const c of stats.contributions || []) {
+      const key = c.discordId
+        ? `discord:${c.discordId}`
+        : c.ifcName
+          ? `ifc:${c.ifcName.trim().toLowerCase()}`
+          : `payment:${c.paymentId}`;
+      const existing = seen.get(key);
+      if (!existing || (c.time || 0) > (existing.time || 0)) {
+        seen.set(key, c);
+      }
+    }
+    return Array.from(seen.values());
+  }, [ stats.contributions ]);
+
   // Only render content after hydration
   if (!mounted) {
     return (
@@ -897,7 +913,7 @@ export default function ChandaPage() {
             <Flex justify="center" py={8}><Spinner color="#6366f1" /></Flex>
           ) : (
             <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }} gap={3}>
-              {stats.contributions.map((c, i) => {
+              {uniqueContributions.map((c, i) => {
                 const isAll = c.goalId === 'all';
                 const goalDef = isAll ? null : goals.find(g => g.id === c.goalId);
                 const color = goalDef?.color ?? '#6366f1';

@@ -3,6 +3,14 @@ import { Redis } from '@upstash/redis';
 import { auth } from '@/auth';
 import { revokeRole, SUPPORTER_ROLE } from '../_processPayment';
 
+function getContributorKey(discordId, ifcName, paymentId) {
+    if (discordId) return `discord:${discordId}`;
+    if (ifcName && typeof ifcName === 'string' && ifcName.trim()) {
+        return `ifc:${ifcName.trim().toLowerCase()}`;
+    }
+    return `payment:${paymentId}`;
+}
+
 export async function POST(req) {
     const session = await auth();
     if (!session?.user?.permissions?.includes('staff')) {
@@ -37,8 +45,20 @@ export async function POST(req) {
         // remove the list entry
         await redis.lrem('chanda:contributions', 0, matchedRaw);
 
-        // decrement total contributors (best-effort)
-        try { await redis.decr('chanda:total:contributors'); } catch (e) { /* ignore */ }
+        const contributorKey = parsed.contributorKey || getContributorKey(parsed.discordId, parsed.ifcName, parsed.paymentId);
+        const remaining = list.filter(item => item !== matchedRaw).some(item => {
+            try {
+                const obj = typeof item === 'string' ? JSON.parse(item) : item;
+                if (!obj) return false;
+                const key = obj.contributorKey || getContributorKey(obj.discordId, obj.ifcName, obj.paymentId);
+                return key === contributorKey;
+            } catch (e) {
+                return false;
+            }
+        });
+        if (!remaining) {
+            try { await redis.srem('chanda:contributors:set', contributorKey); } catch (e) { /* ignore */ }
+        }
 
         // if goal-specific, decrement the raised amount
         try {

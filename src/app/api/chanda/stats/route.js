@@ -8,23 +8,23 @@ export async function GET() {
     const redis = Redis.fromEnv();
 
     // Load goal definitions dynamically
-    const raw       = await redis.get(GOALS_REDIS_KEY);
-    const goalDefs  = raw
+    const raw = await redis.get(GOALS_REDIS_KEY);
+    const goalDefs = raw
       ? (typeof raw === 'string' ? JSON.parse(raw) : raw)
       : DEFAULT_GOALS;
-    const goalIds   = goalDefs.map(g => g.id);
+    const goalIds = goalDefs.map(g => g.id);
 
     const lotus = await reconcileLotusMembers(redis);
 
-    const [contributors, rawContribs, ...raised] = await Promise.all([
-      redis.get('chanda:total:contributors'),
+    const [ contributors, rawContribs, ...raised ] = await Promise.all([
+      redis.scard('chanda:contributors:set'),
       redis.lrange('chanda:contributions', 0, 19),
       ...goalIds.map(id => redis.get(`chanda:goal:${id}:raised`)),
     ]);
 
     const goals = {};
     goalIds.forEach((id, i) => {
-      goals[id] = parseFloat(raised[i] || 0);
+      goals[ id ] = parseFloat(raised[ i ] || 0);
     });
 
     const contributions = (rawContribs || []).map(item => {
@@ -33,7 +33,7 @@ export async function GET() {
     }).filter(Boolean);
 
     return NextResponse.json({
-      contributors:  parseInt(contributors || 0),
+      contributors: parseInt(contributors || 0),
       goals,
       goalDefs,
       contributions,

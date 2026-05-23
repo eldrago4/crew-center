@@ -3,6 +3,15 @@ import { DEFAULT_GOALS, GOALS_REDIS_KEY } from './_defaultGoals';
 
 const GUILD_ID = '1246895842581938276';
 const SUPPORTER_ROLE = '1502237694271557632';
+const UNIQUE_CONTRIBUTORS_KEY = 'chanda:contributors:set';
+
+function getContributorKey(discordId, ifcName, paymentId) {
+  if (discordId) return `discord:${discordId}`;
+  if (ifcName && typeof ifcName === 'string' && ifcName.trim()) {
+    return `ifc:${ifcName.trim().toLowerCase()}`;
+  }
+  return `payment:${paymentId}`;
+}
 
 async function fetchGoals(redis) {
   const raw = await redis.get(GOALS_REDIS_KEY);
@@ -63,6 +72,7 @@ export async function processConfirmedPayment({ paymentId, goalId, amountPaise, 
 
   const amountRupees = Math.round(amountPaise / 100);
   const contributor = ifcName || 'Anonymous Pilot';
+  const contributorKey = getContributorKey(discordId, contributor, paymentId);
 
   if (goalId === 'all') {
     const goals = await fetchGoals(redis);
@@ -83,18 +93,30 @@ export async function processConfirmedPayment({ paymentId, goalId, amountPaise, 
       ...targets.map((id, idx) =>
         redis.incrbyfloat(`chanda:goal:${id}:raised`, share + (idx === 0 ? leftover : 0))
       ),
-      redis.incr('chanda:total:contributors'),
+      redis.sadd(UNIQUE_CONTRIBUTORS_KEY, contributorKey),
       redis.lpush('chanda:contributions', JSON.stringify({
-        paymentId, ifcName: contributor, goalId: 'all', amount: amountRupees, time: Date.now(), discordId: discordId || null,
+        paymentId,
+        ifcName: contributor,
+        goalId: 'all',
+        amount: amountRupees,
+        time: Date.now(),
+        discordId: discordId || null,
+        contributorKey,
       })),
     ]);
     await redis.ltrim('chanda:contributions', 0, 49);
   } else {
     await Promise.all([
       redis.incrbyfloat(`chanda:goal:${goalId}:raised`, amountRupees),
-      redis.incr('chanda:total:contributors'),
+      redis.sadd(UNIQUE_CONTRIBUTORS_KEY, contributorKey),
       redis.lpush('chanda:contributions', JSON.stringify({
-        paymentId, ifcName: contributor, goalId, amount: amountRupees, time: Date.now(), discordId: discordId || null,
+        paymentId,
+        ifcName: contributor,
+        goalId,
+        amount: amountRupees,
+        time: Date.now(),
+        discordId: discordId || null,
+        contributorKey,
       })),
     ]);
     await redis.ltrim('chanda:contributions', 0, 49);

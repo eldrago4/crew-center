@@ -19,7 +19,7 @@ export const metadata = {
         'virtual pilot India', 'Air India virtual', 'Vistara virtual',
         'IndiGo virtual', 'flight simulation India', 'online pilot community',
     ],
-    authors: [{ name: 'Indian Virtual', url: BASE }],
+    authors: [ { name: 'Indian Virtual', url: BASE } ],
     creator: 'Indian Virtual',
     publisher: 'Indian Virtual',
     category: 'Aviation',
@@ -35,13 +35,13 @@ export const metadata = {
         siteName: 'Indian Virtual',
         title: 'Indian Virtual — Infinite Flight Virtual Airline',
         description: 'India\'s premier virtual airline on Infinite Flight. Join 160+ pilots flying realistic operations across India and the world.',
-        images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: 'Indian Virtual — Virtual Airline' }],
+        images: [ { url: OG_IMAGE, width: 1200, height: 630, alt: 'Indian Virtual — Virtual Airline' } ],
     },
     twitter: {
         card: 'summary_large_image',
         title: 'Indian Virtual — Infinite Flight Virtual Airline',
         description: 'India\'s premier virtual airline on Infinite Flight. Join 160+ pilots flying realistic operations.',
-        images: [OG_IMAGE],
+        images: [ OG_IMAGE ],
     },
     alternates: {
         canonical: BASE,
@@ -80,7 +80,7 @@ export default function RootLayout({ children }) {
                 />
                 <script
                     dangerouslySetInnerHTML={{
-                      __html: `
+                        __html: `
                         (function() {
                           try {
                             var theme = localStorage.getItem('chakra-ui-color-mode');
