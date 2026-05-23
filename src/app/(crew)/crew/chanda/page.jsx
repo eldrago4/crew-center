@@ -74,10 +74,12 @@ function AmountPicker({ color, gradient, selected, custom, onSelect, onCustom, o
 
       <Box mb={4}>
         <Box
-          as="button" w="100%" py={2} px={4} borderRadius="lg" border="1.5px solid"
+          w="100%" py={2} px={4} borderRadius="lg" border="1.5px solid"
           borderColor={selected === 'custom' ? color : { base: 'gray.200', _dark: 'whiteAlpha.150' }}
           bg={selected === 'custom' ? `${color}10` : 'transparent'}
-          onClick={() => onSelect('custom')} display="block" cursor="pointer" textAlign="left"
+          onClick={() => onSelect('custom')} display="block" cursor="pointer" textAlign="left" role="button" tabIndex={0}
+          _hover={{ borderColor: color }}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect('custom'); } }}
         >
           {selected === 'custom' ? (
             <Flex align="center" gap={2}>
