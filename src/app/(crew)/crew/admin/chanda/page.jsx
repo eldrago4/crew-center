@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Flex, Text, HStack, Grid, VStack,
   Badge, Separator, Spinner, Input, Textarea,
+  Table, TableContainer, Thead, Tbody, Tr, Th, Td,
 } from '@chakra-ui/react';
 import { FiPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiSend, FiRefreshCw } from 'react-icons/fi';
 import { ICON_MAP } from '../../chanda/_iconMap';
@@ -81,6 +82,69 @@ function SectionTitle({ children }) {
     <Text fontSize="lg" fontWeight="800" color={{ base: 'gray.800', _dark: 'white' }} mb={5}>
       {children}
     </Text>
+  );
+}
+
+function ContributionsTable({ contributions }) {
+  if (!contributions?.length) return null;
+
+  return (
+    <Card>
+      <SectionTitle>Recent payments</SectionTitle>
+      <Box overflowX="auto">
+        <TableContainer>
+          <Table variant="simple" size="sm">
+            <Thead>
+              <Tr>
+                <Th>Pilot</Th>
+                <Th>Goal</Th>
+                <Th>Amount</Th>
+                <Th>Source</Th>
+                <Th>Date</Th>
+                <Th>Actions</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {contributions.map((item, idx) => {
+                const timestamp = item.time ? new Date(item.time) : null;
+                return (
+                  <Tr key={`${item.paymentId || idx}-${idx}`}>
+                    <Td>{item.ifcName || 'Anonymous'}</Td>
+                    <Td>{item.goalId === 'all' ? 'All Goals' : item.goalId}</Td>
+                    <Td>₹{Number(item.amount || 0).toLocaleString('en-IN')}</Td>
+                    <Td>{item.paymentId?.startsWith('manual_') ? 'Manual admin' : 'UPI'}</Td>
+                    <Td>{timestamp ? timestamp.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown'}</Td>
+                    <Td>
+                      <Btn variant="danger" size="sm" onClick={async () => {
+                        if (!item.paymentId || !confirm('Reverse this payment and revoke any supporter role?')) return;
+                        try {
+                          const res = await fetch('/api/chanda/reverse', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ paymentId: item.paymentId }),
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (res.ok) {
+                            showToast('Payment reversed successfully.');
+                            const refreshed = await fetch('/api/chanda/stats').then(r => r.ok ? r.json() : null);
+                            if (refreshed) setStats(refreshed);
+                          } else {
+                            showToast(data.error || 'Reverse failed.', false);
+                          }
+                        } catch (error) {
+                          showToast('Reverse failed.', false);
+                        }
+                      }}>
+                        Reverse
+                      </Btn>
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </Box>
+    </Card>
   );
 }
 
@@ -509,6 +573,7 @@ export default function ChandaAdminPage() {
         <VStack gap={6} align="stretch">
           <GoalsSection goals={goals} onGoalsChange={setGoals} showToast={showToast} />
           <ManualContributeSection goals={goals} showToast={showToast} />
+          <ContributionsTable contributions={stats.contributions} />
           <LotusAdminSection showToast={showToast} subscribers={stats.lotus?.subscribers ?? 0} />
         </VStack>
       )}

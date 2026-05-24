@@ -172,7 +172,7 @@ function GoalCard({ goal, raised, onContribute }) {
             </HStack>
           </HStack>
           <Box h="6px" borderRadius="full" bg={{ base: 'gray.100', _dark: 'whiteAlpha.100' }} overflow="hidden">
-            <Box h="100%" borderRadius="full" sx={{ background: goal.gradient }} w={`${pct}%`} transition="width 1s ease" />
+            <Box h="100%" borderRadius="full" bgGradient={goal.gradient || `linear-gradient(to right, ${goal.color}, ${goal.color}99)`} w={`${pct}%`} transition="width 1s ease" />
           </Box>
           <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.600' }} mt={1.5} textAlign="right">{pct}% funded</Text>
         </Box>
@@ -246,7 +246,7 @@ function SupportAllCard({ goals, goalStats, onContribute }) {
 
         <Box mb={5}>
           <Box h="6px" borderRadius="full" bg={{ base: 'gray.100', _dark: 'whiteAlpha.100' }} overflow="hidden" mb={2}>
-            <Box h="100%" borderRadius="full" w={`${pct}%`} transition="width 1s ease" sx={{ background: ALL_GRADIENT }} />
+            <Box h="100%" borderRadius="full" w={`${pct}%`} transition="width 1s ease" bgGradient={ALL_GRADIENT} />
           </Box>
           <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.600' }} textAlign="right">{pct}% funded overall</Text>
         </Box>
@@ -426,12 +426,13 @@ function LotusPriveSection({ subscribers, members = [], slotsRemaining = 4, onSu
               </Box>
             </Flex>
           ) : (
-            <Grid templateColumns={{ base: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)', md: 'repeat(6, 1fr)' }} gap={3}>
+            <Flex wrap="wrap" justify="center" gap={3}>
               {members.map((m, i) => (
                 <Flex key={i} direction="column" align="center" p={3} borderRadius="xl"
+                  minW="128px" maxW="160px" flex="1 1 128px"
                   style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,169,110,0.1)' }}>
                   <Box w="44px" h="44px" borderRadius="full" mb={2} overflow="hidden" flexShrink={0}
-                    style={{ border: '2px solid rgba(201,169,110,0.4)', flexShrink: 0 }}>
+                    style={{ border: '2px solid rgba(201,169,110,0.4)' }}>
                     {m.avatarUrl ? (
                       <Box as="img" src={m.avatarUrl} alt={m.ifcName} w="100%" h="100%" style={{ objectFit: 'cover', display: 'block' }} />
                     ) : (
@@ -448,7 +449,7 @@ function LotusPriveSection({ subscribers, members = [], slotsRemaining = 4, onSu
                   </Box>
                 </Flex>
               ))}
-            </Grid>
+            </Flex>
           )}
         </Box>
 
@@ -918,17 +919,21 @@ export default function ChandaPage() {
                 const goalDef = isAll ? null : goals.find(g => g.id === c.goalId);
                 const color = goalDef?.color ?? '#6366f1';
                 const label = isAll ? 'All Goals' : (goalDef?.label ?? c.goalId);
-                const GoalIcon = goalDef ? (ICON_MAP[ goalDef.icon ] ?? FiHeart) : FiHeart;
+                const IconComponent = isAll
+                  ? FiHeart
+                  : (ICON_MAP[ goalDef?.icon ] ?? FiHeart);
+                const iconColor = isAll ? 'white' : color;
+                const iconBg = isAll ? 'linear-gradient(135deg, #6366f1, #0ea5e9, #f59e0b, #10b981)' : `${color}15`;
+                const iconBorder = isAll ? 'transparent' : `${color}30`;
 
                 return (
                   <HStack key={i} bg={{ base: 'white', _dark: '#111827' }} border="1px solid"
                     borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.80' }} borderRadius="xl" p={4} gap={3} align="flex-start">
                     <Flex w="36px" h="36px" borderRadius="10px" flexShrink={0}
-                      bg={isAll ? 'transparent' : `${color}15`} border="1px solid"
-                      borderColor={isAll ? 'transparent' : `${color}30`}
-                      align="center" justify="center"
-                      sx={isAll ? { background: 'linear-gradient(135deg, #6366f1, #0ea5e9, #f59e0b, #10b981)' } : {}}>
-                      {isAll ? <FiHeart size={16} color="white" /> : <GoalIcon size={16} color={color} />}
+                      bg={iconBg} border="1px solid"
+                      borderColor={iconBorder}
+                      align="center" justify="center">
+                      <IconComponent size={16} color={iconColor} />
                     </Flex>
                     <Box flex={1} minW={0}>
                       <Text fontWeight="700" fontSize="sm" color={{ base: 'gray.800', _dark: 'white' }} isTruncated>
