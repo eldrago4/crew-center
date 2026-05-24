@@ -16,13 +16,13 @@ export async function GET() {
 
     const lotus = await reconcileLotusMembers(redis);
 
-      const [uniqueCount, legacyTotal, rawContribs, ...raised] = await Promise.all([
-        // new unique contributors set
-        redis.scard('chanda:contributors:set'),
-        // legacy total (kept for backwards compatibility)
-        redis.get('chanda:total:contributors'),
-        redis.lrange('chanda:contributions', 0, 19),
-        ...goalIds.map(id => redis.get(`chanda:goal:${id}:raised`)),
+    const [ uniqueCount, legacyTotal, rawContribs, ...raised ] = await Promise.all([
+      // new unique contributors set
+      redis.scard('chanda:contributors:set'),
+      // legacy total (kept for backwards compatibility)
+      redis.get('chanda:total:contributors'),
+      redis.lrange('chanda:contributions', 0, 19),
+      ...goalIds.map(id => redis.get(`chanda:goal:${id}:raised`)),
     ]);
 
     const goals = {};
@@ -35,16 +35,16 @@ export async function GET() {
       catch { return null; }
     }).filter(Boolean);
 
-      // Prefer the unique contributors set; fall back to legacy counter if empty
-      const contributorsCount = (uniqueCount && Number(uniqueCount) > 0)
-        ? Number(uniqueCount)
-        : parseInt(legacyTotal || 0);
+    // Prefer the unique contributors set; fall back to legacy counter if empty
+    const contributorsCount = (uniqueCount && Number(uniqueCount) > 0)
+      ? Number(uniqueCount)
+      : parseInt(legacyTotal || 0);
 
-      return NextResponse.json({
-        contributors: contributorsCount,
-        goals,
-        goalDefs,
-        contributions,
+    return NextResponse.json({
+      contributors: contributorsCount,
+      goals,
+      goalDefs,
+      contributions,
       lotus: {
         subscribers: lotus.members.length,
         members: lotus.members,

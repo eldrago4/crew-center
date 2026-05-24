@@ -23,12 +23,12 @@ function Btn({ onClick, disabled, loading, children, variant = 'primary', size =
   };
   const styles = {
     primary: { background: 'linear-gradient(to right, #6366f1, #8b5cf6)', color: 'white' },
-    danger:  { background: '#ef444415', color: '#ef4444', border: '1.5px solid #ef444430' },
-    ghost:   { background: 'transparent', color: '#6366f1', border: '1.5px solid #6366f130' },
-    gold:    { background: 'linear-gradient(135deg, #b8952f, #e8c97e)', color: '#1a0f00' },
+    danger: { background: '#ef444415', color: '#ef4444', border: '1.5px solid #ef444430' },
+    ghost: { background: 'transparent', color: '#6366f1', border: '1.5px solid #6366f130' },
+    gold: { background: 'linear-gradient(135deg, #b8952f, #e8c97e)', color: '#1a0f00' },
   };
   return (
-    <Box as="button" onClick={disabled || loading ? undefined : onClick} style={{ ...base, ...styles[variant] }} {...rest}>
+    <Box as="button" onClick={disabled || loading ? undefined : onClick} style={{ ...base, ...styles[ variant ] }} {...rest}>
       {loading ? <Spinner size="xs" /> : children}
     </Box>
   );
@@ -94,7 +94,7 @@ function ContributionsTable({ contributions, onReverse }) {
         <Box as="table" width="100%" borderCollapse="collapse" minWidth="680px">
           <Box as="thead">
             <Box as="tr" bg={{ base: 'gray.100', _dark: 'whiteAlpha.100' }}>
-              {['Pilot', 'Goal', 'Amount', 'Source', 'Date', 'Actions'].map((label) => (
+              {[ 'Pilot', 'Goal', 'Amount', 'Source', 'Date', 'Actions' ].map((label) => (
                 <Box
                   key={label}
                   as="th"
@@ -158,13 +158,13 @@ function ContributionsTable({ contributions, onReverse }) {
 const EMPTY_GOAL = { id: '', label: '', title: '', description: '', target: '', color: '#6366f1', gradient: '', icon: 'globe' };
 
 function GoalRow({ goal, onSave, onDelete, saving, deleting }) {
-  const [editing, setEditing] = useState(false);
-  const [form, setForm]       = useState(goal);
-  const Icon = ICON_MAP[goal.icon] ?? ICON_MAP.globe;
+  const [ editing, setEditing ] = useState(false);
+  const [ form, setForm ] = useState(goal);
+  const Icon = ICON_MAP[ goal.icon ] ?? ICON_MAP.globe;
 
-  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const upd = (k, v) => setForm(f => ({ ...f, [ k ]: v }));
   const cancel = () => { setForm(goal); setEditing(false); };
-  const save   = () => { onSave({ ...form, target: Number(form.target) }); setEditing(false); };
+  const save = () => { onSave({ ...form, target: Number(form.target) }); setEditing(false); };
 
   if (!editing) {
     return (
@@ -239,11 +239,11 @@ function GoalRow({ goal, onSave, onDelete, saving, deleting }) {
 }
 
 function GoalsSection({ goals, onGoalsChange, showToast }) {
-  const [saving, setSaving]   = useState(false);
-  const [adding, setAdding]   = useState(false);
-  const [newGoal, setNewGoal] = useState(EMPTY_GOAL);
+  const [ saving, setSaving ] = useState(false);
+  const [ adding, setAdding ] = useState(false);
+  const [ newGoal, setNewGoal ] = useState(EMPTY_GOAL);
 
-  const upd = (k, v) => setNewGoal(f => ({ ...f, [k]: v }));
+  const upd = (k, v) => setNewGoal(f => ({ ...f, [ k ]: v }));
 
   const saveGoals = async (updatedGoals) => {
     setSaving(true);
@@ -270,7 +270,7 @@ function GoalsSection({ goals, onGoalsChange, showToast }) {
     if (!newGoal.id || !newGoal.label || !newGoal.target) return;
     if (goals.some(g => g.id === newGoal.id)) { showToast('Goal ID already exists.', false); return; }
     const gradient = newGoal.gradient || `linear-gradient(to right, ${newGoal.color}, ${newGoal.color}99)`;
-    saveGoals([...goals, { ...newGoal, target: Number(newGoal.target), gradient }]);
+    saveGoals([ ...goals, { ...newGoal, target: Number(newGoal.target), gradient } ]);
     setNewGoal(EMPTY_GOAL);
     setAdding(false);
   };
@@ -343,10 +343,10 @@ function GoalsSection({ goals, onGoalsChange, showToast }) {
 // ── Manual Contribution section ───────────────────────────────────────────────
 
 function ManualContributeSection({ goals, showToast }) {
-  const [form, setForm]       = useState({ ifcName: '', goalId: 'all', amount: '', discordId: '' });
-  const [submitting, setSub]  = useState(false);
+  const [ form, setForm ] = useState({ ifcName: '', goalId: 'all', amount: '', discordId: '' });
+  const [ submitting, setSub ] = useState(false);
 
-  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const upd = (k, v) => setForm(f => ({ ...f, [ k ]: v }));
 
   const submit = async () => {
     if (!form.ifcName || !form.amount || Number(form.amount) < 1) {
@@ -369,7 +369,7 @@ function ManualContributeSection({ goals, showToast }) {
     setSub(false);
   };
 
-  const goalOptions = [{ id: 'all', label: 'All Goals (split equally)' }, ...goals];
+  const goalOptions = [ { id: 'all', label: 'All Goals (split equally)' }, ...goals ];
 
   return (
     <Card>
@@ -409,20 +409,20 @@ function ManualContributeSection({ goals, showToast }) {
 // ── Lotus Privé section ────────────────────────────────────────────────────────
 
 function LotusAdminSection({ showToast, subscribers }) {
-  const [form, setForm]     = useState({ price: '190', roleId: '' });
-  const [loaded, setLoaded] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [resetting, setRes] = useState(false);
+  const [ form, setForm ] = useState({ price: '190', roleId: '' });
+  const [ loaded, setLoaded ] = useState(false);
+  const [ saving, setSaving ] = useState(false);
+  const [ resetting, setRes ] = useState(false);
 
   useEffect(() => {
     fetch('/api/chanda/lotus/settings')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setForm({ price: String(Math.round((d.price || 19000) / 100)), roleId: d.roleId || '' }); })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoaded(true));
   }, []);
 
-  const upd  = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const upd = (k, v) => setForm(f => ({ ...f, [ k ]: v }));
 
   const save = async () => {
     setSaving(true);
@@ -516,10 +516,10 @@ function LotusAdminSection({ showToast, subscribers }) {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function ChandaAdminPage() {
-  const [goals, setGoals]   = useState([]);
-  const [stats, setStats]   = useState({ contributors: 0, lotus: { subscribers: 0 } });
-  const [loading, setLoad]  = useState(true);
-  const [toast, setToast]   = useState(null);
+  const [ goals, setGoals ] = useState([]);
+  const [ stats, setStats ] = useState({ contributors: 0, lotus: { subscribers: 0 } });
+  const [ loading, setLoad ] = useState(true);
+  const [ toast, setToast ] = useState(null);
 
   const showToast = useCallback((msg, ok = true) => {
     setToast({ msg, ok });
@@ -555,11 +555,11 @@ export default function ChandaAdminPage() {
     } catch {
       showToast('Reverse failed.', false);
     }
-  }, [refreshStats, showToast]);
+  }, [ refreshStats, showToast ]);
 
   useEffect(() => {
     refreshStats().finally(() => setLoad(false));
-  }, [refreshStats]);
+  }, [ refreshStats ]);
 
   return (
     <Box maxW="960px" mx="auto" px={{ base: 4, md: 6 }} py={{ base: 6, md: 10 }}>

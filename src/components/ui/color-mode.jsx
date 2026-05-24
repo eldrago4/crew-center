@@ -10,7 +10,7 @@ export function ColorModeProvider({ children }) {
 }
 
 export function useColorMode() {
-  const [colorMode, setColorModeState] = React.useState(() => {
+  const [ colorMode, setColorModeState ] = React.useState(() => {
     if (typeof window === 'undefined') return 'light'
     try {
       const stored = localStorage.getItem('chakra-ui-color-mode')
@@ -29,8 +29,8 @@ export function useColorMode() {
       } else {
         document.documentElement.classList.remove('dark')
       }
-    } catch (e) {}
-  }, [colorMode])
+    } catch (e) { }
+  }, [ colorMode ])
 
   const setColorMode = (val) => setColorModeState(val)
   const toggleColorMode = () => setColorModeState((v) => (v === 'dark' ? 'light' : 'dark'))
