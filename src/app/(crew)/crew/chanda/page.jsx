@@ -14,6 +14,8 @@ const Confetti = dynamic(() => import('react-confetti'), { ssr: false });
 
 const AMOUNTS = [ 100, 250, 500, 1000 ];
 const ALL_GRADIENT = 'linear-gradient(to right, #6366f1, #0ea5e9, #f59e0b, #10b981)';
+const AIR_INDIA_RED = '#c8102e';
+const AIR_INDIA_GRADIENT = 'linear-gradient(135deg,#c8102e,#ff4b5c)';
 const LOTUS_PRICE = 190;
 const UPI_PAYEE = 'tred38434-1@okhdfcbank';
 const UPI_NAME = 'Ved B';
@@ -217,7 +219,7 @@ function SupportAllCard({ goals, goalStats, onContribute }) {
       <Box p={6}>
         <HStack mb={4} gap={3}>
           <Flex w="44px" h="44px" borderRadius="12px" align="center" justify="center" flexShrink={0}
-            sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #0ea5e9 35%, #f59e0b 65%, #10b981 100%)' }}>
+            sx={{ background: AIR_INDIA_GRADIENT }}>
             <FiHeart size={20} color="white" />
           </Flex>
           <Box flex={1} minW={0}>
@@ -246,13 +248,13 @@ function SupportAllCard({ goals, goalStats, onContribute }) {
 
         <Box mb={5}>
           <Box h="6px" borderRadius="full" bg={{ base: 'gray.100', _dark: 'whiteAlpha.100' }} overflow="hidden" mb={2}>
-            <Box h="100%" borderRadius="full" w={`${pct}%`} transition="width 1s ease" bgGradient={ALL_GRADIENT} />
+            <Box h="100%" borderRadius="full" w={`${pct}%`} transition="width 1s ease" bgGradient={AIR_INDIA_GRADIENT} />
           </Box>
           <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.600' }} textAlign="right">{pct}% funded overall</Text>
         </Box>
 
         <AmountPicker
-          color="#6366f1" gradient={ALL_GRADIENT}
+          color={AIR_INDIA_RED} gradient={AIR_INDIA_GRADIENT}
           selected={selected} custom={custom}
           onSelect={v => { setSelected(v); setCustom(''); }}
           onCustom={setCustom} onContribute={handleContribute}
@@ -426,10 +428,9 @@ function LotusPriveSection({ subscribers, members = [], slotsRemaining = 4, onSu
               </Box>
             </Flex>
           ) : (
-            <Flex wrap="wrap" justify="center" gap={3}>
+            <Grid templateColumns={members.length === 4 ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(140px, 1fr))'} gap={3} maxW="400px" mx="auto">
               {members.map((m, i) => (
                 <Flex key={i} direction="column" align="center" p={3} borderRadius="xl"
-                  minW="128px" maxW="160px" flex="1 1 128px"
                   style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,169,110,0.1)' }}>
                   <Box w="44px" h="44px" borderRadius="full" mb={2} overflow="hidden" flexShrink={0}
                     style={{ border: '2px solid rgba(201,169,110,0.4)' }}>
@@ -449,7 +450,7 @@ function LotusPriveSection({ subscribers, members = [], slotsRemaining = 4, onSu
                   </Box>
                 </Flex>
               ))}
-            </Flex>
+            </Grid>
           )}
         </Box>
 
@@ -711,7 +712,7 @@ export default function ChandaPage() {
 
   const handleContribute = useCallback(async (goalId, amount) => {
     const goal = goalId === 'all'
-      ? { title: 'All Goals', label: 'All Goals', color: '#6366f1', gradient: ALL_GRADIENT }
+      ? { title: 'All Goals', label: 'All Goals', color: AIR_INDIA_RED, gradient: AIR_INDIA_GRADIENT }
       : goals.find(g => g.id === goalId);
 
     setPaymentIntent({
@@ -917,13 +918,13 @@ export default function ChandaPage() {
               {uniqueContributions.map((c, i) => {
                 const isAll = c.goalId === 'all';
                 const goalDef = isAll ? null : goals.find(g => g.id === c.goalId);
-                const color = goalDef?.color ?? '#6366f1';
+                const color = isAll ? AIR_INDIA_RED : (goalDef?.color ?? '#6366f1');
                 const label = isAll ? 'All Goals' : (goalDef?.label ?? c.goalId);
                 const IconComponent = isAll
                   ? FiHeart
                   : (ICON_MAP[ goalDef?.icon ] ?? FiHeart);
                 const iconColor = isAll ? 'white' : color;
-                const iconBg = isAll ? 'linear-gradient(135deg, #6366f1, #0ea5e9, #f59e0b, #10b981)' : `${color}15`;
+                const iconBg = isAll ? AIR_INDIA_RED : `${color}15`;
                 const iconBorder = isAll ? 'transparent' : `${color}30`;
 
                 return (

@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Flex, Text, HStack, Grid, VStack,
   Badge, Separator, Spinner, Input, Textarea,
-  Table, TableContainer, Thead, Tbody, Tr, Th, Td,
 } from '@chakra-ui/react';
 import { FiPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiSend, FiRefreshCw } from 'react-icons/fi';
 import { ICON_MAP } from '../../chanda/_iconMap';
@@ -85,64 +84,70 @@ function SectionTitle({ children }) {
   );
 }
 
-function ContributionsTable({ contributions }) {
+function ContributionsTable({ contributions, onReverse }) {
   if (!contributions?.length) return null;
 
   return (
     <Card>
       <SectionTitle>Recent payments</SectionTitle>
       <Box overflowX="auto">
-        <TableContainer>
-          <Table variant="simple" size="sm">
-            <Thead>
-              <Tr>
-                <Th>Pilot</Th>
-                <Th>Goal</Th>
-                <Th>Amount</Th>
-                <Th>Source</Th>
-                <Th>Date</Th>
-                <Th>Actions</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {contributions.map((item, idx) => {
-                const timestamp = item.time ? new Date(item.time) : null;
-                return (
-                  <Tr key={`${item.paymentId || idx}-${idx}`}>
-                    <Td>{item.ifcName || 'Anonymous'}</Td>
-                    <Td>{item.goalId === 'all' ? 'All Goals' : item.goalId}</Td>
-                    <Td>₹{Number(item.amount || 0).toLocaleString('en-IN')}</Td>
-                    <Td>{item.paymentId?.startsWith('manual_') ? 'Manual admin' : 'UPI'}</Td>
-                    <Td>{timestamp ? timestamp.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown'}</Td>
-                    <Td>
-                      <Btn variant="danger" size="sm" onClick={async () => {
-                        if (!item.paymentId || !confirm('Reverse this payment and revoke any supporter role?')) return;
-                        try {
-                          const res = await fetch('/api/chanda/reverse', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ paymentId: item.paymentId }),
-                          });
-                          const data = await res.json().catch(() => ({}));
-                          if (res.ok) {
-                            showToast('Payment reversed successfully.');
-                            const refreshed = await fetch('/api/chanda/stats').then(r => r.ok ? r.json() : null);
-                            if (refreshed) setStats(refreshed);
-                          } else {
-                            showToast(data.error || 'Reverse failed.', false);
-                          }
-                        } catch (error) {
-                          showToast('Reverse failed.', false);
-                        }
-                      }}>
-                        Reverse
-                      </Btn>
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </Tbody>
-          </Table>
-        </TableContainer>
+        <Box as="table" width="100%" borderCollapse="collapse" minWidth="680px">
+          <Box as="thead">
+            <Box as="tr" bg={{ base: 'gray.100', _dark: 'whiteAlpha.100' }}>
+              {['Pilot', 'Goal', 'Amount', 'Source', 'Date', 'Actions'].map((label) => (
+                <Box
+                  key={label}
+                  as="th"
+                  textAlign="left"
+                  py={3}
+                  px={4}
+                  fontSize="xs"
+                  fontWeight="700"
+                  color={{ base: 'gray.600', _dark: 'gray.400' }}
+                  textTransform="uppercase"
+                  letterSpacing="wide"
+                  borderBottom="1px solid"
+                  borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                >
+                  {label}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+          <Box as="tbody">
+            {contributions.map((item, idx) => {
+              const timestamp = item.time ? new Date(item.time) : null;
+              return (
+                <Box
+                  key={`${item.paymentId || idx}-${idx}`}
+                  as="tr"
+                  _hover={{ bg: { base: 'gray.50', _dark: '#1a2332' } }}
+                >
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                    {item.ifcName || 'Anonymous'}
+                  </Box>
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                    {item.goalId === 'all' ? 'All Goals' : item.goalId}
+                  </Box>
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                    ₹{Number(item.amount || 0).toLocaleString('en-IN')}
+                  </Box>
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                    {item.paymentId?.startsWith('manual_') ? 'Manual admin' : 'UPI'}
+                  </Box>
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                    {timestamp ? timestamp.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown'}
+                  </Box>
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                    <Btn variant="danger" size="sm" onClick={() => onReverse?.(item.paymentId)}>
+                      Reverse
+                    </Btn>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
       </Box>
     </Card>
   );
@@ -521,14 +526,40 @@ export default function ChandaAdminPage() {
     setTimeout(() => setToast(null), 5000);
   }, []);
 
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/chanda/stats').then(r => r.json()),
-    ]).then(([s]) => {
-      setStats(s);
-      setGoals(s.goalDefs ?? []);
-    }).catch(() => {}).finally(() => setLoad(false));
+  const refreshStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/chanda/stats');
+      if (!res.ok) return;
+      const data = await res.json();
+      setStats(data);
+      setGoals(data.goalDefs ?? []);
+    } catch {
+      // ignore refresh errors
+    }
   }, []);
+
+  const handleReversePayment = useCallback(async (paymentId) => {
+    if (!paymentId || !confirm('Reverse this payment and revoke any supporter role?')) return;
+    try {
+      const res = await fetch('/api/chanda/reverse', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast('Payment reversed successfully.');
+        await refreshStats();
+      } else {
+        showToast(data.error || 'Reverse failed.', false);
+      }
+    } catch {
+      showToast('Reverse failed.', false);
+    }
+  }, [refreshStats, showToast]);
+
+  useEffect(() => {
+    refreshStats().finally(() => setLoad(false));
+  }, [refreshStats]);
 
   return (
     <Box maxW="960px" mx="auto" px={{ base: 4, md: 6 }} py={{ base: 6, md: 10 }}>
@@ -573,7 +604,7 @@ export default function ChandaAdminPage() {
         <VStack gap={6} align="stretch">
           <GoalsSection goals={goals} onGoalsChange={setGoals} showToast={showToast} />
           <ManualContributeSection goals={goals} showToast={showToast} />
-          <ContributionsTable contributions={stats.contributions} />
+          <ContributionsTable contributions={stats.contributions} onReverse={handleReversePayment} />
           <LotusAdminSection showToast={showToast} subscribers={stats.lotus?.subscribers ?? 0} />
         </VStack>
       )}

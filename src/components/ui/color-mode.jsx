@@ -1,25 +1,43 @@
 'use client'
 
 import { IconButton, ClientOnly, Span } from '@chakra-ui/react'
-import { ThemeProvider, useTheme } from 'next-themes'
 import * as React from 'react'
 import { LuMoon, LuSun } from 'react-icons/lu'
 
-export function ColorModeProvider(props) {
-  return (
-    <ThemeProvider attribute="class" disableTransitionOnChange {...props} />
-  )
+export function ColorModeProvider({ children }) {
+  // No-op provider: Chakra handles color mode. Render children directly.
+  return <>{children}</>
 }
 
 export function useColorMode() {
-  const { resolvedTheme, setTheme, forcedTheme } = useTheme()
-  const colorMode = forcedTheme || resolvedTheme
-  const toggleColorMode = () => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
-  }
+  const [colorMode, setColorModeState] = React.useState(() => {
+    if (typeof window === 'undefined') return 'light'
+    try {
+      const stored = localStorage.getItem('chakra-ui-color-mode')
+      if (stored) return stored
+      return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+    } catch (e) {
+      return 'light'
+    }
+  })
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('chakra-ui-color-mode', colorMode)
+      if (colorMode === 'dark') {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    } catch (e) {}
+  }, [colorMode])
+
+  const setColorMode = (val) => setColorModeState(val)
+  const toggleColorMode = () => setColorModeState((v) => (v === 'dark' ? 'light' : 'dark'))
+
   return {
-    colorMode: colorMode,
-    setColorMode: setTheme,
+    colorMode,
+    setColorMode,
     toggleColorMode,
   }
 }
