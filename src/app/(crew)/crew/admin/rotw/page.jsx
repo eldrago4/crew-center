@@ -3,7 +3,11 @@ import { Box, Heading, Container, VStack } from '@chakra-ui/react';
 import DatabaseViewer from '@/components/admin/DatabaseViewer';
 import MultipliersManager from '@/components/admin/MultipliersManager';
 import EventsManager from '@/components/admin/EventsManager';
+import NotamsManager from '@/components/admin/NotamsManager';
 import { fetchFleetModule, fetchModuleValue } from '../../pireps/file/fleetModule';
+import db from '@/db/client';
+import { notams } from '@/db/schema';
+import { desc } from 'drizzle-orm';
 
 
 export default async function FleetDatabasePage() {
@@ -28,6 +32,14 @@ export default async function FleetDatabasePage() {
         initialEventsData = [];
     }
 
+    let initialNotamsData = [];
+    try {
+        initialNotamsData = await db.select().from(notams).orderBy(desc(notams.issued));
+    } catch (error) {
+        console.error("Error fetching initial NOTAMs data on server:", error);
+        initialNotamsData = [];
+    }
+
     return (
         <Box p={{ base: 4, md: 6 }} minH="100vh">
             <Container maxW="100%" py={{ base: 4, md: 8 }}>
@@ -36,6 +48,7 @@ export default async function FleetDatabasePage() {
                         Multipliers - Regular Flying
                     </Heading>
                     <MultipliersManager initialModuleData={initialFleetData} moduleName="multipliers" />
+                    <NotamsManager initialNotams={initialNotamsData} />
                     <EventsManager initialEventsData={initialEventsData} moduleName="events" />
                 </VStack>
             </Container>

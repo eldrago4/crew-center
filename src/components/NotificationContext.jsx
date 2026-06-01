@@ -4,7 +4,8 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 
 const Ctx = createContext({ eventsUnseen: 0, pirepsUnseen: 0 })
-const REFRESH_MS = 5 * 60 * 1000
+const REFRESH_MS = 10 * 60 * 1000
+const FOCUS_REFRESH_STALE_MS = 2 * 60 * 1000
 
 export function NotificationProvider({ children }) {
     const [eventsUnseen, setEventsUnseen] = useState(0)
@@ -14,21 +15,46 @@ export function NotificationProvider({ children }) {
 
     useEffect(() => {
         let cancelled = false
+        let interval
+        let lastFetchAt = 0
+        let inFlight = false
+        const controller = new AbortController()
 
-        function loadNotifications() {
-            fetch('/api/notifications')
+        function loadNotifications({ force = false } = {}) {
+            if (cancelled || inFlight) return
+            if (document.visibilityState === 'hidden' && !force) return
+
+            inFlight = true
+            lastFetchAt = Date.now()
+            fetch('/api/notifications', { signal: controller.signal })
                 .then(r => r.ok ? r.json() : null)
                 .then(data => {
                     if (!cancelled && data) setNotificationData(data)
                 })
                 .catch(() => {})
+                .finally(() => {
+                    inFlight = false
+                })
         }
 
-        loadNotifications()
-        const interval = setInterval(loadNotifications, REFRESH_MS)
+        function refreshIfStale() {
+            if (document.visibilityState !== 'visible') return
+            if (Date.now() - lastFetchAt > FOCUS_REFRESH_STALE_MS) {
+                loadNotifications({ force: true })
+            }
+        }
+
+        loadNotifications({ force: true })
+        interval = setInterval(loadNotifications, REFRESH_MS)
+        window.addEventListener('focus', refreshIfStale)
+        document.addEventListener('visibilitychange', refreshIfStale)
+
         return () => {
             cancelled = true
+            controller.abort()
             clearInterval(interval)
+            window.removeEventListener('focus', refreshIfStale)
+            document.removeEventListener('visibilitychange', refreshIfStale)
         }
     }, [])
 

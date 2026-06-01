@@ -3,9 +3,20 @@
 import { Table, Box, Text } from "@chakra-ui/react";
 
 export default function Notams({ notams = [] }) {
+  const getValidDate = (dateString) => {
+    if (!dateString) return null;
+    const value = String(dateString).trim();
+    if (!value || value.toLowerCase() === "n/a" || value.toLowerCase() === "na") return null;
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-US", {
+    const date = getValidDate(dateString);
+    if (!date) return "N/A";
+
+    return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -60,7 +71,9 @@ export default function Notams({ notams = [] }) {
             notams
               .sort((a, b) => new Date(b.issued) - new Date(a.issued))
               .map((notam) => {
-                const isExpired = new Date(notam.expiresOn) < new Date();
+                const expiresOn = getValidDate(notam.expiresOn);
+                const isExpired = expiresOn ? expiresOn < new Date() : false;
+
                 return (
                   <Table.Row
                     key={notam.issued}
@@ -85,4 +98,3 @@ export default function Notams({ notams = [] }) {
     </Box>
   );
 }
-

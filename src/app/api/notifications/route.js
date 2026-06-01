@@ -8,7 +8,7 @@ import { Redis } from '@upstash/redis'
 export const dynamic = 'force-dynamic'
 
 const redis = Redis.fromEnv()
-const CACHE_TTL_SECONDS = 90
+const CACHE_TTL_SECONDS = 10 * 60
 
 export async function GET() {
     const session = await auth()
@@ -21,7 +21,7 @@ export async function GET() {
         const cached = await redis.get(cacheKey)
         if (cached) {
             return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached, {
-                headers: { 'Cache-Control': 'private, max-age=60' },
+                headers: { 'Cache-Control': 'private, max-age=120' },
             })
         }
     } catch (error) {
@@ -52,6 +52,6 @@ export async function GET() {
     }
 
     return NextResponse.json(payload, {
-        headers: { 'Cache-Control': 'private, max-age=60' },
+        headers: { 'Cache-Control': 'private, max-age=120' },
     })
 }
