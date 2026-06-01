@@ -1,14 +1,12 @@
 export default function Page() {
   return (
-    <div>
+    <div style={{ width: '100%', minWidth: 0 }}>
       <iframe
-        src="https://inva-flight-tracker.vercel.app/embed"
-        width="100%"
-        height="600"
-        style={{ border: 'none', borderRadius: '12px', overflow: 'hidden' }}
-        allowFullScreen
+        src="https://live.indianvirtual.site/"
+        style={{ width: '100%', height: '700px', border: 'none', display: 'block' }}
+        allow="fullscreen"
         loading="lazy"
-        title="Infinite Flight Tracker"
+        title="Indian Virtual Live"
       ></iframe>
     </div>
   );

@@ -2,7 +2,7 @@
 import BasicInfo from './BasicInfo'
 import PirepsTable from './PirepsTable'
 import Notams from './Notams'
-import { Grid, Box, Stack, Heading, Text, Button, Link, Badge, HStack, Container } from '@chakra-ui/react'
+import { Grid, Box, Stack, Heading, Text, Button, Link, Badge, HStack, Container, Flex } from '@chakra-ui/react'
 import SignupOrFileButton from './SignupOrFileButton'
 import db from '@/db/client'
 import { users, pireps, notams, crewcenter } from '@/db/schema'

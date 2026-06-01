@@ -16,15 +16,17 @@ export default function LivePage() {
     return (
         <Box
             mt={{ base: '59px', '705px': '-1px' }}
-            h={{ base: 'calc(100dvh - 59px)', '705px': 'calc(100dvh - 3.5em + 1px)' }}
-            overflow="hidden"
+            w="100%"
+            minW={0}
+            overflowX="hidden"
             bg="black"
         >
             <iframe
-                src="https://live.indianvirtual.site/embed"
-                style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                src="https://live.indianvirtual.site/"
+                style={{ width: '100%', height: '700px', border: 'none', display: 'block' }}
                 title="Indian Virtual Live"
                 allow="fullscreen"
+                loading="lazy"
             />
         </Box>
     )
