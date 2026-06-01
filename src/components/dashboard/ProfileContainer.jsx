@@ -125,7 +125,7 @@ export default async function ProfileContainer({ user }) {
                   Keep your Lotus Privé seat and Discord role active by completing this month&apos;s ₹{lotusStatus.priceRupees} UPI pledge within the first week.
                 </Text>
               </Box>
-              <Button as={Link} href="/crew/chanda" colorPalette="yellow" variant="solid" borderRadius="xl" fontWeight="800">
+              <Button as={Link} href="/crew/chanda?lotus=pay" colorPalette="yellow" variant="solid" borderRadius="xl" fontWeight="800">
                 Pay now
               </Button>
             </Flex>

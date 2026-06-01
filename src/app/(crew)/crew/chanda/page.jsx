@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import {
@@ -668,10 +668,11 @@ function UpiPaymentModal({ intent, onClose, onConfirm }) {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function ChandaPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const discordId = session?.user?.discordId || session?.user?.id;
   const callsign = session?.user?.callsign || 'Anonymous Pilot';
   const ifcName = session?.user?.ifcName || session?.user?.callsign || 'Anonymous Pilot';
+  const autoLotusPaymentStarted = useRef(false);
 
   const [ mounted, setMounted ] = useState(false);
   const [ stats, setStats ] = useState({ contributors: 0, goals: {}, goalDefs: [], contributions: [], lotus: { subscribers: 0 } });
@@ -738,6 +739,16 @@ export default function ChandaPage() {
       note: `lotus|${ifcName || callsign}`,
     });
   }, [ ifcName, callsign ]);
+
+  useEffect(() => {
+    if (!mounted || status === 'loading' || autoLotusPaymentStarted.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('lotus') !== 'pay') return;
+
+    autoLotusPaymentStarted.current = true;
+    handleLotusSubscribe({ amount: LOTUS_PRICE });
+  }, [ mounted, status, handleLotusSubscribe ]);
 
   const confirmPayment = useCallback(async (intent) => {
     try {
