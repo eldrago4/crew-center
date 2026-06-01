@@ -84,27 +84,7 @@ const PirepCard = ({ pirep }) => {
       maxW="3xl" // Increased max-width for the horizontal layout
       position="relative"
     >
-      {codeshareEmoji && (
-        <Box
-          as="img"
-          src={codeshareEmoji}
-          alt=""
-          aria-hidden="true"
-          position="absolute"
-          right={{ base: '-18px', sm: '8px' }}
-          top="50%"
-          transform="translateY(-50%)"
-          h={{ base: '118px', md: '150px' }}
-          maxW="45%"
-          objectFit="contain"
-          opacity={0.09}
-          pointerEvents="none"
-          userSelect="none"
-          zIndex={0}
-        />
-      )}
-
-      <HStack spacing="0" align="stretch" position="relative" zIndex={1} w="full">
+      <HStack spacing="0" align="stretch" position="relative" w="full">
         {/* Main Flight Details Section (Left) */}
         <VStack align="start" spacing="4" flex="1" p="4">
           <HStack w="full" justify="space-between">
@@ -142,14 +122,34 @@ const PirepCard = ({ pirep }) => {
         <Separator orientation="vertical" variant="dashed" />
 
         {/* Ticket Stub Section (Right) */}
-        <VStack w="140px" justify="space-between" p="4" bg="bg.subtle">
-          <VStack gap="0">
+        <VStack w="140px" justify="space-between" p="4" bg="bg.subtle" position="relative" overflow="hidden">
+          {codeshareEmoji && (
+            <Box
+              as="img"
+              src={codeshareEmoji}
+              alt=""
+              aria-hidden="true"
+              position="absolute"
+              right="-18px"
+              top="50%"
+              transform="translateY(-50%)"
+              h="132px"
+              maxW="150px"
+              objectFit="contain"
+              opacity={0.20}
+              pointerEvents="none"
+              userSelect="none"
+              zIndex={0}
+            />
+          )}
+
+          <VStack gap="0" position="relative" zIndex={1}>
             <Text fontSize="xs" color="fg.muted">Flight Time</Text>
             <Text fontSize="2xl" fontWeight="bold">
               {pirep.flightTime.split(':').slice(0, 2).join(':')}
             </Text>
           </VStack>
-          <VStack gap="0">
+          <VStack gap="0" position="relative" zIndex={1}>
             <Text fontSize="xs" color="fg.muted">Multiplier</Text>
             <Text fontSize="2xl" fontWeight="bold">{pirep.multiplier}x</Text>
           </VStack>
@@ -159,6 +159,8 @@ const PirepCard = ({ pirep }) => {
             variant="solid"
             alignSelf="stretch"
             textAlign="center"
+            position="relative"
+            zIndex={1}
           >
             {pirep.valid === null ? 'Pending' : (pirep.valid === false ? 'Rejected' : 'Accepted')}
           </Badge>
