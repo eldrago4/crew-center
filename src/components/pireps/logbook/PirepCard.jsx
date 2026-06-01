@@ -13,8 +13,68 @@ import {
 } from '@chakra-ui/react';
 import { LuPlane } from 'react-icons/lu';
 
+const CODESHARE_EMOJI_BASE = '/codeshare-emojis';
+const CODESHARE_EMOJI_FILES = {
+  '6E': '6E.png',
+  '9W': '9W.png',
+  AC: 'AC.png',
+  AI: 'AI.png',
+  AIH: 'AIH.png',
+  AV: 'AV.png',
+  AZ: 'AZ.png',
+  BR: 'BR.png',
+  BW: 'BW.png',
+  CI: 'CI.png',
+  CM: 'CM.png',
+  CX: 'CX.png',
+  EK: 'EK.png',
+  ET: 'ET.png',
+  EY: 'EY.png',
+  FI: 'FI.png',
+  FR: 'FR.png',
+  GA: 'GA.png',
+  HU: 'HU.png',
+  IX: 'IX.png',
+  KE: 'KE.png',
+  KQ: 'KQ.png',
+  LH: 'LH.png',
+  LO: 'LO.png',
+  LX: 'LX.png',
+  MK: 'MK.png',
+  MS: 'MS.png',
+  NH: 'NH.png',
+  OD: 'OD-ID-SL-JT.png',
+  ID: 'OD-ID-SL-JT.png',
+  SL: 'OD-ID-SL-JT.png',
+  JT: 'OD-ID-SL-JT.png',
+  QF: 'QF.png',
+  QR: 'QR.png',
+  SA: 'SA.png',
+  SN: 'SN.png',
+  SQ: 'SQ.png',
+  SV: 'SV.png',
+  TG: 'TG.png',
+  TK: 'TK.png',
+  TP: 'TP.png',
+  U2: 'U2.png',
+  UA: 'UA.png',
+  UK: 'UK.png',
+  VN: 'VN.png',
+};
+
+const CODESHARE_PREFIXES = Object.keys(CODESHARE_EMOJI_FILES).sort((a, b) => b.length - a.length);
+
+function getCodeshareEmoji(flightNumber) {
+  const normalizedFlightNumber = String(flightNumber || '').toUpperCase().replace(/[\s-]/g, '');
+  const prefix = CODESHARE_PREFIXES.find(code => normalizedFlightNumber.startsWith(code));
+  const fileName = prefix ? CODESHARE_EMOJI_FILES[prefix] : null;
+  return fileName ? `${CODESHARE_EMOJI_BASE}/${fileName}` : null;
+}
+
 // A redesigned horizontal Card component that looks like a ticket
 const PirepCard = ({ pirep }) => {
+  const codeshareEmoji = getCodeshareEmoji(pirep.flightNumber);
+
   return (
     <Card.Root
       direction="row"
@@ -22,8 +82,29 @@ const PirepCard = ({ pirep }) => {
       variant="outline"
       width="full"
       maxW="3xl" // Increased max-width for the horizontal layout
+      position="relative"
     >
-      <HStack spacing="0" align="stretch">
+      {codeshareEmoji && (
+        <Box
+          as="img"
+          src={codeshareEmoji}
+          alt=""
+          aria-hidden="true"
+          position="absolute"
+          right={{ base: '-18px', sm: '8px' }}
+          top="50%"
+          transform="translateY(-50%)"
+          h={{ base: '118px', md: '150px' }}
+          maxW="45%"
+          objectFit="contain"
+          opacity={0.09}
+          pointerEvents="none"
+          userSelect="none"
+          zIndex={0}
+        />
+      )}
+
+      <HStack spacing="0" align="stretch" position="relative" zIndex={1} w="full">
         {/* Main Flight Details Section (Left) */}
         <VStack align="start" spacing="4" flex="1" p="4">
           <HStack w="full" justify="space-between">
