@@ -61,7 +61,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
       { label: "Events", href: "/crew/community/events", icon: FiCalendar, notifKey: 'events' },
       { label: "Routes of the Week", href: "https://discord.com/channels/1246895842581938276/1270078880576966666", icon: FiStar },
       { label: "Leaderboard", href: "/crew/community/leaderboard", icon: FiAward },
-      { label: "Live Map", href: "/crew/community/live-map", icon: FiGlobe },
+      { label: "Live Map", href: "https://live.indianvirtual.site", icon: FiGlobe },
       { label: "Contributions", href: "/crew/chanda", icon: FiHeart }
     ],
     resources: [
