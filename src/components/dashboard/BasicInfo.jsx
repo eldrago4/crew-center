@@ -539,9 +539,8 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
 
   const earnedBadgesList = BADGE_DEFINITIONS.filter(badge => {
     if (badge.id === 'badge5') {
-      return !!lotusStatus?.active
-        || !!lotusStatus?.member
-        || !!lotusStatus?.needsPayment === false
+      // Strict: only show when backend marks user actively paid for current Lotus month.
+      return lotusStatus?.active === true
     }
 
     const members = badgeData[ badge.id ] || []

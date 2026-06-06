@@ -20,6 +20,7 @@ export default function RoleSelectorSegmentGroup({ onChange, value = 'pilot' }) 
       size="md"
       onValueChange={handleValueChange}
       orientation="vertical"
+      id="role-selector-segment-group"
     >
       <SegmentGroup.Indicator />
       <SegmentGroup.Items
