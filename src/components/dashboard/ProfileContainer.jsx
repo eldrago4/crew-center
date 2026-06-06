@@ -17,6 +17,7 @@ async function getUserData(callsign) {
         id: users.id,
         ifcName: users.ifcName,
         flightTime: users.flightTime,
+        badges: users.badges,
         careerMode: users.careerMode,
         rank: users.rank,
         updatedAt: users.updatedAt
@@ -138,6 +139,8 @@ export default async function ProfileContainer({ user }) {
           image={user.image}
           flightTime={userData.flightTime}
           rank={userData.rank}
+          badgePayload={{ badges: Array.isArray(userData.badges) ? userData.badges : [] }}
+          lotusStatus={lotusStatus}
         />
         <Notams notams={notamsData.data} />
       </Grid>

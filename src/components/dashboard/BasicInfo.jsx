@@ -406,28 +406,26 @@ const BADGE_DEFINITIONS = [
 // ── Payload normalizer ────────────────────────────────────────────────────────
 
 const normalizeBadgePayload = (payload) => {
+  // New payload shape from /api/users/badges:
+  // { badges: number[] }
+  // Convert to structure expected by earnedBadgesList logic.
   const normalized = { badge1: [], badge2: [], badge3: [], badge4: [], badge5: [] }
 
   if (!payload) return normalized
-  if (Array.isArray(payload)) return { badge1: payload, badge2: payload, badge3: payload, badge4: payload, badge5: payload }
 
-  if (typeof payload === 'object') {
-    if (payload.badges && Array.isArray(payload.badges)) {
-      payload.badges.forEach((entry) => {
-        if (entry && typeof entry === 'object') {
-          const id = entry.id || entry.key || entry.name
-          const members = Array.isArray(entry.members) ? entry.members : Array.isArray(entry.value) ? entry.value : []
-          if (id && normalized[ id ]) normalized[ id ] = members
-        }
-      })
-    }
-    ;[ 'badge1', 'badge2', 'badge3', 'badge4', 'badge5' ].forEach(key => {
-      if (Array.isArray(payload[ key ])) normalized[ key ] = payload[ key ]
-    })
+  const indexes = Array.isArray(payload.badges) ? payload.badges : []
 
-  }
+  // We store membership arrays as [ifcNameLower] so the existing matching
+  // code can stay unchanged.
+  // Caller does:
+  //   members.some(m => m.toLowerCase() === normalizedUserName)
+  // So we push the same normalizedUserName later by overriding in filter.
+  // Here we just keep placeholders; BasicInfo will handle matching via indexes.
+
+  // Return empty membership arrays; earnedBadgesList will be computed using indexes.
   return normalized
 }
+
 
 // ── GlassBadgeCard ────────────────────────────────────────────────────────────
 
@@ -466,9 +464,15 @@ function GlassBadgeCard({ badge, ifcName, season, size }) {
 
 // ── BasicInfo ─────────────────────────────────────────────────────────────────
 
-export default function BasicInfo({ ifcName, image, flightTime, rank }) {
+export default function BasicInfo({ ifcName, image, flightTime, rank, badgePayload, lotusStatus: lotusStatusFromParent }) {
   const [ isLoadingBadges, setIsLoadingBadges ] = useState(false)
-  const [ badgePayload, setBadgePayload ] = useState(null)
+  const [ badgePayloadState, setBadgePayloadState ] = useState(null)
+
+  // Sync prop -> state for internal usage.
+  useEffect(() => {
+    if (badgePayload) setBadgePayloadState(badgePayload)
+  }, [ badgePayload ])
+
 
   const season = getCurrentSeason()
 
@@ -500,25 +504,9 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
   const currentRankIndex = rankData.findIndex(r => r.name === rank)
   let progress = 0, nextRank = null, remainingHours = 0
 
-  useEffect(() => {
-    const loadBadges = async () => {
-      if (!ifcName) return
-      setIsLoadingBadges(true)
-      try {
-        const res = await fetch('/api/crewcenter?module=badges', { cache: 'no-store' })
-        if (!res.ok) throw new Error(`Badge fetch failed (${res.status})`)
-        setBadgePayload(await res.json())
-      } catch (e) {
-        console.error('Unable to fetch badges:', e)
-      } finally {
-        setIsLoadingBadges(false)
-      }
-    }
-    loadBadges()
-  }, [ ifcName ])
 
-  const badgeData = normalizeBadgePayload(badgePayload)
-  const normalizedUserName = ifcName?.trim().toLowerCase()
+
+
 
   // Lotus badge5 can be derived directly from Lotus status endpoint as well.
   // This avoids relying on /api/crewcenter?module=badges for Lotus membership.
@@ -537,14 +525,26 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
     loadLotus()
   }, [])
 
-  const earnedBadgesList = BADGE_DEFINITIONS.filter(badge => {
+// Derive earned badges from users.badges indexes (provided by ProfileContainer).
+  // users.badges stores indexes 0..4 (4 = badge5/Lotus), but we still gate badge5 via lotusStatus.
+  const earnedBadgesList = BADGE_DEFINITIONS.filter((badge) => {
+    if (!normalizedUserName) return false
+
     if (badge.id === 'badge5') {
-      // Strict: only show when backend marks user actively paid for current Lotus month.
       return lotusStatus?.active === true
     }
 
-    const members = badgeData[ badge.id ] || []
-    return members.some(m => String(m || '').trim().toLowerCase() === normalizedUserName)
+    const idxMap = {
+      badge1: 0,
+      badge2: 1,
+      badge3: 2,
+      badge4: 3,
+      badge5: 4,
+    }
+
+    const idx = idxMap[badge.id]
+    const indexes = Array.isArray(badgesFromProps) ? badgesFromProps : []
+    return indexes.includes(idx)
   })
 
 
