@@ -49,11 +49,11 @@ function drawArcText(ctx, text, cx, cy, r, centerAngleDeg, fontSize, fontFamily,
 
   const spacingDeg = 3.5
   const charAngles = charData.map(d => (d.w / r) * (180 / Math.PI))
-  const totalSpan  = charAngles.reduce((a, b) => a + b, 0) + spacingDeg * (text.length - 1)
+  const totalSpan = charAngles.reduce((a, b) => a + b, 0) + spacingDeg * (text.length - 1)
   let angle = centerAngleDeg - totalSpan / 2
 
   charData.forEach((d, i) => {
-    const charSpan = charAngles[i]
+    const charSpan = charAngles[ i ]
     const mid = angle + charSpan / 2
     const rad = (mid * Math.PI) / 180
     const x = cx + r * Math.cos(rad)
@@ -67,12 +67,12 @@ function drawArcText(ctx, text, cx, cy, r, centerAngleDeg, fontSize, fontFamily,
       ? rad - Math.PI / 2
       : -(rad + Math.PI / 2)
     ctx.rotate(rotation)
-    ctx.font         = `bold ${fontSize}px ${fontFamily}`
+    ctx.font = `bold ${fontSize}px ${fontFamily}`
     ctx.textBaseline = 'middle'
-    ctx.textAlign    = 'center'
-    ctx.fillStyle    = shadowColor
+    ctx.textAlign = 'center'
+    ctx.fillStyle = shadowColor
     ctx.fillText(d.ch, 1, 1)
-    ctx.fillStyle    = highlight
+    ctx.fillStyle = highlight
     ctx.fillText(d.ch, 0, 0)
     ctx.restore()
 
@@ -86,7 +86,7 @@ function drawArcText(ctx, text, cx, cy, r, centerAngleDeg, fontSize, fontFamily,
 
 function drawDynamicBadge(img, type, ifcName, season) {
   const canvas = document.createElement('canvas')
-  canvas.width  = img.naturalWidth
+  canvas.width = img.naturalWidth
   canvas.height = img.naturalHeight
   const ctx = canvas.getContext('2d')
   ctx.imageSmoothingEnabled = false
@@ -95,24 +95,22 @@ function drawDynamicBadge(img, type, ifcName, season) {
   const w = canvas.width
   const h = canvas.height
 
-  const highlight   = 'rgb(225, 238, 252)'
+  const highlight = 'rgb(225, 238, 252)'
   const shadowColor = 'rgb(40, 50, 70)'
-  const serifFont   = 'Georgia, "Times New Roman", serif'
+  const serifFont = 'Georgia, "Times New Roman", serif'
 
   // Dynamic badge text color overrides
   const badge4TextShadowColor = 'rgba(0,0,0,0.95)'
   const badge4TextColor = 'rgba(0,0,0,0.98)'
-
-
 
   if (type === 'badge3front') {
     // Left half — VABB on bottom arc, left of star
     // Confirmed: cx=w*0.2489, cy=h*0.4986, r=h*0.3276, centerAngle=50deg, rotationMode=bottom
     // Move badge3 face-side text slightly more left and mirror it by flipping
     // the arc center X across the badge center.
-    const cx   = w * 0.2489
-    const cy   = h * 0.4986
-    const r    = h * 0.3276
+    const cx = w * 0.2489
+    const cy = h * 0.4986
+    const r = h * 0.3276
     const size = Math.round(h * 0.051)  // ~18px at h=351
 
     // place more left along the arc
@@ -124,10 +122,10 @@ function drawDynamicBadge(img, type, ifcName, season) {
 
   if (type === 'badge3back') {
     // Right half — name arc on top matching MERIT AWARD style, season below center
-    const cx      = w * 0.7496
-    const cy      = h * 0.4986
-    const r       = h * 0.3476   // same arc radius as front (122px)
-    const maxW    = w * 0.38
+    const cx = w * 0.7496
+    const cy = h * 0.4986
+    const r = h * 0.3476   // same arc radius as front (122px)
+    const maxW = w * 0.38
     const courier = '"Courier New", monospace'
 
     // Name follows top arc like MERIT AWARD (centerAngle=270deg = top)
@@ -136,7 +134,7 @@ function drawDynamicBadge(img, type, ifcName, season) {
 
     // Season flat centered in the blank area
     ctx.textBaseline = 'middle'
-    ctx.textAlign    = 'center'
+    ctx.textAlign = 'center'
     let seasonSize = Math.round(h * 0.055)
     ctx.font = `bold ${seasonSize}px ${courier}`
     while (ctx.measureText(season).width > maxW && seasonSize > 8) {
@@ -150,14 +148,14 @@ function drawDynamicBadge(img, type, ifcName, season) {
   }
 
   if (type === 'badge4front') {
-    const fontFamily   = getPixelFont()
-    const cx           = w / 2
-    const cy           = h / 2
+    const fontFamily = getPixelFont()
+    const cx = w / 2
+    const cy = h / 2
     const TARGET_FIT_W = w * 0.35
-    const textColor    = 'rgb(230, 230, 230)'
+    const textColor = 'rgb(230, 230, 230)'
 
     ctx.textBaseline = 'middle'
-    ctx.textAlign    = 'left'
+    ctx.textAlign = 'left'
 
     let nameSize = Math.round(h * 0.074)
     ctx.font = `bold ${nameSize}px ${fontFamily}`
@@ -171,16 +169,16 @@ function drawDynamicBadge(img, type, ifcName, season) {
   }
 
   if (type === 'badge4back') {
-    const fontFamily   = getPixelFont()
-    const cx           = w / 2
-    const cy           = h / 2
+    const fontFamily = getPixelFont()
+    const cx = w / 2
+    const cy = h / 2
     const TARGET_FIT_W = w * 0.35
     // badge4 dynamic text should be black-ish
-    const textColor    = badge4TextColor
+    const textColor = badge4TextColor
 
 
     ctx.textBaseline = 'middle'
-    ctx.textAlign    = 'left'
+    ctx.textAlign = 'left'
 
     let nameSize = Math.round(h * 0.074)
     ctx.font = `bold ${nameSize}px ${fontFamily}`
@@ -199,18 +197,25 @@ function drawDynamicBadge(img, type, ifcName, season) {
       badge4TextColor, 'rgba(0, 0, 0, 0.85)', 'top')
   }
 
-  return canvas.toDataURL('image/png')
+  try {
+    return canvas.toDataURL('image/png')
+  } catch {
+    // Cross-origin images can taint the canvas in production.
+    // Fallback to the original image src so the badge still renders.
+    return img?.src || ''
+  }
 }
+
 
 // ── BadgeIcon ─────────────────────────────────────────────────────────────────
 
 function BadgeIcon({ badge, ifcName, season, size = 120 }) {
   // For badge4, render the image contents ~20% bigger without changing the wrapper box.
   const isBadge4 = badge?.id === 'badge4'
-  const [flipped, setFlipped]   = useState(false)
+  const [ flipped, setFlipped ] = useState(false)
 
-  const [frontSrc, setFrontSrc] = useState(badge.image)
-  const [backSrc,  setBackSrc]  = useState(badge.backImage || null)
+  const [ frontSrc, setFrontSrc ] = useState(badge.image)
+  const [ backSrc, setBackSrc ] = useState(badge.backImage || null)
   const rendered = useRef(false)
 
   useEffect(() => {
@@ -221,7 +226,7 @@ function BadgeIcon({ badge, ifcName, season, size = 120 }) {
     const loadImg = (src) => new Promise((resolve, reject) => {
       const img = new Image()
       img.crossOrigin = 'anonymous'
-      img.onload  = () => resolve(img)
+      img.onload = () => resolve(img)
       img.onerror = reject
       img.src = src
     })
@@ -243,35 +248,35 @@ function BadgeIcon({ badge, ifcName, season, size = 120 }) {
           Promise.resolve(badge.image),
           loadImg(badge.backImage).then(img => drawDynamicBadge(img, 'badge4back', ifcName, season)),
         ])
-      ).then(([frontSrcUrl, backSrcUrl]) => {
+      ).then(([ frontSrcUrl, backSrcUrl ]) => {
         setFrontSrc(frontSrcUrl)
         setBackSrc(backSrcUrl)
       }).catch(e => console.error('Badge4 draw failed:', e))
     }
-  }, [badge, ifcName, season])
+  }, [ badge, ifcName, season ])
 
   const canFlip = badge.hasBack
 
   // badge3 is wider (2:1 aspect), badge4 is roughly square-ish
   // Normalise display: badge3 front/back shows one half so it appears square-ish
-  const isWide   = badge.isCombinedDoubleSided
+  const isWide = badge.isCombinedDoubleSided
   const scale = isBadge4 ? 1.2 : 1
 
   // For badge4, keep wrapper box constant; scale only the inner image contents.
   const imgStyle = isWide
     ? {
-        width: `${200 * scale}%`,
-        height: '100%',
-        objectFit: 'cover',
-      }
+      width: `${200 * scale}%`,
+      height: '100%',
+      objectFit: 'cover',
+    }
     : {
-        // badge4: scale beyond 100% so it appears bigger inside the same wrapper box.
-        width: `${100 * scale}%`,
-        height: '100%',
-        objectFit: isBadge4 ? 'contain' : 'contain',
-        transform: isBadge4 ? 'scale(1.7)' : undefined,
-        transformOrigin: 'center',
-      }
+      // badge4: scale beyond 100% so it appears bigger inside the same wrapper box.
+      width: `${100 * scale}%`,
+      height: '100%',
+      objectFit: isBadge4 ? 'contain' : 'contain',
+      transform: isBadge4 ? 'scale(1.7)' : undefined,
+      transformOrigin: 'center',
+    }
 
   return (
     <Box
@@ -390,11 +395,11 @@ function BadgeIcon({ badge, ifcName, season, size = 120 }) {
 // ── Badge definitions ─────────────────────────────────────────────────────────
 
 const BADGE_DEFINITIONS = [
-  { id: 'badge1', label: 'AIH Ace',      description: '15+ approved AIH flights',          image: '/badges/badge1.png',  hasBack: false, isCombinedDoubleSided: false },
-  { id: 'badge2', label: 'IX Veteran',   description: '20+ approved IX flights',            image: '/badges/badge2.png',  hasBack: false, isCombinedDoubleSided: false },
-  { id: 'badge3', label: 'Career Power', description: '40+ hours in career mode',           image: '/badges/badge3.png',  hasBack: true,  isCombinedDoubleSided: true  },
-  { id: 'badge4', label: 'Senior Pilot', description: 'Rank above junior first officer',    image: '/badges/badge4a.png', backImage: '/badges/badge4b.png', hasBack: true,  isCombinedDoubleSided: false },
-  { id: 'badge5', label: 'Lotus Privé', description: 'Lotus Privé member badge',           image: '/badges/lotus.png', hasBack: false, isCombinedDoubleSided: false }
+  { id: 'badge1', label: 'AIH Ace', description: '15+ approved AIH flights', image: '/badges/badge1.png', hasBack: false, isCombinedDoubleSided: false },
+  { id: 'badge2', label: 'IX Veteran', description: '20+ approved IX flights', image: '/badges/badge2.png', hasBack: false, isCombinedDoubleSided: false },
+  { id: 'badge3', label: 'Career Power', description: '40+ hours in career mode', image: '/badges/badge3.png', hasBack: true, isCombinedDoubleSided: true },
+  { id: 'badge4', label: 'Senior Pilot', description: 'Rank above junior first officer', image: '/badges/badge4a.png', backImage: '/badges/badge4b.png', hasBack: true, isCombinedDoubleSided: false },
+  { id: 'badge5', label: 'Lotus Privé', description: 'Lotus Privé member badge', image: '/badges/lotus.png', hasBack: false, isCombinedDoubleSided: false }
 ]
 
 
@@ -410,14 +415,14 @@ const normalizeBadgePayload = (payload) => {
     if (payload.badges && Array.isArray(payload.badges)) {
       payload.badges.forEach((entry) => {
         if (entry && typeof entry === 'object') {
-          const id      = entry.id || entry.key || entry.name
+          const id = entry.id || entry.key || entry.name
           const members = Array.isArray(entry.members) ? entry.members : Array.isArray(entry.value) ? entry.value : []
-          if (id && normalized[id]) normalized[id] = members
+          if (id && normalized[ id ]) normalized[ id ] = members
         }
       })
     }
-    ;['badge1','badge2','badge3','badge4','badge5'].forEach(key => {
-      if (Array.isArray(payload[key])) normalized[key] = payload[key]
+    ;[ 'badge1', 'badge2', 'badge3', 'badge4', 'badge5' ].forEach(key => {
+      if (Array.isArray(payload[ key ])) normalized[ key ] = payload[ key ]
     })
 
   }
@@ -462,14 +467,14 @@ function GlassBadgeCard({ badge, ifcName, season, size }) {
 // ── BasicInfo ─────────────────────────────────────────────────────────────────
 
 export default function BasicInfo({ ifcName, image, flightTime, rank }) {
-  const [isLoadingBadges, setIsLoadingBadges] = useState(false)
-  const [badgePayload,    setBadgePayload]    = useState(null)
+  const [ isLoadingBadges, setIsLoadingBadges ] = useState(false)
+  const [ badgePayload, setBadgePayload ] = useState(null)
 
   const season = getCurrentSeason()
 
   const parseFlightTime = (timeStr) => {
     if (!timeStr) return 0
-    const [hours, minutes] = timeStr.split(':').map(Number)
+    const [ hours, minutes ] = timeStr.split(':').map(Number)
     return hours + (minutes / 60)
   }
 
@@ -478,20 +483,20 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
       try { await updateUserRank(rank) } catch (e) { console.error(e) }
     }
     updateRank()
-  }, [rank])
+  }, [ rank ])
 
   const rankData = [
-    { name: 'Yuvraj',           hours: 0    },
-    { name: 'Rajkumar',         hours: 80   },
-    { name: 'Rajvanshi',        hours: 160  },
-    { name: 'Rajdhiraj',        hours: 450  },
-    { name: 'Maharaja',         hours: 900  },
-    { name: 'Samrat',           hours: 1500 },
-    { name: 'Chhatrapati',      hours: 2000 },
+    { name: 'Yuvraj', hours: 0 },
+    { name: 'Rajkumar', hours: 80 },
+    { name: 'Rajvanshi', hours: 160 },
+    { name: 'Rajdhiraj', hours: 450 },
+    { name: 'Maharaja', hours: 900 },
+    { name: 'Samrat', hours: 1500 },
+    { name: 'Chhatrapati', hours: 2000 },
     { name: 'Aakashratha Club', hours: 2500 },
   ]
 
-  const currentHours    = parseFlightTime(flightTime)
+  const currentHours = parseFlightTime(flightTime)
   const currentRankIndex = rankData.findIndex(r => r.name === rank)
   let progress = 0, nextRank = null, remainingHours = 0
 
@@ -510,14 +515,14 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
       }
     }
     loadBadges()
-  }, [ifcName])
+  }, [ ifcName ])
 
-  const badgeData          = normalizeBadgePayload(badgePayload)
+  const badgeData = normalizeBadgePayload(badgePayload)
   const normalizedUserName = ifcName?.trim().toLowerCase()
 
   // Lotus badge5 can be derived directly from Lotus status endpoint as well.
   // This avoids relying on /api/crewcenter?module=badges for Lotus membership.
-  const [lotusStatus, setLotusStatus] = useState(null)
+  const [ lotusStatus, setLotusStatus ] = useState(null)
   useEffect(() => {
     const loadLotus = async () => {
       try {
@@ -532,28 +537,28 @@ export default function BasicInfo({ ifcName, image, flightTime, rank }) {
     loadLotus()
   }, [])
 
-  const earnedBadgesList   = BADGE_DEFINITIONS.filter(badge => {
+  const earnedBadgesList = BADGE_DEFINITIONS.filter(badge => {
     if (badge.id === 'badge5') {
       return !!lotusStatus?.active
         || !!lotusStatus?.member
         || !!lotusStatus?.needsPayment === false
     }
 
-    const members = badgeData[badge.id] || []
+    const members = badgeData[ badge.id ] || []
     return members.some(m => String(m || '').trim().toLowerCase() === normalizedUserName)
   })
 
 
   if (currentRankIndex !== -1 && currentRankIndex < rankData.length - 1) {
-    const cur = rankData[currentRankIndex]
-    nextRank     = rankData[currentRankIndex + 1]
-    progress     = Math.min(((currentHours - cur.hours) / (nextRank.hours - cur.hours)) * 100, 100)
+    const cur = rankData[ currentRankIndex ]
+    nextRank = rankData[ currentRankIndex + 1 ]
+    progress = Math.min(((currentHours - cur.hours) / (nextRank.hours - cur.hours)) * 100, 100)
     remainingHours = Math.max(nextRank.hours - currentHours, 0)
   }
 
   const badgeCount = earnedBadgesList.length
   // Badge display size: shrink slightly when 5 badges to keep grid tidy
-  const badgeSize  = badgeCount >= 5 ? 100 : 120
+  const badgeSize = badgeCount >= 5 ? 100 : 120
 
   return (
     <Container maxW="100%" py="8" px="4">
