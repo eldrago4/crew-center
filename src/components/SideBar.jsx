@@ -83,9 +83,10 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
   ];
 
   const sectionHeaderProps = {
-    fontWeight: "light",
-    fontSize: "2xs",
-    color: "gray.500",
+    fontWeight: "700",
+    fontSize: "11px",
+    letterSpacing: "wider",
+    color: "#888",
     _dark: { color: "gray.400" },
     textTransform: "uppercase",
     width: "100%"
@@ -95,6 +96,11 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     variant: "ghost",
     size: "xs",
     width: "100%",
+    fontSize: "14px",
+    fontWeight: "500",
+    color: "#222",
+    _dark: { color: "gray.100" },
+    pl: "4",
     justifyContent: "flex-start",
     transition: "all 0.2s ease-in-out",
     _hover: {
@@ -148,13 +154,12 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
         'scrollbarColor': '#A0AEC0 transparent',
       }}
     >
-      <HStack spacing={1}>
+      <HStack spacing={2} align="center" justify="center">
         {buttons.map(({ label, href, disabled, icon, isSegmentControl, notifKey }, idx) => {
           if (isSegmentControl) {
             return (
               <Box key="segment-control" bg="transparent" borderRadius="md">
                 <RoleSelectorSegmentGroup
-                  orientation="vertical"
                   onChange={handleValueChange}
                   value={currentValue}
                 />
@@ -173,23 +178,27 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
               aria-disabled={disabled}
             >
               <VStack
-                w="70px"
-                h="50px"
-                p={2}
+                w="72px"
+                minH="58px"
+                py="1"
+                px="1"
                 bg="transparent"
                 borderRadius="md"
                 justifyContent="center"
                 alignItems="center"
-                spacing={1}
+                spacing="1"
                 transition="background 0.2s ease-in-out"
                 _hover={{ bg: !disabled ? { base: 'blue.50', _dark: 'whiteAlpha.100' } : 'transparent' }}
                 opacity={disabled ? 0.5 : 1}
                 cursor={disabled ? 'not-allowed' : 'pointer'}
               >
-                <Icon as={icon} boxSize="20px" color={{ base: "gray.700", _dark: "gray.300" }} />
-                <Text fontSize="10px" color={{ base: "gray.600", _dark: "gray.400" }} textAlign="center" noOfLines={2}>
-                  {label}
-                </Text>
+                <Icon as={icon} boxSize="20px" flexShrink={0} color={{ base: "gray.700", _dark: "gray.300" }} />
+                {/* Fixed 2-line label area → every item's icon sits at the exact same height */}
+                <Box h="26px" width="100%" display="flex" alignItems="center" justifyContent="center">
+                  <Text fontSize="11px" lineHeight="1.15" color={{ base: "gray.600", _dark: "gray.400" }} textAlign="center" noOfLines={2}>
+                    {label}
+                  </Text>
+                </Box>
               </VStack>
               {count > 0 && (
                 <Float placement="top-end" offsetX="1" offsetY="1">
@@ -216,12 +225,13 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
   return (
     <>
       <Box
-        display={{ base: 'none', md: 'block' }}
+        display={{ base: 'none', md: 'flex' }}
+        flexDirection="column"
         bg={{ base: "white", _dark: "gray.800" }}
         px={5}
         py={30}
         w="250px"
-        h="100vh"
+        h="calc(100vh - 60px)"
         borderRightWidth="1px"
         borderColor={{ base: "gray.200", _dark: "gray.700" }}
         position="fixed"
@@ -229,29 +239,30 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
         left={0}
         css={{ "&": { transition: "background-color 0.2s" } }}
       >
-        <VStack width="100%">
-          {currentValue !== "admin" && (
-            <>
-              {Object.entries(BUTTON_SECTIONS).map(([ section, buttons ]) => (
-                <div key={section} style={{ width: '100%' }}>
-                  <Text {...sectionHeaderProps}>{section.toUpperCase()}</Text>
-                  {renderDesktopButtons(buttons)}
-                </div>
-              ))}
-            </>
-          )}
-
-          {isAdmin && (
-            <RoleSelectorSegmentGroup onChange={handleValueChange} value={currentValue} />
-          )}
-
-          {currentValue === "admin" && (
+        {/* Scrollable nav content */}
+        <VStack width="100%" align="stretch" flex="1" minH="0" overflowY="auto">
+          {currentValue !== "admin" ? (
+            Object.entries(BUTTON_SECTIONS).map(([ section, buttons ]) => (
+              <div key={section} style={{ width: '100%' }}>
+                <Text {...sectionHeaderProps}>{section.toUpperCase()}</Text>
+                {renderDesktopButtons(buttons)}
+              </div>
+            ))
+          ) : (
             <div style={{ width: '100%' }}>
               <Text {...sectionHeaderProps}>ADMIN TOOLS</Text>
               {renderDesktopButtons(adminButtons)}
             </div>
           )}
         </VStack>
+
+        {/* Role toggle — always anchored to the bottom; never moves with mode/scroll.
+            mt="auto" pushes it to the bottom of the fixed sidebar column. */}
+        {isAdmin && (
+          <Box width="100%" pt="3" mt="auto" flexShrink={0}>
+            <RoleSelectorSegmentGroup onChange={handleValueChange} value={currentValue} />
+          </Box>
+        )}
       </Box>
 
       <Box

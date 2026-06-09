@@ -1,8 +1,7 @@
 // app/components/dashboard/ProfileContainer.jsx
 import BasicInfo from './BasicInfo'
 import PirepsTable from './PirepsTable'
-import Notams from './Notams'
-import { Grid, Box, Stack, Heading, Text, Button, Link, Badge, HStack, Container, Flex } from '@chakra-ui/react'
+import { Box, Stack, Heading, Text, Button, Link, Badge, HStack, Container, Flex } from '@chakra-ui/react'
 import SignupOrFileButton from './SignupOrFileButton'
 import db from '@/db/client'
 import { users, pireps, notams, crewcenter } from '@/db/schema'
@@ -133,17 +132,15 @@ export default async function ProfileContainer({ user }) {
           </Box>
         </Container>
       )}
-      <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={1}>
-        <BasicInfo
-          ifcName={userData.ifcName}
-          image={user.image}
-          flightTime={userData.flightTime}
-          rank={userData.rank}
-          badgePayload={{ badges: Array.isArray(userData.badges) ? userData.badges : [] }}
-          lotusStatus={lotusStatus}
-        />
-        <Notams notams={notamsData.data} />
-      </Grid>
+      <BasicInfo
+        ifcName={userData.ifcName}
+        image={user.image}
+        flightTime={userData.flightTime}
+        rank={userData.rank}
+        badgePayload={{ badges: Array.isArray(userData.badges) ? userData.badges : [] }}
+        lotusStatus={lotusStatus}
+        notams={notamsData.data}
+      />
       {/* Promotional box above PIREPs */}
       {promotedEvent && (
         <Container maxW="100%" py="8" px="4">

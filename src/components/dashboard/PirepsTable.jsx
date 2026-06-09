@@ -13,12 +13,12 @@ import {
 export default function PirepsTable({ pireps }) {
     if (!pireps || pireps.length === 0) {
         return (
-            <Container maxW="100%" py="8" px="4">
+            <Container maxW="100%" pt="4" pb="8" px="4">
                 <Box
                     bg="bg.subtle"
                     borderWidth="1px"
                     borderColor="border"
-                    rounded="xl"
+                    rounded="2xl"
                     p="8"
                     shadow="sm"
                 >
@@ -31,12 +31,12 @@ export default function PirepsTable({ pireps }) {
     }
 
     return (
-        <Container maxW="100%" py="8" px="4">
+        <Container maxW="100%" pt="4" pb="8" px="4">
             <Box
                 bg="bg.subtle"
                 borderWidth="1px"
                 borderColor="border"
-                rounded="xl"
+                rounded="2xl"
                 p="8"
                 shadow="sm"
             >
@@ -49,27 +49,27 @@ export default function PirepsTable({ pireps }) {
                         <Table.Root variant="simple" size="md">
                             <Table.Header>
                                 <Table.Row>
-                                    <Table.ColumnHeader color="fg" fontWeight="semibold">Flight #</Table.ColumnHeader>
-                                    <Table.ColumnHeader color="fg" fontWeight="semibold">Date</Table.ColumnHeader>
-                                    <Table.ColumnHeader color="fg" fontWeight="semibold">Departure</Table.ColumnHeader>
-                                    <Table.ColumnHeader color="fg" fontWeight="semibold">Arrival</Table.ColumnHeader>
-                                    <Table.ColumnHeader color="fg" fontWeight="semibold">Flight Time</Table.ColumnHeader>
-                                    <Table.ColumnHeader color="fg" fontWeight="semibold">Aircraft</Table.ColumnHeader>
-                                    <Table.ColumnHeader color="fg" fontWeight="semibold">Status</Table.ColumnHeader>
+                                    <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center">Flight No.</Table.ColumnHeader>
+                                    <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center">Date</Table.ColumnHeader>
+                                    <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center">Departure</Table.ColumnHeader>
+                                    <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center">Arrival</Table.ColumnHeader>
+                                    <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center">Flight Time</Table.ColumnHeader>
+                                    <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center">Aircraft</Table.ColumnHeader>
+                                    <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center">Status</Table.ColumnHeader>
                                 </Table.Row>
                             </Table.Header>
                             <Table.Body>
                                 {pireps.map((pirep) => (
                                     <Table.Row key={pirep.pirepId}>
-                                        <Table.Cell fontWeight="medium" color="fg">{pirep.flightNumber}</Table.Cell>
-                                        <Table.Cell color="fg.muted" whiteSpace="nowrap">
+                                        <Table.Cell fontWeight="medium" color="fg" textAlign="center">{pirep.flightNumber}</Table.Cell>
+                                        <Table.Cell color="fg.muted" whiteSpace="nowrap" textAlign="center">
                                             {pirep.date ? new Date(pirep.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}
                                         </Table.Cell>
-                                        <Table.Cell color="fg.muted">{pirep.departureIcao}</Table.Cell>
-                                        <Table.Cell color="fg.muted">{pirep.arrivalIcao}</Table.Cell>
-                                        <Table.Cell color="fg.muted">{pirep.flightTime}</Table.Cell>
-                                        <Table.Cell color="fg.muted">{pirep.aircraft}</Table.Cell>
-                                        <Table.Cell>
+                                        <Table.Cell color="fg.muted" textAlign="center">{pirep.departureIcao}</Table.Cell>
+                                        <Table.Cell color="fg.muted" textAlign="center">{pirep.arrivalIcao}</Table.Cell>
+                                        <Table.Cell color="fg.muted" textAlign="center">{pirep.flightTime}</Table.Cell>
+                                        <Table.Cell color="fg.muted" textAlign="center">{pirep.aircraft}</Table.Cell>
+                                        <Table.Cell textAlign="center">
                                             <Badge
                                                 colorPalette={
                                                     pirep.approved === true

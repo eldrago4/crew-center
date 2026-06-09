@@ -45,6 +45,8 @@ export const users = pgTable("users", {
 	lastActive: timestamp({ mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
 	updatedAt: timestamp({ mode: 'string' }),
 	flightTime: interval({ precision: 0 }),
+	// jsonb[] of earned badge indexes (0..4); written by /api/badges/cron and fillBadges.js.
+	badges: jsonb().array(),
 	rank: rankenum().generatedAlwaysAs(sql`
 CASE
 	WHEN ("flightTime" >= '2000:00:00'::interval) THEN 'Chhatrapati'::rankenum
