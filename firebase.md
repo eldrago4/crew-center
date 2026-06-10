@@ -499,5 +499,4 @@ When adding new fields to the user schema:
 
 ---
 
-*Last updated: November 12, 2025*
 *Version: 1.0*
