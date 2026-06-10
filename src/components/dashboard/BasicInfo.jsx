@@ -1,7 +1,8 @@
 "use client";
 
-import { Container, Box, Flex, Text, Heading, Stack, Progress, Avatar } from '@chakra-ui/react'
+import { Container, Box, Flex, Text, Heading, Stack, Progress, Avatar, Grid, GridItem, SimpleGrid, useBreakpointValue } from '@chakra-ui/react'
 import { updateUserRank } from '@/app/actions'
+import Notams from './Notams'
 import { useEffect, useState, useRef } from 'react'
 
 // ── Season helper ─────────────────────────────────────────────────────────────
@@ -307,12 +308,18 @@ function BadgeIcon({ badge, ifcName, season, size = 120 }) {
         {/* Front */}
         <Box position="absolute" width="100%" height="100%" style={{ backfaceVisibility: 'hidden' }}>
           {isWide ? (
-            <Box width="100%" height="100%" overflow="hidden" borderRadius="md">
+            <Box width="100%" height="100%" overflow="hidden" borderRadius="md" transform="translateY(5px) scale(0.95)" transformOrigin="center">
               <Box as="img" src={frontSrc} alt={badge.label}
                 style={{ ...imgStyle, objectPosition: 'left' }} />
             </Box>
           ) : (
-            <Box position="absolute" inset="0" overflow="visible" borderRadius="md">
+            <Box
+              position="absolute"
+              inset="0"
+              overflow="visible"
+              borderRadius="md"
+              transform={badge?.id === 'badge2' ? 'translateY(-5px)' : undefined}
+            >
               {/* badge4: scale visual contents without changing wrapper size */}
               {badge?.id === 'badge4' ? (
                 <Box
@@ -327,6 +334,8 @@ function BadgeIcon({ badge, ifcName, season, size = 120 }) {
                     alt={badge.label}
                     width="100%"
                     height="100%"
+                    loading="lazy"
+                    decoding="async"
                     style={{ objectFit: 'contain' }}
                   />
                 </Box>
@@ -337,7 +346,20 @@ function BadgeIcon({ badge, ifcName, season, size = 120 }) {
                   alt={badge.label}
                   width="100%"
                   height="100%"
-                  style={{ objectFit: 'contain' }}
+                  loading="lazy"
+                  decoding="async"
+                  style={{
+                    objectFit: 'contain',
+                    // Lotus (badge5) renders larger; Employees coin (badge2) renders a bit
+                    // larger so its circle meets the (shrunk) Officers Association medal
+                    // body (badge3, scaled down on its own isWide wrapper below).
+                    transform: badge?.id === 'badge5'
+                      ? 'scale(1.22)'
+                      : badge?.id === 'badge2'
+                        ? 'scale(1.05)'
+                        : undefined,
+                    transformOrigin: 'center',
+                  }}
                   borderRadius="md"
                 />
               )}
@@ -350,7 +372,7 @@ function BadgeIcon({ badge, ifcName, season, size = 120 }) {
           <Box position="absolute" width="100%" height="100%"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
             {isWide ? (
-              <Box width="100%" height="100%" overflow="hidden" borderRadius="md">
+              <Box width="100%" height="100%" overflow="hidden" borderRadius="md" transform="translateY(5px) scale(0.95)" transformOrigin="center">
                 <Box as="img" src={backSrc} alt={`${badge.label} back`}
                   style={{ ...imgStyle, objectPosition: 'right' }} />
               </Box>
@@ -394,12 +416,16 @@ function BadgeIcon({ badge, ifcName, season, size = 120 }) {
 
 // ── Badge definitions ─────────────────────────────────────────────────────────
 
+// Order defines the 2×2 grid placement (row-major: top-left, top-right, bottom-left, bottom-right):
+//   badge1 (Wings) | badge5 (Lotus)
+//   badge2 (Officers Association) | badge3 (Employees coin)
+// badge4 (Senior Pilot) is kept last (not part of the 4-badge layout).
 const BADGE_DEFINITIONS = [
   { id: 'badge1', label: 'AIH Ace', description: '15+ approved AIH flights', image: '/badges/badge1.png', hasBack: false, isCombinedDoubleSided: false },
+  { id: 'badge5', label: 'Lotus Privé', description: 'Lotus Privé member badge', image: '/badges/lotus.png', hasBack: false, isCombinedDoubleSided: false },
   { id: 'badge2', label: 'IX Veteran', description: '20+ approved IX flights', image: '/badges/badge2.png', hasBack: false, isCombinedDoubleSided: false },
   { id: 'badge3', label: 'Career Power', description: '40+ hours in career mode', image: '/badges/badge3.png', hasBack: true, isCombinedDoubleSided: true },
-  { id: 'badge4', label: 'Senior Pilot', description: 'Rank above junior first officer', image: '/badges/badge4a.png', backImage: '/badges/badge4b.png', hasBack: true, isCombinedDoubleSided: false },
-  { id: 'badge5', label: 'Lotus Privé', description: 'Lotus Privé member badge', image: '/badges/lotus.png', hasBack: false, isCombinedDoubleSided: false }
+  { id: 'badge4', label: 'Senior Pilot', description: 'Rank above junior first officer', image: '/badges/badge4a.png', backImage: '/badges/badge4b.png', hasBack: true, isCombinedDoubleSided: false }
 ]
 
 
@@ -430,41 +456,66 @@ const normalizeBadgePayload = (payload) => {
 // ── GlassBadgeCard ────────────────────────────────────────────────────────────
 
 function GlassBadgeCard({ badge, ifcName, season, size }) {
+  // Lotus Privé (badge5) gets a soft, opacity-only "breathing" halo behind the
+  // image. No per-badge outline/tile — the badges share the single outer outline.
+  const isLotus = badge?.id === 'badge5'
+
   return (
     <Box
       position="relative"
-      borderRadius="2xl"
-      overflow="hidden"
-      padding="3"
+      padding="2"
       display="flex"
       alignItems="center"
       justifyContent="center"
-      style={{
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 100%)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        border: '1.5px solid rgba(212,175,55,0.75)',
-        boxShadow: 'none',
-      }}
+      background="none"
+      border="none"
+      overflow="visible"
     >
-      {/* subtle inner glow */}
-      <Box
-        position="absolute"
-        inset="0"
-        borderRadius="2xl"
-        pointerEvents="none"
-        style={{
-          background: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.06) 0%, transparent 70%)',
-        }}
-      />
-      <BadgeIcon badge={badge} ifcName={ifcName} season={season} size={size} />
+      {isLotus && (
+        <style>{`
+          @keyframes lotusGlowBreathe {
+            from { opacity: 0.42; }
+            to   { opacity: 0.98; }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .lotus-glow-layer { animation: none !important; opacity: 0.72 !important; }
+          }
+        `}</style>
+      )}
+
+      {/* Soft pink halo breathing in/out behind the lotus image (zIndex 0) */}
+      {isLotus && (
+        <Box
+          className="lotus-glow-layer"
+          position="absolute"
+          top="50%"
+          left="50%"
+          width="72%"
+          height="72%"
+          pointerEvents="none"
+          zIndex={0}
+          style={{
+            transform: 'translate(-50%, -50%)',
+            borderRadius: '50%',
+            background:
+              'radial-gradient(circle, rgba(255,82,168,0.95) 0%, rgba(255,20,147,0.45) 45%, rgba(255,20,147,0) 72%)',
+            filter: 'blur(14px)',
+            animation: 'lotusGlowBreathe 3s ease-in-out infinite alternate',
+          }}
+        />
+      )}
+
+      {/* Badge image sits above the glow */}
+      <Box position="relative" zIndex={1} display="flex" alignItems="center" justifyContent="center">
+        <BadgeIcon badge={badge} ifcName={ifcName} season={season} size={size} />
+      </Box>
     </Box>
   )
 }
 
 // ── BasicInfo ─────────────────────────────────────────────────────────────────
 
-export default function BasicInfo({ ifcName, image, flightTime, rank, badgePayload, lotusStatus: lotusStatusFromParent }) {
+export default function BasicInfo({ ifcName, image, flightTime, rank, badgePayload, lotusStatus: lotusStatusFromParent, notams = [] }) {
   const [ isLoadingBadges, setIsLoadingBadges ] = useState(false)
   const [ badgePayloadState, setBadgePayloadState ] = useState(null)
 
@@ -525,7 +576,18 @@ export default function BasicInfo({ ifcName, image, flightTime, rank, badgePaylo
     loadLotus()
   }, [])
 
-// Derive earned badges from users.badges indexes (provided by ProfileContainer).
+  // Normalised user identity — badges only show for a valid user.
+  const normalizedUserName = ifcName ? String(ifcName).trim().toLowerCase() : ''
+
+  // Badge indexes (0..4) supplied by ProfileContainer via badgePayload ({ badges: number[] }).
+  // Prefer the synced state, fall back to the prop on the first render before the effect runs.
+  const badgesFromProps = Array.isArray(badgePayloadState?.badges)
+    ? badgePayloadState.badges
+    : Array.isArray(badgePayload?.badges)
+      ? badgePayload.badges
+      : []
+
+  // Derive earned badges from users.badges indexes (provided by ProfileContainer).
   // users.badges stores indexes 0..4 (4 = badge5/Lotus), but we still gate badge5 via lotusStatus.
   const earnedBadgesList = BADGE_DEFINITIONS.filter((badge) => {
     if (!normalizedUserName) return false
@@ -556,189 +618,187 @@ export default function BasicInfo({ ifcName, image, flightTime, rank, badgePaylo
   }
 
   const badgeCount = earnedBadgesList.length
-  // Badge display size: shrink slightly when 5 badges to keep grid tidy
-  const badgeSize = badgeCount >= 5 ? 100 : 120
+  // Badge display size. Mobile badges span the card's full width (bigger);
+  // on desktop the 2×2 sits beside the avatar/identity inside the profile card,
+  // so they're a touch smaller to fit.
+  const badgeSize = useBreakpointValue({
+    base: badgeCount >= 5 ? 92 : 108,
+    md: badgeCount >= 5 ? 72 : 84,
+  }) ?? (badgeCount >= 5 ? 72 : 84)
 
   return (
-    <Container maxW="100%" py="8" px="4">
-      <Stack spacing="6">
-
-        {/* ── TOP: Profile + Badges horizontal card ─────────────────────── */}
-        <Box
-          bg="bg.subtle"
-          borderWidth="1px"
-          borderColor="border"
-          rounded="2xl"
-          shadow="sm"
-          overflow="hidden"
-        >
-          <Flex
-            direction={{ base: 'column', md: 'row' }}
-            minH={{ md: '220px' }}
-          >
-
-            {/* LEFT — Profile column */}
-            <Flex
-              direction="column"
-              align="center"
-              justify="center"
-              gap="2"
-              px="8"
-              py="8"
-              flexShrink={0}
-              width={{ base: '100%', md: '240px' }}
-              borderBottom={{ base: '1px solid', md: 'none' }}
-              borderColor="border"
-              textAlign="center"
-              position="relative"
-            >
-              {/* Golden sharp-ended separator (reduced height) */}
-              <Box
-                display={{ base: 'none', md: 'block' }}
-                position="absolute"
-                right="-1px"
-                top="14px"
-                bottom="14px"
-                width="1px"
-                pointerEvents="none"
-                style={{
-                  background: 'rgba(212, 175, 55, 0.85)',
-                  borderRadius: 0,
-                }}
-              />
-              {/* Avatar */}
-              <Box
-                width="88px"
-                height="88px"
-                rounded="xl"
-                overflow="hidden"
-                border="2px solid"
-                borderColor="border"
-                flexShrink={0}
-              >
-                <Avatar.Root width="100%" height="100%" rounded="xl">
-                  <Avatar.Image src={image} alt={ifcName} width="100%" height="100%" objectFit="cover" />
-                  <Avatar.Fallback
-                    width="100%" height="100%"
-                    display="flex" alignItems="center" justifyContent="center"
-                    fontSize="2xl" fontWeight="bold" color="fg" bg="bg.muted"
-                  >
-                    {ifcName?.charAt(0)}
-                  </Avatar.Fallback>
-                </Avatar.Root>
-              </Box>
-
-              {/* Name */}
-              <Heading size="lg" color="fg" fontWeight="bold" lineHeight="1.1" mt="1">
-                {ifcName}
-              </Heading>
-
-              {/* Rank */}
-              <Box>
-                <Text fontSize="xs" color="fg" opacity={0.55} fontWeight="semibold" textTransform="uppercase" letterSpacing="wider">
-                  Rank
-                </Text>
-                <Text fontSize="md" color="fg" fontWeight="bold">
-                  {rank}
-                </Text>
-              </Box>
-
-              {/* Flight Time */}
-              <Box>
-                <Text fontSize="xs" color="fg" opacity={0.55} fontWeight="semibold" textTransform="uppercase" letterSpacing="wider">
-                  Flight Time
-                </Text>
-                <Text fontSize="md" color="fg" fontWeight="bold">
-                  {flightTime}
-                </Text>
-              </Box>
-            </Flex>
-
-            {/* RIGHT — Badges panel */}
-            <Flex
-              flex="1"
-              align="center"
-              justify="center"
-              px={{ base: '5', md: '8' }}
-              py={{ base: '6', md: '8' }}
-              // shift top padding up when 5 badges to fit grid
-              pt={{ base: '6', md: badgeCount >= 5 ? '4' : '8' }}
-            >
-              {isLoadingBadges ? (
-                <Text color="fg" opacity={0.7} fontSize="sm">Checking badge status…</Text>
-              ) : badgeCount === 0 ? (
-                <Text color="fg" opacity={0.45} fontSize="sm" textAlign="center">
-                  No badges earned yet.
-                </Text>
-              ) : (
-                /* Badges container — glassmorphism box (no shadow) */
-                <Box
-                  borderRadius="3xl"
-                  px="5"
-                  py="5"
-                  width="100%"
-                  style={{
-                    background: 'linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 100%)',
-                    border: '1px solid rgba(0,0,0,0.10)',
-                    boxShadow: 'none',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
-                  }}
-                >
-                  {/* 2-per-row grid, centred, equal rows */}
-                  <Flex
-                    wrap="wrap"
-                    gap="4"
-                    justify="center"
-                    align="center"
-                  >
-                    {earnedBadgesList.map(badge => (
-                      <GlassBadgeCard
-                        key={badge.id}
-                        badge={badge}
-                        ifcName={ifcName}
-                        season={season}
-                        size={badgeSize}
-                      />
-                    ))}
-                  </Flex>
-                </Box>
-              )}
-            </Flex>
-
-          </Flex>
-        </Box>
-
-        {/* ── BOTTOM: Progress bar card ──────────────────────────────────── */}
-        {nextRank && (
+    <Container maxW="100%" pt="8" pb="4" px="4">
+      <Grid
+        templateColumns={{ base: '1fr', lg: '1fr 1fr' }}
+        templateAreas={{
+          base: `"profile" "progress" "notams"`,
+          lg: `"profile notams" "progress notams"`,
+        }}
+        columnGap="6"
+        rowGap="3"
+        alignItems="stretch"
+      >
+        {/* ── Profile card: avatar + identity, with the 2×2 badge grid beside it ── */}
+        <GridItem gridArea="profile">
           <Box
+            h="100%"
             bg="bg.subtle"
             borderWidth="1px"
             borderColor="border"
             rounded="2xl"
             shadow="sm"
-            px="8"
-            py="5"
+            px={{ base: '6', md: '8' }}
+            py="6"
           >
-            <Stack spacing="3">
-              <Flex justify="space-between" align="center">
-                <Text color="fg" fontSize="xs" fontWeight="semibold" opacity={0.8} textTransform="uppercase" letterSpacing="wider">
-                  Progress to {nextRank.name}
-                </Text>
-                <Text color="fg" fontSize="sm" fontWeight="medium">
-                  {remainingHours.toFixed(2)}h remaining
-                </Text>
-              </Flex>
-              <Progress.Root value={progress} colorPalette="purple" variant="subtle" size="md" rounded="full">
-                <Progress.Track>
-                  <Progress.Range />
-                </Progress.Track>
-              </Progress.Root>
-            </Stack>
-          </Box>
-        )}
+            <Flex
+              direction={{ base: 'column', md: 'row' }}
+              align="center"
+              gap={{ base: '5', md: '7' }}
+            >
+              {/* Identity — centered stack (avatar on top, details below); same on desktop & mobile */}
+              <Flex direction="column" align="center" gap="2" flexShrink={0} textAlign="center" px={{ base: '0', md: '6' }}>
+                {/* Circular avatar only — no square background/border */}
+                <Box width="96px" height="96px" rounded="full" overflow="hidden" flexShrink={0}>
+                  <Avatar.Root width="100%" height="100%" rounded="full">
+                    <Avatar.Image src={image} alt={ifcName} width="100%" height="100%" objectFit="cover" />
+                    <Avatar.Fallback
+                      width="100%" height="100%"
+                      display="flex" alignItems="center" justifyContent="center"
+                      fontSize="2xl" fontWeight="bold" color="fg" bg="bg.muted"
+                    >
+                      {ifcName?.charAt(0)}
+                    </Avatar.Fallback>
+                  </Avatar.Root>
+                </Box>
 
-      </Stack>
+                <Heading size="md" color="fg" fontWeight="bold" lineHeight="1.1" mt="1">
+                  {ifcName}
+                </Heading>
+                <Box>
+                  <Text fontSize="xs" color="fg" opacity={0.55} fontWeight="semibold" textTransform="uppercase" letterSpacing="wider">
+                    Rank
+                  </Text>
+                  <Text fontSize="sm" color="fg" fontWeight="bold">
+                    {rank}
+                  </Text>
+                </Box>
+                <Box>
+                  <Text fontSize="xs" color="fg" opacity={0.55} fontWeight="semibold" textTransform="uppercase" letterSpacing="wider">
+                    Flight Time
+                  </Text>
+                  <Text fontSize="sm" color="fg" fontWeight="bold">
+                    {flightTime}
+                  </Text>
+                </Box>
+              </Flex>
+
+              {/* Gold divider — vertical on desktop, horizontal on mobile */}
+              <Box
+                flexShrink={0}
+                alignSelf="stretch"
+                bg="rgba(212,175,55,0.65)"
+                w={{ base: '100%', md: '1px' }}
+                h={{ base: '1px', md: 'auto' }}
+                minH={{ md: '72px' }}
+              />
+
+              {/* Badges — 2×2 grid, to the right on desktop / below identity on mobile */}
+              <Box flex="1" width="100%">
+                {isLoadingBadges ? (
+                  <Text color="fg" opacity={0.7} fontSize="sm" textAlign="center">Checking badge status…</Text>
+                ) : badgeCount === 0 ? (
+                  <Text color="fg" opacity={0.45} fontSize="sm" textAlign="center">
+                    No badges earned yet.
+                  </Text>
+                ) : (
+                  /* Badges container — glassmorphism box (no shadow) */
+                  <Box
+                    borderRadius="3xl"
+                    px="3"
+                    py="3"
+                    width="100%"
+                    style={{
+                      background: 'linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 100%)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      boxShadow: 'none',
+                      backdropFilter: 'blur(16px)',
+                      WebkitBackdropFilter: 'blur(16px)',
+                    }}
+                  >
+                    {/* Always 2 columns → 2×2. Order follows BADGE_DEFINITIONS:
+                        badge1, badge2, badge3, then Lotus. Generous gap gives the
+                        lotus halo room so it never overlaps a neighbouring badge. */}
+                    <SimpleGrid columns={2} gap="6" justifyItems="center" alignItems="center">
+                      {earnedBadgesList.map(badge => (
+                        <GlassBadgeCard
+                          key={badge.id}
+                          badge={badge}
+                          ifcName={ifcName}
+                          season={season}
+                          size={badgeSize}
+                        />
+                      ))}
+                    </SimpleGrid>
+                  </Box>
+                )}
+              </Box>
+            </Flex>
+          </Box>
+        </GridItem>
+
+        {/* ── NOTAMs card: same design + height/width as the profile card, scrolls inside ── */}
+        <GridItem gridArea="notams" position="relative" minH={{ base: '320px', lg: '0' }}>
+          <Notams notams={notams} />
+        </GridItem>
+
+        {/* ── Progress card: below the profile card (left column only) ── */}
+        {nextRank && (
+          <GridItem gridArea="progress">
+            <Box
+              bg="bg.subtle"
+              borderWidth="1px"
+              borderColor="border"
+              rounded="2xl"
+              shadow="sm"
+              px="8"
+              py="5"
+            >
+              <Stack spacing="3">
+                <Flex justify="space-between" align="center" gap="2" wrap="nowrap">
+                  <Text
+                    color="fg"
+                    fontSize={{ base: '2xs', md: 'xs' }}
+                    fontWeight="semibold"
+                    opacity={0.8}
+                    textTransform="uppercase"
+                    letterSpacing="wider"
+                    whiteSpace="nowrap"
+                    overflow="hidden"
+                    textOverflow="ellipsis"
+                    minW="0"
+                  >
+                    Progress to {nextRank.name}
+                  </Text>
+                  <Text
+                    color="fg"
+                    fontSize={{ base: '2xs', md: 'sm' }}
+                    fontWeight="medium"
+                    whiteSpace="nowrap"
+                    flexShrink={0}
+                  >
+                    {remainingHours.toFixed(2)}h remaining
+                  </Text>
+                </Flex>
+                <Progress.Root value={progress} colorPalette="purple" variant="subtle" size="md" rounded="full">
+                  <Progress.Track rounded="full">
+                    <Progress.Range borderRadius="full" />
+                  </Progress.Track>
+                </Progress.Root>
+              </Stack>
+            </Box>
+          </GridItem>
+        )}
+      </Grid>
     </Container>
   )
 }
