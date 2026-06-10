@@ -10,7 +10,11 @@ export const dynamic = 'force-dynamic'
 const redis = Redis.fromEnv()
 const CACHE_TTL_SECONDS = 10 * 60
 
+// Notifications feature removed.
+// API endpoint kept as a stub to avoid runtime/import errors.
+
 export async function GET() {
+
     const session = await auth()
     if (!session?.user?.callsign) {
         return NextResponse.json({ rejectedPirepIds: [], eventIds: [] })
@@ -40,10 +44,8 @@ export async function GET() {
 
     const events = Array.isArray(eventsRow[0]?.value) ? eventsRow[0].value : []
 
-    const payload = {
-        rejectedPirepIds: rejected.map(p => p.pirepId),
-        eventIds: events.map(e => e.id).filter(Boolean),
-    }
+    const payload = { rejectedPirepIds: [], eventIds: [] }
+
 
     try {
         await redis.set(cacheKey, payload, { ex: CACHE_TTL_SECONDS })
