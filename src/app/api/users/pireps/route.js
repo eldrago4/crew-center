@@ -269,31 +269,6 @@ export async function POST(request) {
           inline: true,
         },
         {
-          name: "Route",
-          value: `${inserted.departureIcao || "N/A"} / ${inserted.arrivalIcao || "N/A"}`,
-          inline: true,
-        },
-        {
-          name: "Flight Time",
-          value: inserted.flightTime || "—",
-          inline: true,
-        },
-        {
-          name: "Pilot comments",
-          value: inserted.comments || "—",
-          inline: true,
-        },
-      ];
-
-      const fields = [
-        {
-          name: "Pilot",
-          value: userData
-            ? `${userData.ifcName} (\`${userData.id}\`)`
-            : `<@${inserted.userId}>`,
-          inline: true,
-        },
-        {
           name: "Flight Time",
           value: inserted.flightTime || "—",
           inline: true,
@@ -304,6 +279,7 @@ export async function POST(request) {
           inline: true,
         },
       ];
+
 
       if (inserted.multiplier && Number(inserted.multiplier) !== 1) {
         fields.push({
