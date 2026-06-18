@@ -1,112 +1,115 @@
-import { NextResponse } from 'next/server'
-import db from '@/db/client'
-import { pireps, users } from '@/db/schema'
-import { eq, sql, isNull, ilike } from 'drizzle-orm'
+import { NextResponse } from "next/server";
+import db from "@/db/client";
+import { pireps, users } from "@/db/schema";
+import { eq, sql, isNull, ilike } from "drizzle-orm";
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('id')
-    const valid = searchParams.get('valid')
-    const name = searchParams.get('name')
-    const page = parseInt(searchParams.get('page') || '1', 10)
-    const pageSize = parseInt(searchParams.get('pageSize') || '20', 10)
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("id");
+    const valid = searchParams.get("valid");
+    const name = searchParams.get("name");
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const pageSize = parseInt(searchParams.get("pageSize") || "20", 10);
 
-    let query, countQuery
+    let query, countQuery;
 
     // Check if we should include user data (only when valid param is provided and no userId)
-    const includeUserData = !userId && valid !== null && valid !== undefined
+    const includeUserData = !userId && valid !== null && valid !== undefined;
 
     if (includeUserData) {
       // Include user data when only valid param is passed
-      query = db.select({
-        pirepId: pireps.pirepId,
-        flightNumber: pireps.flightNumber,
-        date: pireps.date,
-        flightTime: pireps.flightTime,
-        departureIcao: pireps.departureIcao,
-        arrivalIcao: pireps.arrivalIcao,
-        operator: pireps.operator,
-        aircraft: pireps.aircraft,
-        multiplier: pireps.multiplier,
-        comments: pireps.comments,
-        valid: pireps.valid,
-        updatedAt: pireps.updatedAt,
-        userId: pireps.userId,
-        user: {
-          id: users.id,
-          ifcName: users.ifcName,
-          rank: users.rank
-        }
-      }).from(pireps).leftJoin(users, eq(pireps.userId, users.id))
+      query = db
+        .select({
+          pirepId: pireps.pirepId,
+          flightNumber: pireps.flightNumber,
+          date: pireps.date,
+          flightTime: pireps.flightTime,
+          departureIcao: pireps.departureIcao,
+          arrivalIcao: pireps.arrivalIcao,
+          operator: pireps.operator,
+          aircraft: pireps.aircraft,
+          multiplier: pireps.multiplier,
+          comments: pireps.comments,
+          valid: pireps.valid,
+          updatedAt: pireps.updatedAt,
+          userId: pireps.userId,
+          user: {
+            id: users.id,
+            ifcName: users.ifcName,
+            rank: users.rank,
+          },
+        })
+        .from(pireps)
+        .leftJoin(users, eq(pireps.userId, users.id));
 
-      countQuery = db.select({ count: sql`count(*)` }).from(pireps).leftJoin(users, eq(pireps.userId, users.id))
+      countQuery = db
+        .select({ count: sql`count(*)` })
+        .from(pireps)
+        .leftJoin(users, eq(pireps.userId, users.id));
     } else {
       // Standard query without user data
-      query = db.select().from(pireps)
-      countQuery = db.select({ count: sql`count(*)` }).from(pireps)
+      query = db.select().from(pireps);
+      countQuery = db.select({ count: sql`count(*)` }).from(pireps);
     }
 
     // Build where conditions
-    const conditions = []
+    const conditions = [];
 
     if (userId) {
-      conditions.push(eq(pireps.userId, userId))
+      conditions.push(eq(pireps.userId, userId));
     }
 
     if (name && includeUserData) {
-      conditions.push(ilike(users.ifcName, `%${name}%`))
+      conditions.push(ilike(users.ifcName, `%${name}%`));
     }
 
     if (valid !== null && valid !== undefined) {
-      if (valid === 'true') {
-        conditions.push(eq(pireps.valid, true))
-      } else if (valid === 'false') {
-        conditions.push(eq(pireps.valid, false))
-      } else if (valid === 'null') {
-        conditions.push(isNull(pireps.valid))
+      if (valid === "true") {
+        conditions.push(eq(pireps.valid, true));
+      } else if (valid === "false") {
+        conditions.push(eq(pireps.valid, false));
+      } else if (valid === "null") {
+        conditions.push(isNull(pireps.valid));
       }
     }
 
     // Apply conditions if any
     if (conditions.length > 0) {
-      let whereClause = conditions[ 0 ]
+      let whereClause = conditions[0];
       for (let i = 1; i < conditions.length; i++) {
-        whereClause = sql`${whereClause} AND ${conditions[ i ]}`
+        whereClause = sql`${whereClause} AND ${conditions[i]}`;
       }
 
-      query = query.where(whereClause)
-      countQuery = countQuery.where(whereClause)
+      query = query.where(whereClause);
+      countQuery = countQuery.where(whereClause);
     }
 
     // Get total count for pagination
-    const countResult = await countQuery
-    const total = Number(countResult[ 0 ]?.count || 0)
+    const countResult = await countQuery;
+    const total = Number(countResult[0]?.count || 0);
 
     // Fetch paginated pireps
     const pirepList = await query
       .orderBy(sql`${pireps.updatedAt} DESC`)
       .limit(pageSize)
-      .offset((page - 1) * pageSize)
+      .offset((page - 1) * pageSize);
 
     return NextResponse.json({
       data: pirepList,
       page,
       pageSize,
       total,
-      totalPages: Math.ceil(total / pageSize)
-    })
+      totalPages: Math.ceil(total / pageSize),
+    });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 export async function POST(request) {
   try {
-    const body = await request.json()
+    const body = await request.json();
 
     // Destructure required fields and optional fields
     const {
@@ -117,26 +120,37 @@ export async function POST(request) {
       arrivalIcao,
       aircraft,
       userId,
-      operator = 'Indian Virtual', // Default value as per schema
+      operator = "Indian Virtual", // Default value as per schema
       multiplier, // Optional
-      comments = '', // Default to empty string if not provided
+      comments = "", // Default to empty string if not provided
       valid = null, // Default to false if not provided, or handle based on your logic
     } = body;
 
     // Basic validation for required fields
     // Accept empty strings as present for IFATC
-    const requiredFields = [ flightNumber, date, flightTime, departureIcao, arrivalIcao, aircraft, userId ];
-    if (requiredFields.some(f => f === undefined || f === null)) {
+    const requiredFields = [
+      flightNumber,
+      date,
+      flightTime,
+      departureIcao,
+      arrivalIcao,
+      aircraft,
+      userId,
+    ];
+    if (requiredFields.some((f) => f === undefined || f === null)) {
       return NextResponse.json(
-        { error: 'Missing required PIREP fields: flightNumber, date, flightTime, departureIcao, arrivalIcao, aircraft, userId' },
-        { status: 400 }
+        {
+          error:
+            "Missing required PIREP fields: flightNumber, date, flightTime, departureIcao, arrivalIcao, aircraft, userId",
+        },
+        { status: 400 },
       );
     }
 
     // Prepare the PIREP data for insertion
     const newPirepData = {
       flightNumber,
-      date: new Date(date).toISOString().split('T')[ 0 ], // Ensure date is in a format Drizzle expects for timestamp
+      date: new Date(date).toISOString().split("T")[0], // Ensure date is in a format Drizzle expects for timestamp
       flightTime,
       departureIcao,
       arrivalIcao,
@@ -150,68 +164,145 @@ export async function POST(request) {
       updatedAt: new Date().toISOString(), // Set current timestamp for updatedAt
     };
 
-    const insertedPireps = await db.insert(pireps).values(newPirepData).returning();
+    const insertedPireps = await db
+      .insert(pireps)
+      .values(newPirepData)
+      .returning();
 
     if (insertedPireps.length === 0) {
-      throw new Error('Failed to insert PIREP: No record returned.');
+      throw new Error("Failed to insert PIREP: No record returned.");
     }
 
-    await db.update(users)
+    await db
+      .update(users)
       .set({ lastActive: new Date().toISOString() })
       .where(eq(users.id, userId));
 
     // Send Discord webhook (awaited so serverless runtime doesn't kill it)
     try {
-      const inserted = insertedPireps[ 0 ];
+      const inserted = insertedPireps[0];
 
       let userData = null;
       try {
-        const u = await db.select({ id: users.id, ifcName: users.ifcName, rank: users.rank }).from(users).where(eq(users.id, inserted.userId));
-        if (u && u.length > 0) userData = u[ 0 ];
+        const u = await db
+          .select({ id: users.id, ifcName: users.ifcName, rank: users.rank })
+          .from(users)
+          .where(eq(users.id, inserted.userId));
+        if (u && u.length > 0) userData = u[0];
       } catch (uErr) {
-        console.warn('Could not fetch user data for PIREP webhook:', uErr);
+        console.warn("Could not fetch user data for PIREP webhook:", uErr);
         userData = null;
       }
 
       const fields = [
         {
-          name: 'Pilot',
+          name: "Flight Number",
+          value: inserted.flightNumber || "—",
+          inline: true,
+        },
+        {
+          name: "Pilot",
           value: userData
-            ? `(\`${userData.id}\`) ${userData.ifcName}`
+            ? `${userData.ifcName} (\`${userData.id}\`)`
             : `<@${inserted.userId}>`,
-          inline: true
+          inline: true,
         },
         {
-          name: 'Flight Time',
-          value: inserted.flightTime || '—',
-          inline: true
+          name: "Route",
+          value:
+            `${inserted.departureIcao || "N/A"} / ${inserted.arrivalIcao || "N/A"}`.replace(
+              /\s+/g,
+              " ",
+            ),
+          inline: true,
         },
         {
-          name: 'Operator',
-          value: inserted.operator || '—',
-          inline: true
-        }
+          name: "Flight Time",
+          value: inserted.flightTime || "—",
+          inline: true,
+        },
+        {
+          name: "Pilot comments",
+          value: inserted.comments || "—",
+          inline: true,
+        },
       ];
 
-      if (inserted.multiplier && Number(inserted.multiplier) !== 1) {
-        fields.push({
-          name: '💰 Multiplier',
-          value: `**${inserted.multiplier}x**`,
-          inline: true
-        });
-      }
-
-      const embed = {
-        title: `New PIREP: **${inserted.flightNumber}**`,
-        description: `**${inserted.departureIcao || 'N/A'}** ➔ **${inserted.arrivalIcao || 'N/A'}**`,
-        color: 0x1ABC9C,
-        fields,
-        timestamp: new Date(inserted.updatedAt || Date.now()).toISOString(),
-        footer: {
-          text: `# ${inserted.pirepId ?? inserted.id ?? 'N/A'}`
-        }
+      const CODESHARE_EMOJI_BASE = "/codeshare-emojis";
+      const CODESHARE_EMOJI_FILES = {
+        "6E": "6E.png",
+        "9W": "9W.png",
+        AC: "AC.png",
+        AI: "AI.png",
+        AIH: "AIH.png",
+        AV: "AV.png",
+        AZ: "AZ.png",
+        BR: "BR.png",
+        BW: "BW.png",
+        CI: "CI.png",
+        CM: "CM.png",
+        CX: "CX.png",
+        EK: "EK.png",
+        ET: "ET.png",
+        EY: "EY.png",
+        FI: "FI.png",
+        FR: "FR.png",
+        GA: "GA.png",
+        HU: "HU.png",
+        IX: "IX.png",
+        KE: "KE.png",
+        KQ: "KQ.png",
+        LH: "LH.png",
+        LO: "LO.png",
+        LX: "LX.png",
+        MK: "MK.png",
+        MS: "MS.png",
+        NH: "NH.png",
+        OD: "OD-ID-SL-JT.png",
+        ID: "OD-ID-SL-JT.png",
+        SL: "OD-ID-SL-JT.png",
+        JT: "OD-ID-SL-JT.png",
+        QF: "QF.png",
+        QR: "QF.png",
+        SA: "SA.png",
+        SN: "SN.png",
+        SQ: "SQ.png",
+        SV: "SV.png",
+        TG: "TG.png",
+        TK: "TK.png",
+        TP: "TP.png",
+        U2: "U2.png",
+        UA: "UA.png",
+        UK: "UK.png",
+        VN: "VN.png",
       };
 
+      const CODESHARE_PREFIXES = Object.keys(CODESHARE_EMOJI_FILES).sort(
+        (a, b) => b.length - a.length,
+      );
+
+      const normalizedFlightNumber = String(inserted.flightNumber || "")
+        .toUpperCase()
+        .replace(/[\s-]/g, "");
+      const prefix = CODESHARE_PREFIXES.find((code) =>
+        normalizedFlightNumber.startsWith(code),
+      );
+      const fileName = prefix ? CODESHARE_EMOJI_FILES[prefix] : null;
+      const thumbnailUrl = fileName
+        ? `${CODESHARE_EMOJI_BASE}/${fileName}`
+        : null;
+
+      const embed = {
+        title: `PIREP  #${inserted.pirepId ?? inserted.id ?? "N/A"}`,
+        description: "",
+        color: 0x1abc9c,
+        fields,
+        timestamp: new Date(inserted.updatedAt || Date.now()).toISOString(),
+        ...(thumbnailUrl ? { thumbnail: { url: thumbnailUrl } } : {}),
+      };
+
+      // Discord webhook buttons require Message Components (type 1 = ActionRow, type 2 = Button)
+      // https://discord.com/developers/docs/interactions/message-components#buttons
       const components = [
         {
           type: 1,
@@ -219,36 +310,35 @@ export async function POST(request) {
             {
               type: 2,
               style: 5,
-              label: 'Copy PIREP',
-              url: `https://indianvirtual.site/crew/pireps/file?flightNumber=${encodeURI(inserted.flightNumber)}&departureIcao=${inserted.departureIcao}&arrivalIcao=${inserted.arrivalIcao}&aircraft=${encodeURI(inserted.aircraft)}`
+              label: "Copy PIREP",
+              url: `https://indianvirtual.site/crew/pireps/file?flightNumber=${encodeURI(inserted.flightNumber)}&departureIcao=${encodeURI(inserted.departureIcao)}&arrivalIcao=${encodeURI(inserted.arrivalIcao)}&aircraft=${encodeURI(inserted.aircraft)}`,
             },
-          ]
-        }
+          ],
+        },
       ];
 
       const webhookUrl = process.env.DISCORD_PIREP_WEBHOOK_URL;
       if (webhookUrl) {
         await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ embeds: [ embed ], components }),
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed], components }),
           signal: AbortSignal.timeout(5000),
         });
       }
     } catch (err) {
-      console.error('Failed to send PIREP webhook:', err);
+      console.error("Failed to send PIREP webhook:", err);
     }
 
     return NextResponse.json(
-      { message: 'PIREP submitted successfully', pirep: insertedPireps[ 0 ] },
-      { status: 201 } // 201 Created status
+      { message: "PIREP submitted successfully", pirep: insertedPireps[0] },
+      { status: 201 }, // 201 Created status
     );
-
   } catch (error) {
     console.error("Error submitting PIREP:", error);
     return NextResponse.json(
-      { error: 'Failed to submit PIREP', details: error.message },
-      { status: 500 }
+      { error: "Failed to submit PIREP", details: error.message },
+      { status: 500 },
     );
   }
 }
@@ -260,48 +350,55 @@ export async function PATCH(request) {
 
     if (!pirepId || !action) {
       return NextResponse.json(
-        { error: 'Missing required fields: pirepId and action' },
-        { status: 400 }
+        { error: "Missing required fields: pirepId and action" },
+        { status: 400 },
       );
     }
 
-    if (![ 'approve', 'reject' ].includes(action)) {
+    if (!["approve", "reject"].includes(action)) {
       return NextResponse.json(
         { error: 'Invalid action. Must be either "approve" or "reject"' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Get the pirep details
-    const pirepResult = await db.select().from(pireps).where(eq(pireps.pirepId, pirepId));
+    const pirepResult = await db
+      .select()
+      .from(pireps)
+      .where(eq(pireps.pirepId, pirepId));
 
     if (pirepResult.length === 0) {
-      return NextResponse.json(
-        { error: 'PIREP not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "PIREP not found" }, { status: 404 });
     }
 
-    const pirep = pirepResult[ 0 ];
+    const pirep = pirepResult[0];
 
-    if (action === 'approve') {
+    if (action === "approve") {
       // Fetch user's current flight time and discord ID
-      const userResult = await db.select({ flightTime: users.flightTime, discordId: users.discordId, rank: users.rank })
-        .from(users).where(eq(users.id, pirep.userId));
-      const currentUser = userResult[ 0 ];
+      const userResult = await db
+        .select({
+          flightTime: users.flightTime,
+          discordId: users.discordId,
+          rank: users.rank,
+        })
+        .from(users)
+        .where(eq(users.id, pirep.userId));
+      const currentUser = userResult[0];
       const rankBefore = currentUser?.rank;
 
       // Update pirep to set valid = true
-      await db.update(pireps)
+      await db
+        .update(pireps)
         .set({
           valid: true,
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
         })
         .where(eq(pireps.pirepId, pirepId));
 
       // Calculate flight time in minutes and add to user's flight time
       const flightTimeStr = pirep.flightTime; // Format: "HH:MM:SS"
-      const [ hours, minutes, seconds ] = flightTimeStr.split(':').map(Number);
+      const [hours, minutes, seconds] = flightTimeStr.split(":").map(Number);
       const flightTimeMinutes = hours * 60 + minutes;
 
       // Apply multiplier if available
@@ -309,24 +406,33 @@ export async function PATCH(request) {
       const adjustedFlightTimeMinutes = flightTimeMinutes * multiplier;
 
       // Update user's flight time
-      await db.update(users)
+      await db
+        .update(users)
         .set({
-          flightTime: sql`"flightTime" + ${adjustedFlightTimeMinutes} * INTERVAL '1 minute'`
+          flightTime: sql`"flightTime" + ${adjustedFlightTimeMinutes} * INTERVAL '1 minute'`,
         })
         .where(eq(users.id, pirep.userId));
 
       // Compute new rank locally from current flight time + added time
       const rankThresholds = {
-        Chhatrapati: 2000, Samrat: 1500, Maharaja: 900,
-        Rajdhiraj: 450, Rajvanshi: 160, Rajkumar: 80,
+        Chhatrapati: 2000,
+        Samrat: 1500,
+        Maharaja: 900,
+        Rajdhiraj: 450,
+        Rajvanshi: 160,
+        Rajkumar: 80,
       };
 
-      const currentParts = (currentUser?.flightTime || '00:00:00').split(':').map(Number);
-      const currentTotalHours = currentParts[ 0 ] + currentParts[ 1 ] / 60;
+      const currentParts = (currentUser?.flightTime || "00:00:00")
+        .split(":")
+        .map(Number);
+      const currentTotalHours = currentParts[0] + currentParts[1] / 60;
       const newTotalHours = currentTotalHours + adjustedFlightTimeMinutes / 60;
 
-      const rankAfter = Object.entries(rankThresholds)
-        .find(([ , hours ]) => newTotalHours >= hours)?.[ 0 ] || 'Yuvraj';
+      const rankAfter =
+        Object.entries(rankThresholds).find(
+          ([, hours]) => newTotalHours >= hours,
+        )?.[0] || "Yuvraj";
 
       // If rank changed, notify the bot to handle Discord role swap + DM
       if (rankBefore && rankBefore !== rankAfter && currentUser?.discordId) {
@@ -336,10 +442,10 @@ export async function PATCH(request) {
 
           if (botApiUrl && botApiKey) {
             await fetch(`${botApiUrl}/rank-up`, {
-              method: 'POST',
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${botApiKey}`,
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${botApiKey}`,
               },
               body: JSON.stringify({
                 discord_id: currentUser.discordId.toString(),
@@ -351,21 +457,24 @@ export async function PATCH(request) {
             });
           }
         } catch (botErr) {
-          console.error('Failed to notify bot for rank promotion:', botErr);
+          console.error("Failed to notify bot for rank promotion:", botErr);
         }
       }
 
       return NextResponse.json({
-        message: 'PIREP approved successfully',
+        message: "PIREP approved successfully",
         pirepId,
         flightTimeAdded: `${adjustedFlightTimeMinutes} minutes`,
-        ...(rankBefore !== rankAfter && { rankPromotion: { from: rankBefore, to: rankAfter } })
+        ...(rankBefore !== rankAfter && {
+          rankPromotion: { from: rankBefore, to: rankAfter },
+        }),
       });
-
-    } else if (action === 'reject') {
+    } else if (action === "reject") {
       // Fetch user info before updating
-      const userResult = await db.select({ discordId: users.discordId, ifcName: users.ifcName })
-        .from(users).where(eq(users.id, pirep.userId));
+      const userResult = await db
+        .select({ discordId: users.discordId, ifcName: users.ifcName })
+        .from(users)
+        .where(eq(users.id, pirep.userId));
       const rejectUser = userResult[0];
 
       // Check current valid status to determine if we need to deduct flight time
@@ -374,7 +483,7 @@ export async function PATCH(request) {
       if (pirep.valid === true) {
         // Calculate flight time in minutes and deduct from user's flight time
         const flightTimeStr = pirep.flightTime; // Format: "HH:MM:SS"
-        const [ hours, minutes, seconds ] = flightTimeStr.split(':').map(Number);
+        const [hours, minutes, seconds] = flightTimeStr.split(":").map(Number);
         const flightTimeMinutes = hours * 60 + minutes;
 
         // Apply multiplier if available
@@ -382,9 +491,10 @@ export async function PATCH(request) {
         const adjustedFlightTimeMinutes = flightTimeMinutes * multiplier;
 
         // Update user's flight time (deduct)
-        await db.update(users)
+        await db
+          .update(users)
           .set({
-            flightTime: sql`"flightTime" - ${adjustedFlightTimeMinutes} * INTERVAL '1 minute'`
+            flightTime: sql`"flightTime" - ${adjustedFlightTimeMinutes} * INTERVAL '1 minute'`,
           })
           .where(eq(users.id, pirep.userId));
 
@@ -394,14 +504,15 @@ export async function PATCH(request) {
       // Update pirep to set valid = false and add admin comments
       const updateData = {
         valid: false,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
       if (adminComments) {
         updateData.adminComments = adminComments;
       }
 
-      await db.update(pireps)
+      await db
+        .update(pireps)
         .set(updateData)
         .where(eq(pireps.pirepId, pirepId));
 
@@ -413,14 +524,14 @@ export async function PATCH(request) {
 
           if (botApiUrl && botApiKey) {
             await fetch(`${botApiUrl}/pirep-rejected`, {
-              method: 'POST',
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${botApiKey}`,
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${botApiKey}`,
               },
               body: JSON.stringify({
                 discord_id: rejectUser.discordId.toString(),
-                ifc_name: rejectUser.ifcName || 'Pilot',
+                ifc_name: rejectUser.ifcName || "Pilot",
                 pirep_id: pirepId,
                 flight_number: pirep.flightNumber,
                 departure_icao: pirep.departureIcao,
@@ -434,23 +545,22 @@ export async function PATCH(request) {
             });
           }
         } catch (botErr) {
-          console.error('Failed to notify bot for PIREP rejection:', botErr);
+          console.error("Failed to notify bot for PIREP rejection:", botErr);
         }
       }
 
       return NextResponse.json({
-        message: 'PIREP rejected successfully',
+        message: "PIREP rejected successfully",
         pirepId,
         ...(flightTimeDeducted && { flightTimeDeducted }),
-        ...(adminComments && { adminComments })
+        ...(adminComments && { adminComments }),
       });
     }
-
   } catch (error) {
     console.error("Error updating PIREP:", error);
     return NextResponse.json(
-      { error: 'Failed to update PIREP', details: error.message },
-      { status: 500 }
+      { error: "Failed to update PIREP", details: error.message },
+      { status: 500 },
     );
   }
 }
