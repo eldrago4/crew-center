@@ -194,39 +194,7 @@ export async function POST(request) {
         userData = null;
       }
 
-      const fields = [
-        {
-          name: "Flight Number",
-          value: inserted.flightNumber || "—",
-          inline: true,
-        },
-        {
-          name: "Pilot",
-          value: userData
-            ? `${userData.ifcName} (\`${userData.id}\`)`
-            : `<@${inserted.userId}>`,
-          inline: true,
-        },
-        {
-          name: "Route",
-          value:
-            `${inserted.departureIcao || "N/A"} / ${inserted.arrivalIcao || "N/A"}`.replace(
-              /\s+/g,
-              " ",
-            ),
-          inline: true,
-        },
-        {
-          name: "Flight Time",
-          value: inserted.flightTime || "—",
-          inline: true,
-        },
-        {
-          name: "Pilot comments",
-          value: inserted.comments || "—",
-          inline: true,
-        },
-      ];
+
 
       const CODESHARE_EMOJI_BASE = "/codeshare-emojis";
       const CODESHARE_EMOJI_FILES = {
