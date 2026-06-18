@@ -330,7 +330,12 @@ export async function POST(request) {
           });
           if (!res.ok) {
             const text = await res.text().catch(() => "");
-            console.error("PIREP webhook failed:", res.status, text);
+            // Log full payload to diagnose Discord's "embeds": ["0"] errors
+            console.error("PIREP webhook failed:", {
+              status: res.status,
+              text,
+              payload,
+            });
           }
         } catch (hookErr) {
           console.error("PIREP webhook request error:", hookErr, { payload });
