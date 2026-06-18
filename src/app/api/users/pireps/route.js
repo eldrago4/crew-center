@@ -76,9 +76,9 @@ export async function GET(request) {
 
     // Apply conditions if any
     if (conditions.length > 0) {
-      let whereClause = conditions[0];
+      let whereClause = conditions[ 0 ];
       for (let i = 1; i < conditions.length; i++) {
-        whereClause = sql`${whereClause} AND ${conditions[i]}`;
+        whereClause = sql`${whereClause} AND ${conditions[ i ]}`;
       }
 
       query = query.where(whereClause);
@@ -87,7 +87,7 @@ export async function GET(request) {
 
     // Get total count for pagination
     const countResult = await countQuery;
-    const total = Number(countResult[0]?.count || 0);
+    const total = Number(countResult[ 0 ]?.count || 0);
 
     // Fetch paginated pireps
     const pirepList = await query
@@ -150,7 +150,7 @@ export async function POST(request) {
     // Prepare the PIREP data for insertion
     const newPirepData = {
       flightNumber,
-      date: new Date(date).toISOString().split("T")[0], // Ensure date is in a format Drizzle expects for timestamp
+      date: new Date(date).toISOString().split("T")[ 0 ], // Ensure date is in a format Drizzle expects for timestamp
       flightTime,
       departureIcao,
       arrivalIcao,
@@ -180,7 +180,7 @@ export async function POST(request) {
 
     // Send Discord webhook (awaited so serverless runtime doesn't kill it)
     try {
-      const inserted = insertedPireps[0];
+      const inserted = insertedPireps[ 0 ];
 
       let userData = null;
       try {
@@ -188,7 +188,7 @@ export async function POST(request) {
           .select({ id: users.id, ifcName: users.ifcName, rank: users.rank })
           .from(users)
           .where(eq(users.id, inserted.userId));
-        if (u && u.length > 0) userData = u[0];
+        if (u && u.length > 0) userData = u[ 0 ];
       } catch (uErr) {
         console.warn("Could not fetch user data for PIREP webhook:", uErr);
         userData = null;
@@ -287,7 +287,7 @@ export async function POST(request) {
       const prefix = CODESHARE_PREFIXES.find((code) =>
         normalizedFlightNumber.startsWith(code),
       );
-      const fileName = prefix ? CODESHARE_EMOJI_FILES[prefix] : null;
+      const fileName = prefix ? CODESHARE_EMOJI_FILES[ prefix ] : null;
       const thumbnailUrl = fileName
         ? `${CODESHARE_EMOJI_BASE}/${fileName}`
         : null;
@@ -318,20 +318,31 @@ export async function POST(request) {
       ];
 
       const webhookUrl = process.env.DISCORD_PIREP_WEBHOOK_URL;
-      if (webhookUrl) {
-        await fetch(webhookUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ embeds: [embed], components }),
-          signal: AbortSignal.timeout(5000),
-        });
+      if (!webhookUrl) {
+        console.warn("PIREP webhook skipped: DISCORD_PIREP_WEBHOOK_URL is not set");
+      } else {
+        const payload = { embeds: [ embed ], components };
+        try {
+          const res = await fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(5000),
+          });
+          if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            console.error("PIREP webhook failed:", res.status, text);
+          }
+        } catch (hookErr) {
+          console.error("PIREP webhook request error:", hookErr, { payload });
+        }
       }
     } catch (err) {
       console.error("Failed to send PIREP webhook:", err);
     }
 
     return NextResponse.json(
-      { message: "PIREP submitted successfully", pirep: insertedPireps[0] },
+      { message: "PIREP submitted successfully", pirep: insertedPireps[ 0 ] },
       { status: 201 }, // 201 Created status
     );
   } catch (error) {
@@ -355,7 +366,7 @@ export async function PATCH(request) {
       );
     }
 
-    if (!["approve", "reject"].includes(action)) {
+    if (![ "approve", "reject" ].includes(action)) {
       return NextResponse.json(
         { error: 'Invalid action. Must be either "approve" or "reject"' },
         { status: 400 },
@@ -372,7 +383,7 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "PIREP not found" }, { status: 404 });
     }
 
-    const pirep = pirepResult[0];
+    const pirep = pirepResult[ 0 ];
 
     if (action === "approve") {
       // Fetch user's current flight time and discord ID
@@ -384,7 +395,7 @@ export async function PATCH(request) {
         })
         .from(users)
         .where(eq(users.id, pirep.userId));
-      const currentUser = userResult[0];
+      const currentUser = userResult[ 0 ];
       const rankBefore = currentUser?.rank;
 
       // Update pirep to set valid = true
@@ -398,7 +409,7 @@ export async function PATCH(request) {
 
       // Calculate flight time in minutes and add to user's flight time
       const flightTimeStr = pirep.flightTime; // Format: "HH:MM:SS"
-      const [hours, minutes, seconds] = flightTimeStr.split(":").map(Number);
+      const [ hours, minutes, seconds ] = flightTimeStr.split(":").map(Number);
       const flightTimeMinutes = hours * 60 + minutes;
 
       // Apply multiplier if available
@@ -426,13 +437,13 @@ export async function PATCH(request) {
       const currentParts = (currentUser?.flightTime || "00:00:00")
         .split(":")
         .map(Number);
-      const currentTotalHours = currentParts[0] + currentParts[1] / 60;
+      const currentTotalHours = currentParts[ 0 ] + currentParts[ 1 ] / 60;
       const newTotalHours = currentTotalHours + adjustedFlightTimeMinutes / 60;
 
       const rankAfter =
         Object.entries(rankThresholds).find(
-          ([, hours]) => newTotalHours >= hours,
-        )?.[0] || "Yuvraj";
+          ([ , hours ]) => newTotalHours >= hours,
+        )?.[ 0 ] || "Yuvraj";
 
       // If rank changed, notify the bot to handle Discord role swap + DM
       if (rankBefore && rankBefore !== rankAfter && currentUser?.discordId) {
@@ -475,7 +486,7 @@ export async function PATCH(request) {
         .select({ discordId: users.discordId, ifcName: users.ifcName })
         .from(users)
         .where(eq(users.id, pirep.userId));
-      const rejectUser = userResult[0];
+      const rejectUser = userResult[ 0 ];
 
       // Check current valid status to determine if we need to deduct flight time
       let flightTimeDeducted = null;
@@ -483,7 +494,7 @@ export async function PATCH(request) {
       if (pirep.valid === true) {
         // Calculate flight time in minutes and deduct from user's flight time
         const flightTimeStr = pirep.flightTime; // Format: "HH:MM:SS"
-        const [hours, minutes, seconds] = flightTimeStr.split(":").map(Number);
+        const [ hours, minutes, seconds ] = flightTimeStr.split(":").map(Number);
         const flightTimeMinutes = hours * 60 + minutes;
 
         // Apply multiplier if available
