@@ -321,7 +321,10 @@ export async function POST(request) {
       if (!webhookUrl) {
         console.warn("PIREP webhook skipped: DISCORD_PIREP_WEBHOOK_URL is not set");
       } else {
-        const payload = { embeds: [ embed ], components };
+        // Use Discord Incoming Webhooks payload format.
+        // Many webhook configurations reject `components` (message components) and return 400.
+        // Fall back to sending embeds only.
+        const payload = { embeds: [ embed ] };
         try {
           const res = await fetch(webhookUrl, {
             method: "POST",
