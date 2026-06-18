@@ -285,6 +285,8 @@ export async function POST(request) {
         },
       ];
 
+      // Discord Incoming Webhooks embed payload
+      // Keep embed fields/timestamp/color as originally intended.
       const embed = {
         title: `PIREP  #${inserted.pirepId ?? inserted.id ?? "N/A"}`,
         description: "",
@@ -316,7 +318,9 @@ export async function POST(request) {
       } else {
         // Discord Incoming Webhooks payload
         // https://discord.com/developers/docs/resources/webhook#execute-webhook
-        const payload = { embeds: [ embed ], components };
+        // Build payload exactly per Incoming Webhook docs.
+        // Components are NOT supported for Incoming Webhooks; to avoid 400s, omit them.
+        const payload = { embeds: [ embed ] };
         try {
           const res = await fetch(webhookUrl, {
             method: "POST",
