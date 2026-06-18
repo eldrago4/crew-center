@@ -285,16 +285,51 @@ export async function POST(request) {
         },
       ];
 
-      // Discord Incoming Webhooks embed payload
-      // Keep embed fields/timestamp/color as originally intended.
+      const fields = [
+        {
+          name: "Pilot",
+          value: userData
+            ? `${userData.ifcName} (\`${userData.id}\`)`
+            : `<@${inserted.userId}>`,
+          inline: true,
+        },
+        {
+          name: "Flight Time",
+          value: inserted.flightTime || "—",
+          inline: true,
+        },
+        {
+          name: "Operator",
+          value: inserted.operator || "—",
+          inline: true,
+        },
+      ];
+
+      if (inserted.multiplier && Number(inserted.multiplier) !== 1) {
+        fields.push({
+          name: "💰 Multiplier",
+          value: `**${inserted.multiplier}x**`,
+          inline: true,
+        });
+      }
+
       const embed = {
-        title: `PIREP  #${inserted.pirepId ?? inserted.id ?? "N/A"}`,
-        description: "",
+        title: `PIREP ${inserted.pirepId}`,
+        description: `**${inserted.departureIcao || "N/A"}** ➔ **${inserted.arrivalIcao || "N/A"}**`,
         color: 0x1abc9c,
         fields,
         timestamp: new Date(inserted.updatedAt || Date.now()).toISOString(),
-        ...(thumbnailUrl ? { thumbnail: { url: thumbnailUrl } } : {}),
+        footer: {
+          text: `# ${inserted.pirepId ?? inserted.id ?? "N/A"}`,
+        },
       };
+
+      // Embed thumbnails for Discord Incoming Webhooks:
+      // Incoming webhooks support `thumbnail` on the embed object.
+      // Ensure it is set correctly inside the `embed` object (NOT inside POST fn). 
+      if (thumbnailUrl) {
+        embed.thumbnail = { url: thumbnailUrl };
+      }
 
       // Discord webhook buttons require Message Components (type 1 = ActionRow, type 2 = Button)
       // https://discord.com/developers/docs/interactions/message-components#buttons
@@ -311,6 +346,7 @@ export async function POST(request) {
           ],
         },
       ];
+
 
       const webhookUrl = process.env.DISCORD_PIREP_WEBHOOK_URL;
       if (!webhookUrl) {
