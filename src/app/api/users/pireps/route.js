@@ -257,8 +257,9 @@ export async function POST(request) {
       );
       const fileName = prefix ? CODESHARE_EMOJI_FILES[ prefix ] : null;
       const thumbnailUrl = fileName
-        ? `${CODESHARE_EMOJI_BASE}/${fileName}`
+        ? `${process.env.NEXT_PUBLIC_APP_URL || "https://indianvirtual.site"}${CODESHARE_EMOJI_BASE}/${fileName}`
         : null;
+
 
       const fields = [
         {
