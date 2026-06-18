@@ -292,13 +292,11 @@ export async function POST(request) {
         ? `${CODESHARE_EMOJI_BASE}/${fileName}`
         : null;
 
+      // Keep embed payload minimal and schema-safe for Discord Incoming Webhooks.
+      // (Some webhook configurations reject certain embed fields; we'll avoid sending them.)
       const embed = {
         title: `PIREP  #${inserted.pirepId ?? inserted.id ?? "N/A"}`,
-        description: "",
-        color: 0x1abc9c,
-        fields,
-        timestamp: new Date(inserted.updatedAt || Date.now()).toISOString(),
-        ...(thumbnailUrl ? { thumbnail: { url: thumbnailUrl } } : {}),
+        description: `Route: ${inserted.departureIcao || "N/A"} / ${inserted.arrivalIcao || "N/A"}`,
       };
 
       // Discord webhook buttons require Message Components (type 1 = ActionRow, type 2 = Button)
