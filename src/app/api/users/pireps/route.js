@@ -292,11 +292,38 @@ export async function POST(request) {
         ? `${CODESHARE_EMOJI_BASE}/${fileName}`
         : null;
 
-      // Keep embed payload minimal and schema-safe for Discord Incoming Webhooks.
-      // (Some webhook configurations reject certain embed fields; we'll avoid sending them.)
+      const fields = [
+        {
+          name: "Pilot",
+          value: userData
+            ? `${userData.ifcName} (\`${userData.id}\`)`
+            : `<@${inserted.userId}>`,
+          inline: true,
+        },
+        {
+          name: "Route",
+          value: `${inserted.departureIcao || "N/A"} / ${inserted.arrivalIcao || "N/A"}`,
+          inline: true,
+        },
+        {
+          name: "Flight Time",
+          value: inserted.flightTime || "—",
+          inline: true,
+        },
+        {
+          name: "Pilot comments",
+          value: inserted.comments || "—",
+          inline: true,
+        },
+      ];
+
       const embed = {
         title: `PIREP  #${inserted.pirepId ?? inserted.id ?? "N/A"}`,
-        description: `Route: ${inserted.departureIcao || "N/A"} / ${inserted.arrivalIcao || "N/A"}`,
+        description: "",
+        color: 0x1abc9c,
+        fields,
+        timestamp: new Date(inserted.updatedAt || Date.now()).toISOString(),
+        ...(thumbnailUrl ? { thumbnail: { url: thumbnailUrl } } : {}),
       };
 
       // Discord webhook buttons require Message Components (type 1 = ActionRow, type 2 = Button)
@@ -319,10 +346,9 @@ export async function POST(request) {
       if (!webhookUrl) {
         console.warn("PIREP webhook skipped: DISCORD_PIREP_WEBHOOK_URL is not set");
       } else {
-        // Use Discord Incoming Webhooks payload format.
-        // Many webhook configurations reject `components` (message components) and return 400.
-        // Fall back to sending embeds only.
-        const payload = { embeds: [ embed ] };
+        // Discord Incoming Webhooks payload
+        // https://discord.com/developers/docs/resources/webhook#execute-webhook
+        const payload = { embeds: [ embed ], components };
         try {
           const res = await fetch(webhookUrl, {
             method: "POST",
