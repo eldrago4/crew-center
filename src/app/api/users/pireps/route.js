@@ -261,40 +261,67 @@ export async function POST(request) {
         : null;
 
 
-      const fields = [
-        {
-          name: "Flight Number",
-          value: inserted.flightNumber || "—",
-          inline: true,
-        },
-        {
-          name: "Pilot",
-          value: userData
-            ? `${userData.ifcName} (\`${userData.id}\`)`
-            : `<@${inserted.userId}>`,
-          inline: true,
-        },
-        {
-          name:"Route",
-          value: `**${inserted.departureIcao || "N/A"}** ➔ **${inserted.arrivalIcao || "N/A"}**`,
-          inline: true,
-        },
-        {
-          name: "Flight Time",
-          value: inserted.flightTime || "—",
-          inline: true,
-        },
-        {
-          name: "Pilot Comments",
-          value: inserted.comments || "—",
-          inline: true,
-        },
-      ];
+      const flightNumberNormalized = String(inserted.flightNumber || "")
+        .toUpperCase()
+        .trim();
+      const isIFATC =
+        flightNumberNormalized === "IFATC" ||
+        flightNumberNormalized.startsWith("IFATC");
+
+      const fields = isIFATC
+        ? [
+          {
+            name: "Controlled Hub",
+            value: inserted.departureIcao || "N/A",
+            inline: true,
+          },
+          {
+            name: "Duty Time",
+            value: inserted.flightTime || "—",
+            inline: true,
+          },
+          {
+            name: "ATC Comments",
+            value: inserted.comments || "—",
+            inline: true,
+          },
+        ]
+        : [
+          {
+            name: "Flight Number",
+            value: inserted.flightNumber || "—",
+            inline: true,
+          },
+          {
+            name: "Pilot",
+            value: userData
+              ? `${userData.ifcName} (\`${userData.id}\`)`
+              : `<@${inserted.userId}>`,
+            inline: true,
+          },
+          {
+            name: "Route",
+            value: `**${inserted.departureIcao || "N/A"}** ➔ **${inserted.arrivalIcao || "N/A"}**`,
+            inline: true,
+          },
+          {
+            name: "Flight Time",
+            value: inserted.flightTime || "—",
+            inline: true,
+          },
+          {
+            name: "Pilot Comments",
+            value: inserted.comments || "—",
+            inline: true,
+          },
+        ];
 
       const embed = {
         title: `PIREP #${inserted.pirepId}`,
-        description: `**${inserted.departureIcao || "N/A"}** ➔ **${inserted.arrivalIcao || "N/A"}**`,
-        color: 0x1abc9c,
+        description: isIFATC
+          ? "**IFATC PIREP**"
+          : `**${inserted.departureIcao || "N/A"}** ➔ **${inserted.arrivalIcao || "N/A"}**`,
+        color: isIFATC ? 0x1abc9c : 0x1abc9c,
         fields,
         timestamp: new Date(inserted.updatedAt || Date.now()).toISOString(),
       };
