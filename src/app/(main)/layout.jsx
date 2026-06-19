@@ -2,6 +2,7 @@ import { Provider as ChakraProvider } from "@/components/ui/provider"
 import { Toaster, toaster } from "@/components/ui/toaster"
 import Navbar, { MobileNavMenu } from "@/components/NavBar";
 import Footer from "@/components/Footer"
+import { Analytics } from '@vercel/analytics/next';
 
 const BASE = 'https://indianvirtual.site'
 const OG_IMAGE = `${BASE}/invaHomeBg.png`
@@ -101,6 +102,7 @@ export default function RootLayout({ children }) {
                     <Toaster />
                     <Footer />
                 </ChakraProvider>
+                <Analytics />
             </body>
         </html>
     )
