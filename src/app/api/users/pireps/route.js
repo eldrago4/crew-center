@@ -273,31 +273,38 @@ export async function POST(request) {
           {
             name: "Controlled Hub",
             value: inserted.departureIcao || "N/A",
-            inline: true,
+            inline: false,
           },
           {
             name: "Duty Time",
             value: inserted.flightTime || "—",
-            inline: true,
+            inline: false,
+          },
+          {
+            name: "Controller",
+            value: userData
+              ? `${userData.ifcName} (\`${userData.id}\`)`
+              : `<@${inserted.userId}>`,
+            inline: false,
           },
           {
             name: "ATC Comments",
             value: inserted.comments || "—",
-            inline: true,
+            inline: false,
           },
         ]
         : [
           {
             name: "Flight Number",
             value: inserted.flightNumber || "—",
-            inline: true,
+            inline: false,
           },
           {
             name: "Pilot",
             value: userData
               ? `${userData.ifcName} (\`${userData.id}\`)`
               : `<@${inserted.userId}>`,
-            inline: true,
+            inline: false,
           },
           {
             name: "Route",
@@ -312,7 +319,7 @@ export async function POST(request) {
           {
             name: "Pilot Comments",
             value: inserted.comments || "—",
-            inline: true,
+            inline: false,
           },
         ];
 
@@ -320,7 +327,7 @@ export async function POST(request) {
         title: `PIREP #${inserted.pirepId}`,
         description: isIFATC
           ? "**IFATC PIREP**"
-          : `**${inserted.departureIcao || "N/A"}** ➔ **${inserted.arrivalIcao || "N/A"}**`,
+          : null,
         color: isIFATC ? 0x1abc9c : 0x1abc9c,
         fields,
         timestamp: new Date(inserted.updatedAt || Date.now()).toISOString(),
