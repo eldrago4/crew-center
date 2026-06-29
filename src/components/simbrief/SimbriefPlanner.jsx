@@ -3,7 +3,7 @@
 import {
     Box, Button, Flex, Grid, HStack, Heading, Icon, Input,
     Stack, Text, Textarea, Badge, Separator, Switch, Field, Checkbox,
-    Spinner, Center, Select, Portal, createListCollection, Dialog, CloseButton,
+    Spinner, Center, Select, Portal, createListCollection, Dialog, CloseButton, Table,
 } from '@chakra-ui/react';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -550,6 +550,7 @@ export default function SimbriefPlanner() {
     const [ polling, setPolling ]           = useState(false);
     const [ ofpText, setOfpText ]           = useState(null);
     const [ ofpHtml, setOfpHtml ]           = useState(null);
+    const [ ofpData, setOfpData ]           = useState(null);
     const [ dispatchError, setDispatchError ] = useState(null);
     const [ dispatchedRoute, setDispatchedRoute ] = useState(null);
 
@@ -597,6 +598,7 @@ export default function SimbriefPlanner() {
     };
 
     const applyOfpData = useCallback((data, routeSnapshot = {}) => {
+        setOfpData(data);
         if (data.planHtml) setOfpHtml(data.planHtml);
         if (data.planText) setOfpText(data.planText);
         setDispatchedRoute({
@@ -1270,12 +1272,11 @@ export default function SimbriefPlanner() {
             </Grid>
 
             {/* ── OFP DISPLAY (full width, below grid) ── */}
-            {(ofpHtml || ofpText) && (
+            {(ofpData) && (
                 <Box mt={6}>
                     <OFPDisplay
-                        planHtml={ofpHtml}
-                        planText={ofpText}
-                        onClose={() => { setOfpHtml(null); setOfpText(null); }}
+                        ofpData={ofpData}
+                        onClose={() => { setOfpData(null); setOfpHtml(null); setOfpText(null); }}
                     />
                 </Box>
             )}

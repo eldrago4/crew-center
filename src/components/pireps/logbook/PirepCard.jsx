@@ -1,4 +1,4 @@
-'use client'; // This directive makes PirepCard a Client Component
+"use client"; // This directive makes PirepCard a Client Component
 
 import {
   Box,
@@ -10,63 +10,78 @@ import {
   Badge,
   Separator, // Reverted to Separator for Chakra UI v3.2.2
   Text,
-} from '@chakra-ui/react';
-import { LuPlane } from 'react-icons/lu';
+} from "@chakra-ui/react";
+import { LuPlane } from "react-icons/lu";
 
-const CODESHARE_EMOJI_BASE = '/codeshare-emojis';
+const CODESHARE_EMOJI_BASE = "/codeshare-emojis";
 const CODESHARE_EMOJI_FILES = {
-  '6E': '6E.png',
-  '9W': '9W.png',
-  AC: 'AC.png',
-  AI: 'AI.png',
-  AIH: 'AIH.png',
-  AV: 'AV.png',
-  AZ: 'AZ.png',
-  BR: 'BR.png',
-  BW: 'BW.png',
-  CI: 'CI.png',
-  CM: 'CM.png',
-  CX: 'CX.png',
-  EK: 'EK.png',
-  ET: 'ET.png',
-  EY: 'EY.png',
-  FI: 'FI.png',
-  FR: 'FR.png',
-  GA: 'GA.png',
-  HU: 'HU.png',
-  IX: 'IX.png',
-  KE: 'KE.png',
-  KQ: 'KQ.png',
-  LH: 'LH.png',
-  LO: 'LO.png',
-  LX: 'LX.png',
-  MK: 'MK.png',
-  MS: 'MS.png',
-  NH: 'NH.png',
-  OD: 'OD-ID-SL-JT.png',
-  ID: 'OD-ID-SL-JT.png',
-  SL: 'OD-ID-SL-JT.png',
-  JT: 'OD-ID-SL-JT.png',
-  QF: 'QF.png',
-  QR: 'QR.png',
-  SA: 'SA.png',
-  SN: 'SN.png',
-  SQ: 'SQ.png',
-  SV: 'SV.png',
-  TG: 'TG.png',
-  TK: 'TK.png',
-  TP: 'TP.png',
-  U2: 'U2.png',
-  UA: 'UA.png',
-  UK: 'UK.png',
-  VN: 'VN.png',
+  "6E": "6E.png",
+  "9W": "9W.png",
+  "3S": "DHL.png",
+  IGO: "6E.png",
+  AC: "AC.png",
+  AI: "AI.png",
+  AIH: "AIH.png",
+  AV: "AV.png",
+  AZ: "AZ.png",
+  BR: "BR.png",
+  BW: "BW.png",
+  BZ: "DHL.png",
+  CI: "CI.png",
+  CM: "CM.png",
+  CX: "CX.png",
+  D0: "DHL.png",
+  D5: "DHL.png",
+  ES: "DHL.png",
+  EK: "EK.png",
+  ET: "ET.png",
+  EY: "EY.png",
+  FI: "FI.png",
+  FR: "FR.png",
+  GA: "GA.png",
+  HU: "HU.png",
+  IX: "IX.png",
+  KE: "KE.png",
+  KQ: "KQ.png",
+  LH: "LH.png",
+  LO: "LO.png",
+  L3: "DHL.png",
+  LX: "LX.png",
+  MK: "MK.png",
+  MS: "MS.png",
+  NH: "NH.png",
+  OD: "OD-ID-SL-JT.png",
+  ID: "OD-ID-SL-JT.png",
+  SL: "OD-ID-SL-JT.png",
+  JT: "OD-ID-SL-JT.png",
+  QF: "QF.png",
+  QR: "QR.png",
+  QY: "DHL.png",
+  Q7: "DHL.png",
+  SA: "SA.png",
+  SN: "SN.png",
+  SQ: "SQ.png",
+  SV: "SV.png",
+  TG: "TG.png",
+  TK: "TK.png",
+  TP: "TP.png",
+  U2: "U2.png",
+  UA: "UA.png",
+  UK: "UK.png",
+  VN: "VN.png",
 };
 
-const CODESHARE_PREFIXES = Object.keys(CODESHARE_EMOJI_FILES).sort((a, b) => b.length - a.length);
+const CODESHARE_PREFIXES = Object.keys(CODESHARE_EMOJI_FILES).sort(
+  (a, b) => b.length - a.length,
+);
 
 function getCodeshareEmoji(flightNumber) {
-  const normalizedFlightNumber = String(flightNumber || '').toUpperCase().replace(/[\s-]/g, '');
-  const prefix = CODESHARE_PREFIXES.find(code => normalizedFlightNumber.startsWith(code));
+  const normalizedFlightNumber = String(flightNumber || "")
+    .toUpperCase()
+    .replace(/[\s-]/g, "");
+  const prefix = CODESHARE_PREFIXES.find((code) =>
+    normalizedFlightNumber.startsWith(code),
+  );
   const fileName = prefix ? CODESHARE_EMOJI_FILES[prefix] : null;
   return fileName ? `${CODESHARE_EMOJI_BASE}/${fileName}` : null;
 }
@@ -89,30 +104,47 @@ const PirepCard = ({ pirep }) => {
         <VStack align="start" spacing="4" flex="1" p="4">
           <HStack w="full" justify="space-between">
             <Box>
-              <Text fontSize="xs" color="fg.muted">Flight</Text>
+              <Text fontSize="xs" color="fg.muted">
+                Flight
+              </Text>
               <Heading size="md">{pirep.flightNumber}</Heading>
             </Box>
             <Box textAlign="end">
-              <Text fontSize="xs" color="fg.muted">Aircraft</Text>
+              <Text fontSize="xs" color="fg.muted">
+                Aircraft
+              </Text>
               <Heading size="md">{pirep.aircraft}</Heading>
             </Box>
           </HStack>
 
           <HStack w="full" justify="space-between" align="center">
             <VStack align="start" gap="0">
-              <Text fontSize="xs" color="fg.muted">From</Text>
+              <Text fontSize="xs" color="fg.muted">
+                From
+              </Text>
               <Heading size="2xl">{pirep.departureIcao}</Heading>
             </VStack>
             {/* Correct way to use Icon with a component from react-icons */}
-            <Icon boxSize="8" color="fg.subtle"><LuPlane /></Icon>
+            <Icon boxSize="8" color="fg.subtle">
+              <LuPlane />
+            </Icon>
             <VStack align="end" gap="0">
-              <Text fontSize="xs" color="fg.muted">To</Text>
+              <Text fontSize="xs" color="fg.muted">
+                To
+              </Text>
               <Heading size="2xl">{pirep.arrivalIcao}</Heading>
             </VStack>
           </HStack>
 
           {pirep.comments && (
-            <Text fontSize="sm" color="fg.muted" pt="2" w="full" borderTopWidth="1px" borderColor="border">
+            <Text
+              fontSize="sm"
+              color="fg.muted"
+              pt="2"
+              w="full"
+              borderTopWidth="1px"
+              borderColor="border"
+            >
               "{pirep.adminComments}"
             </Text>
           )}
@@ -122,7 +154,14 @@ const PirepCard = ({ pirep }) => {
         <Separator orientation="vertical" variant="dashed" />
 
         {/* Ticket Stub Section (Right) */}
-        <VStack w="140px" justify="space-between" p="4" bg="bg.subtle" position="relative" overflow="hidden">
+        <VStack
+          w="140px"
+          justify="space-between"
+          p="4"
+          bg="bg.subtle"
+          position="relative"
+          overflow="hidden"
+        >
           {codeshareEmoji && (
             <Box
               as="img"
@@ -136,7 +175,7 @@ const PirepCard = ({ pirep }) => {
               h="132px"
               maxW="150px"
               objectFit="contain"
-              opacity={0.20}
+              opacity={0.2}
               pointerEvents="none"
               userSelect="none"
               zIndex={0}
@@ -144,25 +183,41 @@ const PirepCard = ({ pirep }) => {
           )}
 
           <VStack gap="0" position="relative" zIndex={1}>
-            <Text fontSize="xs" color="fg.muted">Flight Time</Text>
+            <Text fontSize="xs" color="fg.muted">
+              Flight Time
+            </Text>
             <Text fontSize="2xl" fontWeight="bold">
-              {pirep.flightTime.split(':').slice(0, 2).join(':')}
+              {pirep.flightTime.split(":").slice(0, 2).join(":")}
             </Text>
           </VStack>
           <VStack gap="0" position="relative" zIndex={1}>
-            <Text fontSize="xs" color="fg.muted">Multiplier</Text>
-            <Text fontSize="2xl" fontWeight="bold">{pirep.multiplier}x</Text>
+            <Text fontSize="xs" color="fg.muted">
+              Multiplier
+            </Text>
+            <Text fontSize="2xl" fontWeight="bold">
+              {pirep.multiplier}x
+            </Text>
           </VStack>
           <Badge
             size="lg"
-            colorPalette={pirep.valid === null ? 'yellow' : (pirep.valid === false ? 'red' : 'green')}
+            colorPalette={
+              pirep.valid === null
+                ? "yellow"
+                : pirep.valid === false
+                  ? "red"
+                  : "green"
+            }
             variant="solid"
             alignSelf="stretch"
             textAlign="center"
             position="relative"
             zIndex={1}
           >
-            {pirep.valid === null ? 'Pending' : (pirep.valid === false ? 'Rejected' : 'Accepted')}
+            {pirep.valid === null
+              ? "Pending"
+              : pirep.valid === false
+                ? "Rejected"
+                : "Accepted"}
           </Badge>
         </VStack>
       </HStack>

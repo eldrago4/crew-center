@@ -200,6 +200,7 @@ export async function POST(request) {
       const CODESHARE_EMOJI_FILES = {
         "6E": "6E.png",
         "9W": "9W.png",
+        "3S":  "DHL.png",
         IGO: "6E.png",
         AC: "AC.png",
         AI: "AI.png",
