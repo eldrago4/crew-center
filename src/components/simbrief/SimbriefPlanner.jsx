@@ -241,68 +241,83 @@ function PillButton({ active, onClick, children }) {
 
 // ── OFP Display ────────────────────────────────────────────────────────────
 
-function OFPDisplay({ planHtml, planText, onClose }) {
-    const parsed = useMemo(() => {
-        if (!planHtml) return { styles: '', body: '' };
-        const styleBlocks = [...planHtml.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)];
-        const styles = styleBlocks.map(m => m[1]).join('\n');
-        const bodyMatch = planHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-        const body = bodyMatch ? bodyMatch[1] : planHtml;
-        return { styles, body };
-    }, [planHtml]);
-
+function OFPDisplay({ ofpData, onClose }) {
+    const planHtml = ofpData?.planHtml;
+    const planText = ofpData?.planText;    
     return (
         <Box
             borderWidth="1px"
-            borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+            borderColor={{ base: "gray.200", _dark: "whiteAlpha.100" }}
             borderRadius="xl"
             overflow="hidden"
-            bg={{ base: 'white', _dark: 'gray.900' }}
+            bg={{ base: "white", _dark: "gray.900" }}
         >
             <Flex
                 align="center"
                 justify="space-between"
                 px={5}
                 py={3}
-                bg={{ base: 'gray.800', _dark: 'blackAlpha.500' }}
+                bg={{ base: "gray.800", _dark: "blackAlpha.500" }}
             >
                 <HStack gap={2}>
                     <Icon as={TbFileText} color="green.400" boxSize={4} />
-                    <Text fontWeight="bold" fontSize="sm" letterSpacing="wider" textTransform="uppercase" color="white">
+                    <Text
+                        fontWeight="bold"
+                        fontSize="sm"
+                        letterSpacing="wider"
+                        textTransform="uppercase"
+                        color="white"
+                    >
                         Operational Flight Plan
                     </Text>
-                    <Badge colorPalette="green" variant="solid" size="xs">Generated</Badge>
+
+                    <Badge
+                        colorPalette="green"
+                        variant="solid"
+                        size="xs"
+                    >
+                        Generated
+                    </Badge>
                 </HStack>
-                <Button size="xs" variant="ghost" color="gray.400" _hover={{ color: 'white' }} onClick={onClose}>
+
+                <Button
+                    size="xs"
+                    variant="ghost"
+                    color="gray.400"
+                    _hover={{ color: "white" }}
+                    onClick={onClose}
+                >
                     Close
                 </Button>
             </Flex>
 
             {planHtml ? (
-                <Box bg="white" maxH="700px" overflowY="auto">
-                    {parsed.styles && (
-                        <style dangerouslySetInnerHTML={{ __html: parsed.styles }} />
-                    )}
-                    <div
-                        dangerouslySetInnerHTML={{ __html: parsed.body }}
-                        style={{ padding: '20px', color: '#111', fontFamily: "'Courier New', monospace", fontSize: '12px', lineHeight: '1.5' }}
+                <Box bg="white">
+                    <iframe
+                        title="SimBrief OFP"
+                        srcDoc={planHtml}
+                        style={{
+                            width: "100%",
+                            height: "900px",
+                            border: "none",
+                            background: "white"
+                        }}
                     />
                 </Box>
             ) : (
                 <Box
                     as="pre"
                     p={5}
-                    fontSize="xs"
-                    fontFamily="'Courier New', monospace"
-                    lineHeight="1.6"
-                    whiteSpace="pre-wrap"
-                    wordBreak="break-word"
-                    color={{ base: 'gray.800', _dark: 'gray.100' }}
-                    bg={{ base: 'gray.50', _dark: 'gray.950' }}
-                    maxH="600px"
-                    overflowY="auto"
+                    bg="white"
+                    color="black"
+                    fontFamily="Consolas, 'Courier New', monospace"
+                    fontSize="12px"
+                    lineHeight="1.25"
+                    whiteSpace="pre"
+                    overflow="auto"
+                    maxH="900px"
                 >
-                    {planText || 'OFP text not available.'}
+                    {planText || "OFP text not available."}
                 </Box>
             )}
         </Box>
