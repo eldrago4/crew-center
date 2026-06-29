@@ -12,7 +12,7 @@ export const metadata = {
         default: 'Indian Virtual — Infinite Flight Virtual Airline',
         template: '%s | Indian Virtual',
     },
-    description: 'Indian Virtual is India\'s premier virtual airline operating on Infinite Flight. Join 160+ pilots flying realistic operations with Air India, Vistara, IndiGo and more across India and the world.',
+    description: 'Indian Virtual is India\'s premier virtual airline operating on Infinite Flight. Join 160+ pilots flying realistic operations across India and the world.',
     keywords: [
         'Indian Virtual', 'Indian Virtual Airline', 'INVA', 'virtual airline India',
         'Infinite Flight virtual airline', 'Infinite Flight community', 'IFC',
