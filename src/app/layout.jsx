@@ -13,7 +13,10 @@ export const metadata = { title: 'Indian Virtual' };
 
 export default function RootLayout({ children }) {
     return (
-        <html lang="en" className={horizon.variable}>
+        // suppressHydrationWarning: the theme-init script below sets the `dark`
+        // class on <html> before hydration, so the server markup intentionally
+        // differs from the client. Without this, React throws hydration error #418.
+        <html lang="en" className={horizon.variable} suppressHydrationWarning>
             <head>
                 {/* Runs before hydration so the dark class is on <html> for the very first paint —
                     prevents the light-mode flash on every page load / hard navigation. */}

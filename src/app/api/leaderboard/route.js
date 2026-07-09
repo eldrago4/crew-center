@@ -1,35 +1,67 @@
 import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
+import db from '@/db/client';
+import { users } from '@/db/schema';
+import { sql } from 'drizzle-orm';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
+const CACHE_KEY = 'leaderboard:top10';
+const CACHE_TTL_SECONDS = 86400; // 24h — same as the cron
+
+// Computes the top-10 leaderboard straight from the DB and re-caches it.
+// Used as a fallback so a missing/expired cache self-heals instead of 404-ing,
+// keeping the page working even if the cron hasn't run.
+async function computeAndCacheLeaderboard() {
+  const topPilotsRaw = await db
+    .select({
+      id: users.id,
+      ifcName: users.ifcName,
+      flightTime: users.flightTime,
+      rank: users.rank,
+      discordId: users.discordId,
+    })
+    .from(users)
+    .where(sql`${users.flightTime} IS NOT NULL`)
+    .orderBy(sql`${users.flightTime} DESC`)
+    .limit(10)
+    .execute();
+
+  const topPilots = topPilotsRaw.map(pilot => ({
+    ...pilot,
+    discordId: pilot.discordId ? pilot.discordId.toString() : null,
+  }));
+
+  // Best-effort cache write; don't fail the request if Redis write hiccups
+  try {
+    await redis.set(CACHE_KEY, JSON.stringify(topPilots), { ex: CACHE_TTL_SECONDS });
+  } catch (writeErr) {
+    console.warn('Leaderboard cache write failed:', writeErr);
+  }
+
+  return topPilots;
+}
+
 export async function GET() {
   try {
-    const cachedData = await redis.get('leaderboard:top10');
+    const cachedData = await redis.get(CACHE_KEY);
 
-    if (!cachedData) {
-      return NextResponse.json(
-        { error: 'Leaderboard data not available' },
-        { status: 404 }
-      );
+    // Cache hit — return it (parse if stored as a JSON string)
+    if (cachedData) {
+      try {
+        const leaderboard = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
+        return NextResponse.json({ data: leaderboard });
+      } catch (parseError) {
+        console.warn('Invalid cached leaderboard, recomputing:', parseError);
+        // fall through to recompute below
+      }
     }
 
-    // Since Redis returns the data as stored (already a string from JSON.stringify),
-    // we need to parse it back to an object
-    let leaderboard;
-    try {
-      leaderboard = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
-    } catch (parseError) {
-      console.error('Error parsing cached data:', parseError);
-      return NextResponse.json(
-        { error: 'Invalid cached data format' },
-        { status: 500 }
-      );
-    }
-
+    // Cache miss (or corrupt) — compute on demand and re-cache
+    const leaderboard = await computeAndCacheLeaderboard();
     return NextResponse.json({ data: leaderboard });
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
