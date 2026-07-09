@@ -53,14 +53,14 @@ function seededRandom(seed) {
   return (Math.abs(h) % 1000) / 1000;
 }
 
-// A slight rotate + vertical drift per card, keyed off a stable id — gives the
-// "pinned to a corkboard" scattered look without breaking the responsive flow.
+// Per-card scatter keyed off a stable id, giving each note a random drop,
+// horizontal jitter and a gentle pinned-note tilt — a corkboard, not a grid.
+// Values are deterministic so a card keeps its spot across refetches/re-renders.
 function scatterStyle(seed) {
-  const rotate = (seededRandom(`${seed}:r`) - 0.5) * 10; // -5deg .. 5deg
-  const shiftY = (seededRandom(`${seed}:y`) - 0.5) * 20; // -10px .. 10px
-  return {
-    transform: `rotate(${rotate.toFixed(2)}deg) translateY(${shiftY.toFixed(1)}px)`,
-  };
+  const rotate = (seededRandom(`${seed}:r`) - 0.5) * 5;   // -2.5 .. 2.5 deg (subtle tilt)
+  const mt = Math.round(seededRandom(`${seed}:mt`) * 44);  // 0 .. 44px vertical drop
+  const mx = Math.round(seededRandom(`${seed}:mx`) * 20);  // 0 .. 20px horizontal jitter
+  return { rotate, mt, mx };
 }
 
 function WavyUnderline({ color = '#f59e0b' }) {
@@ -805,6 +805,7 @@ export default function ChandaPage() {
   }, [ discordId, callsign, ifcName, fetchStats, showToast ]);
 
   const totalRaised = Object.values(stats.goals).reduce((a, b) => a + b, 0);
+  const allGoalsMet = goals.length > 0 && goals.every(g => (stats.goals[ g.id ] || 0) >= (g.target ?? Infinity));
   const thankYouLabel = thankYou?.goalId === 'all'
     ? 'All Goals'
     : goals.find(g => g.id === thankYou?.goalId)?.label || thankYou?.goalId;
@@ -901,7 +902,7 @@ export default function ChandaPage() {
       <Grid templateColumns={{ base: '1fr 1fr', md: 'repeat(3, 1fr)' }} gap={4} mb={10}>
         {[
           { icon: FiUsers, value: loadingStats ? '—' : stats.contributors, label: 'Contributors', color: '#6366f1' },
-          { icon: FiHeart, value: loadingStats ? '—' : `₹${totalRaised.toLocaleString('en-IN')}`, label: 'Total Raised', color: '#f43f5e' },
+          { icon: FiHeart, value: loadingStats ? '—' : (allGoalsMet ? '100%' : `₹${totalRaised.toLocaleString('en-IN')}`), label: 'Total Raised', color: '#f43f5e' },
           { icon: FiZap, value: loadingStats ? '—' : goals.length, label: 'Active Goals', color: '#f59e0b' },
         ].map(({ icon: Icon, value, label, color }) => (
           <Box key={label} bg={{ base: 'white', _dark: '#111827' }} border="1px solid"
@@ -955,7 +956,7 @@ export default function ChandaPage() {
           {loadingStats ? (
             <Flex justify="center" py={8}><Spinner color="#6366f1" /></Flex>
           ) : (
-            <Flex wrap="wrap" justify="center" gap={{ base: 4, md: 5 }} px={{ base: 1, md: 6 }} py={2}>
+            <Flex wrap="wrap" align="flex-start" justify="center" gap={{ base: 4, md: 5 }} px={{ base: 1, md: 6 }} py={2}>
               {uniqueContributions.map((c, i) => {
                 const seed = c.contributorKey || c.paymentId || String(i);
                 const isAll = c.goalId === 'all';
@@ -969,6 +970,7 @@ export default function ChandaPage() {
                 const iconBg = isAll ? AIR_INDIA_RED : `${color}15`;
                 const iconBorder = isAll ? 'transparent' : `${color}30`;
                 const width = CARD_WIDTHS[ Math.floor(seededRandom(`${seed}:w`) * CARD_WIDTHS.length) ];
+                const { rotate, mt, mx } = scatterStyle(seed);
 
                 return (
                   <Box
@@ -977,20 +979,22 @@ export default function ChandaPage() {
                     border="1px solid"
                     borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.80' }}
                     borderRadius="xl"
-                    boxShadow={{ base: '0 2px 10px rgba(0,0,0,0.06)', _dark: '0 2px 10px rgba(0,0,0,0.35)' }}
+                    boxShadow={{ base: '0 2px 12px rgba(0,0,0,0.08)', _dark: '0 2px 12px rgba(0,0,0,0.4)' }}
                     p={4}
                     w={width}
                     maxW="100%"
+                    mt={`${mt}px`}
+                    ml={`${mx}px`}
+                    mr={`${mx}px`}
                     flexShrink={0}
                     position="relative"
-                    css={{
-                      transform: scatterStyle(seed).transform,
-                      transition: 'transform 0.25s ease, box-shadow 0.25s ease',
-                      _hover: {
-                        transform: 'rotate(0deg) translateY(-4px)',
-                        boxShadow: '0 14px 32px rgba(0,0,0,0.18)',
-                        zIndex: 2,
-                      },
+                    transform={`rotate(${rotate.toFixed(2)}deg)`}
+                    transformOrigin="center"
+                    transition="transform 0.2s ease, box-shadow 0.2s ease"
+                    _hover={{
+                      transform: 'rotate(0deg) translateY(-6px)',
+                      boxShadow: '0 16px 34px rgba(0,0,0,0.2)',
+                      zIndex: 2,
                     }}
                   >
                     <HStack gap={3} align="flex-start">
@@ -1006,9 +1010,6 @@ export default function ChandaPage() {
                         </Text>
                         <Text fontSize="xs" color={{ base: 'gray.600', _dark: 'gray.500' }}>{label}</Text>
                       </Box>
-                      <Text fontWeight="800" fontSize="sm" color={color} flexShrink={0}>
-                        ₹{(c.amount || 0).toLocaleString('en-IN')}
-                      </Text>
                     </HStack>
                     <HStack gap={1} align="center" mt={3}>
                       <FiClock size={11} color="#9ca3af" />
