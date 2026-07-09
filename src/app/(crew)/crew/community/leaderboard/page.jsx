@@ -8,7 +8,6 @@ import {
     Table,
     Spinner,
     Alert,
-    Heading,
     HStack,
     Icon,
     Badge,
@@ -18,6 +17,7 @@ import {
 } from '@chakra-ui/react';
 import { FiAward, FiClock } from 'react-icons/fi';
 import { DiscordAvatar } from '@/components/DiscordAvatar';
+import PageTitle from '@/components/PageTitle';
 
 export default function LeaderboardPage() {
     const [ leaderboard, setLeaderboard ] = useState([]);
@@ -82,9 +82,7 @@ export default function LeaderboardPage() {
                     {/* Header - render directly */}
                     <HStack spacing={3}>
                         <Icon as={FiAward} boxSize={8} color="blue.500" />
-                        <Heading size="lg" color="fg">
-                            Pilot Leaderboard
-                        </Heading>
+                        <PageTitle mb={0}>Leaderboard</PageTitle>
                     </HStack>
 
                     {/* Description - render directly */}
@@ -210,9 +208,7 @@ export default function LeaderboardPage() {
             <VStack spacing={6} align="stretch">
                 <HStack spacing={3}>
                     <Icon as={FiAward} boxSize={8} color="blue.500" />
-                    <Heading size="lg" color="fg">
-                        Pilot Leaderboard
-                    </Heading>
+                    <PageTitle mb={0}>Leaderboard</PageTitle>
                 </HStack>
 
                 <Text color="fg.muted" fontSize="md">

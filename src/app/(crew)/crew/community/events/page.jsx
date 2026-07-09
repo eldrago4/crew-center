@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import {
-    Box, Flex, Stack, HStack, VStack, Heading, Text, Badge,
+    Box, Flex, Stack, HStack, VStack, Text, Badge,
     Icon, Button, Spinner, Separator,
 } from '@chakra-ui/react'
 import {
@@ -11,6 +11,7 @@ import {
     TbStar, TbUsers, TbExternalLink, TbCheck, TbCalendarPlus,
 } from 'react-icons/tb'
 import SignupOrFileButton from '@/components/dashboard/SignupOrFileButton'
+import PageTitle from '@/components/PageTitle'
 
 function fmtPushback(iso) {
     if (!iso) return null
@@ -348,7 +349,7 @@ export default function EventsPage() {
     return (
         <Box px={{ base: 4, md: 6 }} py={8} maxW="960px" mx="auto">
             <Stack gap={1} mb={8}>
-                <Heading size="3xl" fontWeight="bold" letterSpacing="tight" color="fg">Events</Heading>
+                <PageTitle mb={0}>Events</PageTitle>
                 <Text color="fg.muted">
                     Multiplier events and community operations · {events.length} active
                 </Text>

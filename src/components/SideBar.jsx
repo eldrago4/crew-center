@@ -47,6 +47,41 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Scale the desktop nav content to fit the available vertical space so it
+  // never needs a scrollbar, regardless of viewport height or item count.
+  const navAreaRef = useRef(null);
+  const navContentRef = useRef(null);
+  const [ navScale, setNavScale ] = useState(1);
+
+  useEffect(() => {
+    const recalcScale = () => {
+      const area = navAreaRef.current;
+      const content = navContentRef.current;
+      if (!area || !content) return;
+
+      const availableHeight = area.clientHeight;
+      const contentHeight = content.scrollHeight;
+
+      if (contentHeight > availableHeight && availableHeight > 0) {
+        setNavScale(Math.max(availableHeight / contentHeight, 0.6));
+      } else {
+        setNavScale(1);
+      }
+    };
+
+    recalcScale();
+
+    const resizeObserver = new ResizeObserver(recalcScale);
+    if (navAreaRef.current) resizeObserver.observe(navAreaRef.current);
+    if (navContentRef.current) resizeObserver.observe(navContentRef.current);
+
+    window.addEventListener('resize', recalcScale);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', recalcScale);
+    };
+  }, [ currentValue, isAdmin ]);
+
 
 
 
@@ -235,22 +270,29 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
         left={0}
         css={{ "&": { transition: "background-color 0.2s" } }}
       >
-        {/* Scrollable nav content */}
-        <VStack width="100%" align="stretch" flex="1" minH="0" overflowY="auto">
-          {currentValue !== "admin" ? (
-            Object.entries(BUTTON_SECTIONS).map(([ section, buttons ]) => (
-              <div key={section} style={{ width: '100%' }}>
-                <Text {...sectionHeaderProps}>{section.toUpperCase()}</Text>
-                {renderDesktopButtons(buttons)}
+        {/* Nav content area — scales down to fit available height, never scrolls */}
+        <Box ref={navAreaRef} width="100%" flex="1" minH="0" overflow="hidden">
+          <VStack
+            ref={navContentRef}
+            width={`${100 / navScale}%`}
+            align="stretch"
+            style={{ transform: `scale(${navScale})`, transformOrigin: 'top left' }}
+          >
+            {currentValue !== "admin" ? (
+              Object.entries(BUTTON_SECTIONS).map(([ section, buttons ]) => (
+                <div key={section} style={{ width: '100%' }}>
+                  <Text {...sectionHeaderProps}>{section.toUpperCase()}</Text>
+                  {renderDesktopButtons(buttons)}
+                </div>
+              ))
+            ) : (
+              <div style={{ width: '100%' }}>
+                <Text {...sectionHeaderProps}>ADMIN TOOLS</Text>
+                {renderDesktopButtons(adminButtons)}
               </div>
-            ))
-          ) : (
-            <div style={{ width: '100%' }}>
-              <Text {...sectionHeaderProps}>ADMIN TOOLS</Text>
-              {renderDesktopButtons(adminButtons)}
-            </div>
-          )}
-        </VStack>
+            )}
+          </VStack>
+        </Box>
 
         {/* Role toggle — always anchored to the bottom; never moves with mode/scroll.
             mt="auto" pushes it to the bottom of the fixed sidebar column. */}
@@ -272,6 +314,8 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
         borderBottomWidth="1px"
         borderColor={{ base: "gray.200", _dark: "gray.700" }}
         px={2}
+        pt={3}
+        pb={2}
         zIndex="docked"
         transform={isMobileNavVisible ? 'translateY(0)' : 'translateY(-100%)'}
         transition="transform 0.3s ease-in-out"

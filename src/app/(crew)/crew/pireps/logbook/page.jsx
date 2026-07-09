@@ -3,9 +3,9 @@ import {
   Box,
   Container,
   Text,
-  Heading,
 } from '@chakra-ui/react';
 import { redirect } from 'next/navigation';
+import PageTitle from '@/components/PageTitle';
 import PirepListWithPagination from '@/components/pireps/logbook/PirepListWithPagination'; // Import the new Client Component
 
 export default async function LogbookPage() {
@@ -20,9 +20,7 @@ export default async function LogbookPage() {
     <Box>
       <Container maxW="container.xl" p="4">
         <Box>
-          <Heading as="h1" size="xl" mb="6" color="fg">
-            Logbook
-          </Heading>
+          <PageTitle>Logbook</PageTitle>
           {/* Render the Client Component and pass initial data and user ID */}
           <PirepListWithPagination
             initialPireps={initialPireps}
