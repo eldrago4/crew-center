@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '@/db/client';
 import { crewcenter, routes } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { requireUser, requireStaff } from '@/lib/apiAuth';
 
 const MODULE = 'routeRequests';
 const ICAO_RE = /^[A-Z]{4}$/;
@@ -33,8 +34,11 @@ export async function GET() {
 // POST a new route request (crew-facing)
 export async function POST(request) {
     try {
+        const { session, error } = await requireUser();
+        if (error) return error;
+
         const body = await request.json();
-        const { flightNumber, departureIcao, arrivalIcao, flightTime, aircraft, ifcName, callsign, discordId } = body;
+        const { flightNumber, departureIcao, arrivalIcao, flightTime, aircraft } = body;
 
         if (!flightNumber || !departureIcao || !arrivalIcao || !flightTime || !aircraft) {
             return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
@@ -54,9 +58,10 @@ export async function POST(request) {
             arrivalIcao,
             flightTime,
             aircraft,
-            ifcName: ifcName || callsign || 'Anonymous Pilot',
-            callsign: callsign || null,
-            discordId: discordId || null,
+            // Identity is taken from the session, never trusted from the body
+            ifcName: session.user.ifcName || session.user.callsign || 'Anonymous Pilot',
+            callsign: session.user.callsign || null,
+            discordId: session.user.discordId || null,
             requestedAt: Date.now(),
         };
         requests.push(newRequest);
@@ -72,6 +77,9 @@ export async function POST(request) {
 // PATCH — admin accept/reject a pending request
 export async function PATCH(request) {
     try {
+        const { error: authError } = await requireStaff();
+        if (authError) return authError;
+
         const body = await request.json();
         const { id, action } = body;
         if (!id || ![ 'accept', 'reject' ].includes(action)) {

@@ -1,8 +1,12 @@
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
+import { requireStaff } from '@/lib/apiAuth';
 
 export async function POST(request) {
   try {
+    const { error } = await requireStaff();
+    if (error) return error;
+
     const formData = await request.formData();
     const file = formData.get('file');
 
@@ -20,10 +24,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'File size must be less than 5MB' }, { status: 400 });
     }
 
+    // addRandomSuffix avoids overwriting existing blobs via a controlled filename
     const blob = await put(file.name, file, {
       access: 'public',
       token: process.env.INVA_READ_WRITE_TOKEN,
-      allowOverwrite: true
+      addRandomSuffix: true
     });
 
     return NextResponse.json({ url: blob.url });

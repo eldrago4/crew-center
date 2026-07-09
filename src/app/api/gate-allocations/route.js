@@ -3,6 +3,7 @@ import { updateModuleValue, fetchModuleValue } from '@/app/(crew)/crew/pireps/fi
 import db from '@/db/client.js'
 import { crewcenter } from '@/db/schema'
 import { eq } from 'drizzle-orm'
+import { requireStaff } from '@/lib/apiAuth'
 
 const MODULE = 'gate_allocations'
 
@@ -21,6 +22,9 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const { error } = await requireStaff()
+  if (error) return error
+
   const body = await request.json()
   const { eventId, departureAllocations, arrivalAllocations, simbriefData, briefingSent, pilotOrder, roundCount } = body
 

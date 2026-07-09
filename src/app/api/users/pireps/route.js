@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import db from "@/db/client";
 import { pireps, users } from "@/db/schema";
 import { eq, sql, isNull, ilike } from "drizzle-orm";
+import { requireUser, requireStaff, isStaff } from "@/lib/apiAuth";
 
 export async function GET(request) {
   try {
@@ -109,6 +110,10 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const { session, error } = await requireUser();
+    if (error) return error;
+    const staff = isStaff(session);
+
     const body = await request.json();
 
     // Destructure required fields and optional fields
@@ -119,12 +124,17 @@ export async function POST(request) {
       departureIcao,
       arrivalIcao,
       aircraft,
-      userId,
       operator = "Indian Virtual", // Default value as per schema
       multiplier, // Optional
       comments = "", // Default to empty string if not provided
-      valid = null, // Default to false if not provided, or handle based on your logic
     } = body;
+
+    // Identity and approval are derived server-side: a normal pilot can only
+    // file a PENDING PIREP for themselves. Only staff may file on behalf of
+    // another callsign or pre-approve (valid=true) — otherwise a user could
+    // self-approve arbitrary flight time and self-promote their rank.
+    const userId = staff ? body.userId : session.user.callsign;
+    const valid = staff ? (body.valid ?? null) : null;
 
     // Basic validation for required fields
     // Accept empty strings as present for IFATC
@@ -200,8 +210,6 @@ export async function POST(request) {
       const CODESHARE_EMOJI_FILES = {
         "6E": "6E.png",
         "9W": "9W.png",
-        "3S":  "DHL.png",
-        IGO: "6E.png",
         AC: "AC.png",
         AI: "AI.png",
         AIH: "AIH.png",
@@ -209,13 +217,9 @@ export async function POST(request) {
         AZ: "AZ.png",
         BR: "BR.png",
         BW: "BW.png",
-        BZ: "DHL.png",
         CI: "CI.png",
         CM: "CM.png",
         CX: "CX.png",
-        D0: "DHL.png",
-        D5: "DHL.png",
-        ES: "DHL.png",
         EK: "EK.png",
         ET: "ET.png",
         EY: "EY.png",
@@ -228,7 +232,6 @@ export async function POST(request) {
         KQ: "KQ.png",
         LH: "LH.png",
         LO: "LO.png",
-        L3: "DHL.png",
         LX: "LX.png",
         MK: "MK.png",
         MS: "MS.png",
@@ -238,9 +241,7 @@ export async function POST(request) {
         SL: "OD-ID-SL-JT.png",
         JT: "OD-ID-SL-JT.png",
         QF: "QF.png",
-        QR: "QR.png",
-        QY: "DHL.png",
-        Q7: "DHL.png",
+        QR: "QF.png",
         SA: "SA.png",
         SN: "SN.png",
         SQ: "SQ.png",
@@ -414,6 +415,9 @@ export async function POST(request) {
 
 export async function PATCH(request) {
   try {
+    const { error } = await requireStaff();
+    if (error) return error;
+
     const body = await request.json();
     const { pirepId, action, adminComments } = body;
 

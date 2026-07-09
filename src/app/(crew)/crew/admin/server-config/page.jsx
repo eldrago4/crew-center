@@ -1,11 +1,18 @@
 
 import { Box, Heading, Container, VStack } from '@chakra-ui/react';
+import { redirect } from 'next/navigation';
 import DatabaseViewer from '@/components/admin/DatabaseViewer';
 import { getStaff } from '@/app/shared/users';
+import { auth } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function FleetDatabasePage() {
+    const session = await auth();
+    if (!session?.user?.permissions?.includes('ceo')) {
+        redirect('/crew/dashboard');
+    }
+
     let initialFleetData = '';
     try {
         initialFleetData = await getStaff();

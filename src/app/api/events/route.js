@@ -1,6 +1,7 @@
 import db from '@/db/client.js';
 import { crewcenter } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { requireStaff } from '@/lib/apiAuth';
 
 export async function GET(request) {
   try {
@@ -35,9 +36,10 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const events = await request.json();
+    const { error } = await requireStaff();
+    if (error) return error;
 
-    console.log('Saving events:', events);
+    const events = await request.json();
 
     await db.insert(crewcenter)
       .values({ module: 'events', value: events })

@@ -1,7 +1,11 @@
 import { updateStaff } from '@/app/shared/users';
+import { requireCeo } from '@/lib/apiAuth';
 
 export async function POST(request) {
     try {
+        const { error } = await requireCeo();
+        if (error) return error;
+
         const { moduleName, newValue } = await request.json();
 
         if (!moduleName || newValue === undefined) {

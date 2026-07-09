@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import db from '@/db/client'
 import { applicants, users } from '@/db/schema'
 import { sql, eq } from 'drizzle-orm'
+import { requireStaff } from '@/lib/apiAuth'
 
 // GET applicants or validate callsign (?validate=INVA042&current=INVA001)
 export async function GET(request) {
@@ -50,6 +51,9 @@ export async function GET(request) {
 // POST accept applicant -> create user and delete applicant
 export async function POST(request) {
     try {
+        const { error } = await requireStaff()
+        if (error) return error
+
         const body = await request.json()
         const { id } = body
         if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
@@ -100,6 +104,9 @@ export async function POST(request) {
 // PATCH update applicant callsign
 export async function PATCH(request) {
     try {
+        const { error } = await requireStaff()
+        if (error) return error
+
         const body = await request.json()
         const { oldId, newId } = body
         if (!oldId || !newId) return NextResponse.json({ error: 'Missing oldId or newId' }, { status: 400 })
@@ -141,6 +148,9 @@ export async function PATCH(request) {
 // DELETE remove applicant only
 export async function DELETE(request) {
     try {
+        const { error } = await requireStaff()
+        if (error) return error
+
         const url = new URL(request.url)
         const id = url.searchParams.get('id')
         if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })

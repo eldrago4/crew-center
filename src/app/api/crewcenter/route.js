@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { updateModuleValue } from '@/app/(crew)/crew/pireps/file/fleetModule';
 import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
+import { requireStaff } from '@/lib/apiAuth';
 
 const redis = Redis.fromEnv();
 const CACHE_TTL_SECONDS = 180;
@@ -100,9 +101,10 @@ export async function GET(request) {
 
 export async function POST(req) {
   try {
-    const { moduleName, newValue } = await req.json();
+    const { error } = await requireStaff();
+    if (error) return error;
 
-    console.log('POST request received:', { moduleName, newValue });
+    const { moduleName, newValue } = await req.json();
 
     if (!moduleName || newValue === undefined) {
       return NextResponse.json({ error: 'Module name and new value are required.' }, { status: 400 });

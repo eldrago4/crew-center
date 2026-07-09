@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '@/db/client';
 import { routes } from '@/db/schema';
 import { sql, inArray } from 'drizzle-orm';
+import { requireStaff } from '@/lib/apiAuth';
 
 const routesCache = new Map();
 
@@ -48,6 +49,9 @@ export async function GET() {
 // POST new routes
 export async function POST(request) {
     try {
+        const { error } = await requireStaff();
+        if (error) return error;
+
         const body = await request.json();
         const routesToAdd = Array.isArray(body) ? body : [ body ];
 
@@ -101,6 +105,9 @@ export async function POST(request) {
 // DELETE route(s)
 export async function DELETE(request) {
     try {
+        const { error } = await requireStaff();
+        if (error) return error;
+
         const body = await request.json().catch(() => ({}));
         const flightNumbers = body.flightNumbers;
 
@@ -170,6 +177,9 @@ export async function DELETE(request) {
 // PATCH route (edit route by flightNumber)
 export async function PATCH(request) {
     try {
+        const { error } = await requireStaff();
+        if (error) return error;
+
         const body = await request.json();
         const { flightNumber, departureIcao, arrivalIcao, flightTime, aircraft } = body;
         if (!flightNumber) {

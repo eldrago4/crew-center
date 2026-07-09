@@ -20,6 +20,7 @@ import { NextResponse } from 'next/server'
 import db from '@/db/client'
 import { users } from '@/db/schema'
 import { sql } from 'drizzle-orm'
+import { requireStaff } from '@/lib/apiAuth'
 
 // In-memory cache 
 let cachedUsers = null
@@ -188,6 +189,9 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const { error } = await requireStaff();
+    if (error) return error;
+
     const { id, discordId, ifcName } = await request.json();
     if (!id || !discordId || !ifcName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -215,6 +219,9 @@ export async function POST(request) {
 
 export async function PUT(request) {
   try {
+    const { error } = await requireStaff();
+    if (error) return error;
+
     const { id, discordId, ifcName, flightTime, careerMode, rank } = await request.json();
 
     if (!id) {
@@ -263,6 +270,9 @@ export async function PUT(request) {
 
 export async function DELETE(request) {
   try {
+    const { error } = await requireStaff();
+    if (error) return error;
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
