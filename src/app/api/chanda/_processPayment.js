@@ -104,7 +104,6 @@ export async function processConfirmedPayment({ paymentId, goalId, amountPaise, 
         contributorKey,
       })),
     ]);
-    await redis.ltrim('chanda:contributions', 0, 49);
   } else {
     await Promise.all([
       redis.incrbyfloat(`chanda:goal:${goalId}:raised`, amountRupees),
@@ -119,7 +118,6 @@ export async function processConfirmedPayment({ paymentId, goalId, amountPaise, 
         contributorKey,
       })),
     ]);
-    await redis.ltrim('chanda:contributions', 0, 49);
   }
 
   // Notify staff channel about the new contribution (best-effort)

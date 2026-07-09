@@ -21,7 +21,7 @@ export async function GET() {
       redis.scard('chanda:contributors:set'),
       // legacy total (kept for backwards compatibility)
       redis.get('chanda:total:contributors'),
-      redis.lrange('chanda:contributions', 0, 19),
+      redis.lrange('chanda:contributions', 0, -1),
       ...goalIds.map(id => redis.get(`chanda:goal:${id}:raised`)),
     ]);
 

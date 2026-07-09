@@ -13,6 +13,7 @@ import { ICON_MAP } from './_iconMap';
 const Confetti = dynamic(() => import('react-confetti'), { ssr: false });
 
 const AMOUNTS = [ 100, 250, 500, 1000 ];
+const CARD_WIDTHS = [ '230px', '255px', '280px' ];
 const ALL_GRADIENT = 'linear-gradient(to right, #6366f1, #0ea5e9, #f59e0b, #10b981)';
 const AIR_INDIA_RED = '#c8102e';
 const AIR_INDIA_GRADIENT = 'linear-gradient(135deg,#c8102e,#ff4b5c)';
@@ -39,6 +40,27 @@ function timeAgo(ts) {
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
+}
+
+// Deterministic pseudo-random number in [0,1) seeded from a string — same card
+// always lands in the same scattered spot instead of reshuffling on refetch/re-render.
+function seededRandom(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h << 5) - h + seed.charCodeAt(i);
+    h |= 0;
+  }
+  return (Math.abs(h) % 1000) / 1000;
+}
+
+// A slight rotate + vertical drift per card, keyed off a stable id — gives the
+// "pinned to a corkboard" scattered look without breaking the responsive flow.
+function scatterStyle(seed) {
+  const rotate = (seededRandom(`${seed}:r`) - 0.5) * 10; // -5deg .. 5deg
+  const shiftY = (seededRandom(`${seed}:y`) - 0.5) * 20; // -10px .. 10px
+  return {
+    transform: `rotate(${rotate.toFixed(2)}deg) translateY(${shiftY.toFixed(1)}px)`,
+  };
 }
 
 function WavyUnderline({ color = '#f59e0b' }) {
@@ -787,6 +809,8 @@ export default function ChandaPage() {
     ? 'All Goals'
     : goals.find(g => g.id === thankYou?.goalId)?.label || thankYou?.goalId;
 
+  // One card per contributor (their latest contribution), across the full retained
+  // history rather than just the most recent handful — newest first.
   const uniqueContributions = useMemo(() => {
     const seen = new Map();
     for (const c of stats.contributions || []) {
@@ -800,7 +824,7 @@ export default function ChandaPage() {
         seen.set(key, c);
       }
     }
-    return Array.from(seen.values());
+    return Array.from(seen.values()).sort((a, b) => (b.time || 0) - (a.time || 0));
   }, [ stats.contributions ]);
 
   // Only render content after hydration
@@ -916,17 +940,24 @@ export default function ChandaPage() {
         onSubscribe={handleLotusSubscribe}
       />
 
-      {/* Contributions feed */}
+      {/* Contribution history — every contributor scattered like a corkboard, inside an invisible container */}
       {(stats.contributions?.length > 0 || loadingStats) && (
         <Box mt={12} mb={12}>
-          <Text fontWeight="700" fontSize="md" color={{ base: 'gray.800', _dark: 'white' }} mb={5}>
-            Recent contributions
-          </Text>
+          <Box textAlign="center" mb={8}>
+            <Text fontWeight="700" fontSize="md" color={{ base: 'gray.800', _dark: 'white' }}>
+              Contribution history
+            </Text>
+            <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.500' }} mt={1}>
+              {uniqueContributions.length} pilot{uniqueContributions.length === 1 ? '' : 's'} have chipped in since day one
+            </Text>
+          </Box>
+
           {loadingStats ? (
             <Flex justify="center" py={8}><Spinner color="#6366f1" /></Flex>
           ) : (
-            <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }} gap={3}>
+            <Flex wrap="wrap" justify="center" gap={{ base: 4, md: 5 }} px={{ base: 1, md: 6 }} py={2}>
               {uniqueContributions.map((c, i) => {
+                const seed = c.contributorKey || c.paymentId || String(i);
                 const isAll = c.goalId === 'all';
                 const goalDef = isAll ? null : goals.find(g => g.id === c.goalId);
                 const color = isAll ? AIR_INDIA_RED : (goalDef?.color ?? '#6366f1');
@@ -937,27 +968,53 @@ export default function ChandaPage() {
                 const iconColor = isAll ? 'white' : color;
                 const iconBg = isAll ? AIR_INDIA_RED : `${color}15`;
                 const iconBorder = isAll ? 'transparent' : `${color}30`;
+                const width = CARD_WIDTHS[ Math.floor(seededRandom(`${seed}:w`) * CARD_WIDTHS.length) ];
 
                 return (
-                  <HStack key={i} bg={{ base: 'white', _dark: '#111827' }} border="1px solid"
-                    borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.80' }} borderRadius="xl" p={4} gap={3} align="flex-start">
-                    <Flex w="36px" h="36px" borderRadius="10px" flexShrink={0}
-                      bg={iconBg} border="1px solid"
-                      borderColor={iconBorder}
-                      align="center" justify="center">
-                      <IconComponent size={16} color={iconColor} />
-                    </Flex>
-                    <Box flex={1} minW={0}>
-                      <Text fontWeight="700" fontSize="sm" color={{ base: 'gray.800', _dark: 'white' }} isTruncated>
-                        {c.ifcName || c.callsign}
+                  <Box
+                    key={seed}
+                    bg={{ base: 'white', _dark: '#111827' }}
+                    border="1px solid"
+                    borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.80' }}
+                    borderRadius="xl"
+                    boxShadow={{ base: '0 2px 10px rgba(0,0,0,0.06)', _dark: '0 2px 10px rgba(0,0,0,0.35)' }}
+                    p={4}
+                    w={width}
+                    maxW="100%"
+                    flexShrink={0}
+                    position="relative"
+                    css={{
+                      transform: scatterStyle(seed).transform,
+                      transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+                      _hover: {
+                        transform: 'rotate(0deg) translateY(-4px)',
+                        boxShadow: '0 14px 32px rgba(0,0,0,0.18)',
+                        zIndex: 2,
+                      },
+                    }}
+                  >
+                    <HStack gap={3} align="flex-start">
+                      <Flex w="36px" h="36px" borderRadius="10px" flexShrink={0}
+                        bg={iconBg} border="1px solid"
+                        borderColor={iconBorder}
+                        align="center" justify="center">
+                        <IconComponent size={16} color={iconColor} />
+                      </Flex>
+                      <Box flex={1} minW={0}>
+                        <Text fontWeight="700" fontSize="sm" color={{ base: 'gray.800', _dark: 'white' }} isTruncated>
+                          {c.ifcName || c.callsign}
+                        </Text>
+                        <Text fontSize="xs" color={{ base: 'gray.600', _dark: 'gray.500' }}>{label}</Text>
+                      </Box>
+                      <Text fontWeight="800" fontSize="sm" color={color} flexShrink={0}>
+                        ₹{(c.amount || 0).toLocaleString('en-IN')}
                       </Text>
-                      <Text fontSize="xs" color={{ base: 'gray.600', _dark: 'gray.500' }}>{label}</Text>
-                    </Box>
-                    <HStack gap={1} align="center" flexShrink={0}>
+                    </HStack>
+                    <HStack gap={1} align="center" mt={3}>
                       <FiClock size={11} color="#9ca3af" />
                       <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.600' }}>{timeAgo(c.time)}</Text>
                       {session?.user?.permissions?.length > 0 && c.paymentId && (
-                        <Box as="button" ml={3} py={1} px={3} borderRadius="md" fontSize="12px" fontWeight="700"
+                        <Box as="button" ml="auto" py={1} px={3} borderRadius="md" fontSize="12px" fontWeight="700"
                           border="1px solid" borderColor="#ef4444" color="#ef4444" bg="transparent" cursor="pointer"
                           onClick={async () => {
                             if (!confirm('Reverse this contribution?')) return;
@@ -980,10 +1037,10 @@ export default function ChandaPage() {
                         >Reverse</Box>
                       )}
                     </HStack>
-                  </HStack>
+                  </Box>
                 );
               })}
-            </Grid>
+            </Flex>
           )}
         </Box>
       )}
