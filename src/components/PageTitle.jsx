@@ -9,7 +9,7 @@ const PageTitle = ({ children, as = 'h1', ...rest }) => (
     as={as}
     textTransform="uppercase"
     fontFamily="var(--font-horizon), sans-serif"
-    fontWeight="700"
+    fontWeight="800"
     letterSpacing="0.03em"
     fontSize={{ base: '2xl', md: '3xl' }}
     lineHeight={1.1}

@@ -18,6 +18,7 @@ import { FaChevronDown } from "react-icons/fa";
 import { CgMenuRight } from "react-icons/cg";
 import { IoCloseOutline } from "react-icons/io5";
 import NextImage from "next/image";
+import NextLink from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 const MENU_LINKS = [
@@ -104,7 +105,7 @@ function OperationsMenu({ open, setOpen }) {
                       fontWeight="500"
                       color="gray.800"
                     >
-                      <Link href={item.href}>{item.label}</Link>
+                      <Link as={NextLink} href={item.href}>{item.label}</Link>
                     </Menu.Item>
                   ))}
                 </VStack>
@@ -232,23 +233,23 @@ export function MobileNavMenu() {
             >
               <VStack align="stretch" spacing={2}>
                 {MENU_LINKS.flat().map(item => (
-                  <Link key={item.href} href={item.href} color="gray.300">
+                  <Link as={NextLink} key={item.href} href={item.href} color="gray.300">
                     {item.label}
                   </Link>
                 ))}
               </VStack>
             </Box>
           </Box>
-          <Link color="white" href="/live" fontSize="xl" fontWeight="medium">
+          <Link as={NextLink} color="white" href="/live" fontSize="xl" fontWeight="medium">
             Live
           </Link>
-          <Link color="white" href="/events" fontSize="xl" fontWeight="medium">
+          <Link as={NextLink} color="white" href="/events" fontSize="xl" fontWeight="medium">
             Events
           </Link>
-          <Link color="white" href="/info" fontSize="xl" fontWeight="medium">
+          <Link as={NextLink} color="white" href="/info" fontSize="xl" fontWeight="medium">
             About
           </Link>
-          <Link color="white" href="/apply" fontSize="xl" fontWeight="medium">
+          <Link as={NextLink} color="white" href="/apply" fontSize="xl" fontWeight="medium">
             Apply
           </Link>
         </VStack>
@@ -338,6 +339,7 @@ export default function Navbar() {
             <HStack spacing={2} justify="flex-end" pr="2em">
               <OperationsMenu open={menuOpen} setOpen={setMenuOpen} />
               <Link
+                as={NextLink}
                 href="/live"
                 color="white"
                 fontFamily={fontFamily}
@@ -372,6 +374,7 @@ export default function Navbar() {
           <GridItem>
             <HStack spacing={1} justify="flex-start" pl="2em">
               <Link
+                as={NextLink}
                 href="/events"
                 color="white"
                 fontFamily={fontFamily}
@@ -385,6 +388,7 @@ export default function Navbar() {
                 Events
               </Link>
               <Link
+                as={NextLink}
                 href="/info"
                 color="white"
                 fontFamily={fontFamily}
@@ -401,6 +405,7 @@ export default function Navbar() {
               <Flex ml="auto" align="center">
                 <HStack mr={10}>
                   <Link
+                    as={NextLink}
                     href="/apply"
                     color="white"
                     fontFamily={fontFamily}

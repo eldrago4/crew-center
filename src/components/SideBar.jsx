@@ -13,6 +13,7 @@ import {
   Circle,
 } from '@chakra-ui/react';
 import { useState, useEffect, useRef } from 'react';
+import NextLink from 'next/link';
 import {
   FiUser, FiBookOpen, FiFilePlus, FiMap, FiBriefcase, FiTrendingUp,
   FiCalendar, FiStar, FiAward, FiGlobe, FiBook, FiDatabase, FiTruck,
@@ -20,6 +21,10 @@ import {
 } from 'react-icons/fi';
 import RoleSelectorSegmentGroup from '@/components/RoleSelectorSegmentGroup';
 import { useSidebar } from '@/components/SidebarContext';
+
+// External links (Discord, etc.) should stay as plain <a> hard-navigations;
+// only in-app routes get next/link so navigation doesn't full-page-reload.
+const isExternalHref = (href) => /^https?:\/\//.test(href || '');
 
 const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) => {
 
@@ -162,7 +167,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
           <Box key={idx} position="relative" display="flex" width="100%">
             <Button
               {...desktopButtonProps}
-              as={href && !disabled ? "a" : "button"}
+              as={href && !disabled ? (isExternalHref(href) ? "a" : NextLink) : "button"}
               href={href}
               {...(disabled ? { disabled: true } : {})}
               flex={1}
@@ -208,7 +213,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
             <Box
               key={idx}
               position="relative"
-              as="a"
+              as={!disabled && !isExternalHref(href) ? NextLink : "a"}
               href={!disabled ? href : undefined}
               _hover={{ textDecoration: 'none' }}
               onClick={(e) => { if (disabled) e.preventDefault(); }}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import NextLink from "next/link";
 import {
   VStack,
   HStack,
@@ -43,9 +44,9 @@ const pillFieldProps = {
 
 // Small uppercase caption + control wrapper, sized independently so the
 // filter row can hold pills of varying width instead of a uniform grid.
-function FilterField({ label, width, flex, children }) {
+function FilterField({ label, children, ...rest }) {
   return (
-    <Box width={width} flex={flex} minW={0}>
+    <Box minW={0} {...rest}>
       <Text
         fontSize="2xs"
         fontWeight="700"
@@ -60,6 +61,29 @@ function FilterField({ label, width, flex, children }) {
       {children}
     </Box>
   );
+}
+
+// Native scrollbar styling for the Select dropdown listbox — without this,
+// browsers render a plain white scrollbar track that clashes with dark mode.
+const selectContentScrollbarProps = {
+  css: {
+    colorScheme: { base: "light", _dark: "dark" },
+    "&::-webkit-scrollbar": { width: "8px" },
+    "&::-webkit-scrollbar-track": { background: "transparent" },
+    "&::-webkit-scrollbar-thumb": {
+      background: { base: "#CBD5E0", _dark: "#4A5568" },
+      borderRadius: "4px",
+    },
+    "&::-webkit-scrollbar-thumb:hover": {
+      background: { base: "#A0AEC0", _dark: "#5A6577" },
+    },
+    scrollbarWidth: "thin",
+    scrollbarColor: { base: "#A0AEC0 transparent", _dark: "#4A5568 transparent" },
+  },
+};
+
+function onlyIcaoLetters(value) {
+  return value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 4);
 }
 
 function computeTimeBounds(routes) {
@@ -269,104 +293,106 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
         boxShadow="sm"
         p={{ base: 4, md: 6 }}
       >
-        <Flex wrap="wrap" gap={5} align="flex-end">
-          <FilterField label="Flight Number" width={{ base: "full", sm: "150px" }}>
-            <Input
-              {...pillFieldProps}
-              size="lg"
-              placeholder="e.g. IN101"
-              value={filters.flightNumber}
-              onChange={(e) => setFilters({ ...filters, flightNumber: e.target.value })}
-            />
-          </FilterField>
+        <VStack align="stretch" spacing={5}>
+          {/* Row 1 — text/select filters, flex-wrap so they reflow at any width */}
+          <Flex wrap="wrap" gap={4}>
+            <FilterField label="Flight Number" flex="1 1 130px" minW="110px" maxW={{ base: "full", sm: "200px" }}>
+              <Input
+                {...pillFieldProps}
+                size="lg"
+                placeholder="e.g. IN101"
+                value={filters.flightNumber}
+                onChange={(e) => setFilters({ ...filters, flightNumber: e.target.value.toUpperCase() })}
+              />
+            </FilterField>
 
-          <FilterField label="Departure" width={{ base: "full", sm: "130px" }}>
-            <Input
-              {...pillFieldProps}
-              size="lg"
-              placeholder="ICAO"
-              value={filters.departureIcao}
-              onChange={(e) => setFilters({ ...filters, departureIcao: e.target.value })}
-            />
-          </FilterField>
+            <FilterField label="Departure" flex="1 1 100px" minW="90px" maxW={{ base: "full", sm: "150px" }}>
+              <Input
+                {...pillFieldProps}
+                size="lg"
+                placeholder="ICAO"
+                maxLength={4}
+                value={filters.departureIcao}
+                onChange={(e) => setFilters({ ...filters, departureIcao: onlyIcaoLetters(e.target.value) })}
+              />
+            </FilterField>
 
-          <FilterField label="Arrival" width={{ base: "full", sm: "130px" }}>
-            <Input
-              {...pillFieldProps}
-              size="lg"
-              placeholder="ICAO"
-              value={filters.arrivalIcao}
-              onChange={(e) => setFilters({ ...filters, arrivalIcao: e.target.value })}
-            />
-          </FilterField>
+            <FilterField label="Arrival" flex="1 1 100px" minW="90px" maxW={{ base: "full", sm: "150px" }}>
+              <Input
+                {...pillFieldProps}
+                size="lg"
+                placeholder="ICAO"
+                maxLength={4}
+                value={filters.arrivalIcao}
+                onChange={(e) => setFilters({ ...filters, arrivalIcao: onlyIcaoLetters(e.target.value) })}
+              />
+            </FilterField>
 
-          <FilterField label="Aircraft" width={{ base: "full", sm: "230px" }}>
-            <Select.Root
-              collection={aircraftOptions}
-              value={filters.aircraft ? [ filters.aircraft ] : []}
-              onValueChange={({ value }) => setFilters({ ...filters, aircraft: value[ 0 ] || "" })}
-              size="lg"
-              colorPalette="blue"
-            >
-              <Select.HiddenSelect />
-              <Select.Control>
-                <Select.Trigger {...pillFieldProps} px="5">
-                  <Select.ValueText placeholder="Any aircraft" />
-                </Select.Trigger>
-                <Select.IndicatorGroup pr="4">
-                  <Select.Indicator />
-                  <Select.ClearTrigger />
-                </Select.IndicatorGroup>
-              </Select.Control>
-              <Select.Positioner>
-                <Select.Content borderRadius="xl" boxShadow="lg">
-                  {aircraftOptions.items.map(option => (
-                    <Select.Item item={option} key={option.value}>
-                      {option.label}
-                      <Select.ItemIndicator />
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Positioner>
-            </Select.Root>
-          </FilterField>
+            <FilterField label="Aircraft" flex="2 1 190px" minW="170px" maxW={{ base: "full", sm: "260px" }}>
+              <Select.Root
+                collection={aircraftOptions}
+                value={filters.aircraft ? [ filters.aircraft ] : []}
+                onValueChange={({ value }) => setFilters({ ...filters, aircraft: value[ 0 ] || "" })}
+                size="lg"
+                colorPalette="blue"
+              >
+                <Select.HiddenSelect />
+                <Select.Control>
+                  <Select.Trigger {...pillFieldProps} px="5">
+                    <Select.ValueText placeholder="Any aircraft" />
+                  </Select.Trigger>
+                  <Select.IndicatorGroup pr="4">
+                    <Select.Indicator />
+                    <Select.ClearTrigger />
+                  </Select.IndicatorGroup>
+                </Select.Control>
+                <Select.Positioner>
+                  <Select.Content borderRadius="xl" boxShadow="lg" {...selectContentScrollbarProps}>
+                    {aircraftOptions.items.map(option => (
+                      <Select.Item item={option} key={option.value}>
+                        {option.label}
+                        <Select.ItemIndicator />
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select.Positioner>
+              </Select.Root>
+            </FilterField>
 
-          <FilterField label="Rank" width={{ base: "full", sm: "180px" }}>
-            <Select.Root
-              collection={rankOptions}
-              value={filters.rank ? [ filters.rank ] : []}
-              onValueChange={({ value }) => setFilters({ ...filters, rank: value[ 0 ] || "" })}
-              size="lg"
-              colorPalette="blue"
-            >
-              <Select.HiddenSelect />
-              <Select.Control>
-                <Select.Trigger {...pillFieldProps} px="5">
-                  <Select.ValueText placeholder="Any rank" />
-                </Select.Trigger>
-                <Select.IndicatorGroup pr="4">
-                  <Select.Indicator />
-                  <Select.ClearTrigger />
-                </Select.IndicatorGroup>
-              </Select.Control>
-              <Select.Positioner>
-                <Select.Content borderRadius="xl" boxShadow="lg">
-                  {rankOptions.items.map(option => (
-                    <Select.Item item={option} key={option.value}>
-                      {option.label}
-                      <Select.ItemIndicator />
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Positioner>
-            </Select.Root>
-          </FilterField>
+            <FilterField label="Rank" flex="1 1 150px" minW="130px" maxW={{ base: "full", sm: "220px" }}>
+              <Select.Root
+                collection={rankOptions}
+                value={filters.rank ? [ filters.rank ] : []}
+                onValueChange={({ value }) => setFilters({ ...filters, rank: value[ 0 ] || "" })}
+                size="lg"
+                colorPalette="blue"
+              >
+                <Select.HiddenSelect />
+                <Select.Control>
+                  <Select.Trigger {...pillFieldProps} px="5">
+                    <Select.ValueText placeholder="Any rank" />
+                  </Select.Trigger>
+                  <Select.IndicatorGroup pr="4">
+                    <Select.Indicator />
+                    <Select.ClearTrigger />
+                  </Select.IndicatorGroup>
+                </Select.Control>
+                <Select.Positioner>
+                  <Select.Content borderRadius="xl" boxShadow="lg" {...selectContentScrollbarProps}>
+                    {rankOptions.items.map(option => (
+                      <Select.Item item={option} key={option.value}>
+                        {option.label}
+                        <Select.ItemIndicator />
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select.Positioner>
+              </Select.Root>
+            </FilterField>
+          </Flex>
 
-          <FilterField
-            label="Flight Time"
-            width={{ base: "full", md: "280px" }}
-            flex={{ base: undefined, md: "1" }}
-          >
+          {/* Row 2 — flight time always on its own row, full width, with room to breathe */}
+          <FilterField label="Flight Time" width="full">
             <Box
               {...pillFieldProps}
               borderRadius="2xl"
@@ -406,7 +432,7 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
               </Slider.Root>
             </Box>
           </FilterField>
-        </Flex>
+        </VStack>
       </Box>
 
       {/* Random Route Button */}
@@ -507,7 +533,7 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
                   </HStack>
                   <HStack spacing={2} pt={2}>
                     <Button
-                      as="a"
+                      as={NextLink}
                       href={`/crew/pireps/file?flightNumber=${encodeURIComponent(route.flight_number)}&departureIcao=${route.departure_icao}&arrivalIcao=${route.arrival_icao}&aircraft=${encodeURIComponent(route.aircraft_names.split(',')[ 0 ]?.trim() || '')}`}
                       size="sm"
                       colorPalette="blue"
@@ -517,7 +543,7 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
                       File
                     </Button>
                     <Button
-                      as="a"
+                      as={NextLink}
                       href={fplLink}
                       size="sm"
                       colorPalette="purple"

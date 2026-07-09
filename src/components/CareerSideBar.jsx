@@ -11,6 +11,7 @@ import {
     HStack,
 } from '@chakra-ui/react';
 import { useState, useEffect, useRef } from 'react';
+import NextLink from 'next/link';
 import {
     FiUser, FiBookOpen, FiFilePlus, FiMap, FiBriefcase, FiTrendingUp,
     FiCalendar, FiStar, FiAward, FiGlobe, FiBook
@@ -85,7 +86,7 @@ const CareerSideBar = () => {
                 <Button
                     key={idx}
                     {...desktopButtonProps}
-                    as="a"
+                    as={NextLink}
                     href={href}
                 >
                     {label}
@@ -111,7 +112,7 @@ const CareerSideBar = () => {
                 {buttons.map(({ label, href, icon }, idx) => (
                     <Box
                         key={idx}
-                        as="a"
+                        as={NextLink}
                         href={href}
                         _hover={{ textDecoration: 'none' }}
                     >
