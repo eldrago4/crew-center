@@ -40,3 +40,17 @@ export async function requireCeo() {
 export function isStaff(session) {
   return Boolean(session?.user?.permissions?.includes('staff'));
 }
+
+// Allows either a staff session OR a server-to-server call from the Discord bot
+// authenticated with the shared BOT_API_KEY bearer token. Use for endpoints the
+// bot legitimately calls (e.g. accepting an applicant after a practical test).
+export async function requireStaffOrBot(request) {
+  const botKey = process.env.BOT_API_KEY;
+  const authHeader = request.headers.get('authorization') || '';
+  if (botKey && authHeader === `Bearer ${botKey}`) {
+    return { session: null, isBot: true, error: null };
+  }
+  const { session, error } = await requireStaff();
+  if (error) return { error, session: null, isBot: false };
+  return { session, isBot: false, error: null };
+}

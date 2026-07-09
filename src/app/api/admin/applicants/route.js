@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import db from '@/db/client'
 import { applicants, users } from '@/db/schema'
 import { sql, eq } from 'drizzle-orm'
-import { requireStaff } from '@/lib/apiAuth'
+import { requireStaff, requireStaffOrBot } from '@/lib/apiAuth'
 
 // GET applicants or validate callsign (?validate=INVA042&current=INVA001)
 export async function GET(request) {
@@ -49,9 +49,10 @@ export async function GET(request) {
 }
 
 // POST accept applicant -> create user and delete applicant
+// Callable by staff (admin UI) or the Discord bot (BOT_API_KEY bearer token).
 export async function POST(request) {
     try {
-        const { error } = await requireStaff()
+        const { error } = await requireStaffOrBot(request)
         if (error) return error
 
         const body = await request.json()
