@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   VStack,
   HStack,
+  Flex,
   Input,
   Select,
+  Slider,
   createListCollection,
   Button,
   Text,
@@ -17,11 +19,62 @@ import {
   Center,
   Spinner,
   Alert,
-  Stack,
-  Heading,
   ButtonGroup,
   IconButton
 } from "@chakra-ui/react";
+
+const ACCENT = "#9e0b1f";
+
+// Shared "pill" look for filter inputs/selects — rounded, soft background,
+// accent-colored focus ring instead of Chakra's default palette ring.
+// (size is set separately per element since Select sizes via Select.Root, not Select.Trigger)
+const pillFieldProps = {
+  borderRadius: "full",
+  bg: { base: "gray.50", _dark: "whiteAlpha.50" },
+  borderWidth: "1px",
+  borderColor: { base: "gray.200", _dark: "whiteAlpha.200" },
+  transition: "all 0.15s ease-in-out",
+  _hover: { borderColor: { base: "gray.300", _dark: "whiteAlpha.300" } },
+  _focusVisible: {
+    borderColor: ACCENT,
+    boxShadow: `0 0 0 1px ${ACCENT}`,
+  },
+};
+
+// Small uppercase caption + control wrapper, sized independently so the
+// filter row can hold pills of varying width instead of a uniform grid.
+function FilterField({ label, width, flex, children }) {
+  return (
+    <Box width={width} flex={flex} minW={0}>
+      <Text
+        fontSize="2xs"
+        fontWeight="700"
+        letterSpacing="0.06em"
+        textTransform="uppercase"
+        color={{ base: "gray.500", _dark: "gray.400" }}
+        mb="1.5"
+        pl="4"
+      >
+        {label}
+      </Text>
+      {children}
+    </Box>
+  );
+}
+
+function computeTimeBounds(routes) {
+  if (!routes?.length) return { min: 0, max: 24 };
+  let minH = Infinity;
+  let maxH = 0;
+  routes.forEach((r) => {
+    const totalH = r.flight_time_hours + r.flight_time_minutes / 60;
+    if (totalH < minH) minH = totalH;
+    if (totalH > maxH) maxH = totalH;
+  });
+  const min = Math.floor(minH);
+  const max = Math.max(Math.ceil(maxH), min + 1);
+  return { min, max };
+}
 
 
 // Constants
@@ -119,18 +172,30 @@ function formatTime(h, m) {
 export default function RoutesClient({ initialRoutes, cacheVersion }) {
   const [ data, setData ] = useState(initialRoutes);
   const [ filtered, setFiltered ] = useState(initialRoutes);
-  const [ filters, setFilters ] = useState({
+  const [ filters, setFilters ] = useState(() => ({
     flightNumber: "",
     departureIcao: "",
     arrivalIcao: "",
     aircraft: "",
-    minTime: "",
-    maxTime: "",
+    timeRange: [ computeTimeBounds(initialRoutes).min, computeTimeBounds(initialRoutes).max ],
     rank: "",
-  });
+  }));
   const [ page, setPage ] = useState(1);
   const [ randomRoute, setRandomRoute ] = useState(null);
   const [ loading, setLoading ] = useState(false);
+
+  // Absolute min/max hours across the current dataset — bounds for the slider
+  const timeBounds = useMemo(() => computeTimeBounds(data), [ data ]);
+
+  // A handful of unlabeled tick marks along the track ("steps")
+  const timeMarks = useMemo(() => {
+    const { min, max } = timeBounds;
+    const step = Math.max(1, Math.round((max - min) / 6));
+    const marks = [];
+    for (let v = min; v < max; v += step) marks.push(v);
+    marks.push(max);
+    return marks;
+  }, [ timeBounds ]);
 
   // Update data when initialRoutes changes
   useEffect(() => {
@@ -148,8 +213,8 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
 
     const result = sorted.filter((route) => {
       const totalMinutes = route.flight_time_hours * 60 + route.flight_time_minutes;
-      const minMinutes = (parseInt(filters.minTime) || 0) * 60;
-      const maxMinutes = (parseInt(filters.maxTime) || Infinity) * 60;
+      const minMinutes = filters.timeRange[ 0 ] * 60;
+      const maxMinutes = filters.timeRange[ 1 ] * 60;
 
       const aircraftFilter = filters.aircraft === "" ||
         route.aircraft_names.toLowerCase().includes(filters.aircraft.toLowerCase());
@@ -196,66 +261,65 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
   return (
     <VStack spacing={6} align="stretch">
       {/* Filters */}
-      <Box>
-        <VStack spacing={4} align="stretch">
-          <HStack spacing={4} wrap="wrap">
+      <Box
+        borderRadius="2xl"
+        borderWidth="1px"
+        borderColor={{ base: "gray.200", _dark: "whiteAlpha.200" }}
+        bg={{ base: "white", _dark: "gray.900" }}
+        boxShadow="sm"
+        p={{ base: 4, md: 6 }}
+      >
+        <Flex wrap="wrap" gap={5} align="flex-end">
+          <FilterField label="Flight Number" width={{ base: "full", sm: "150px" }}>
             <Input
-              placeholder="Flight Number"
+              {...pillFieldProps}
+              size="lg"
+              placeholder="e.g. IN101"
               value={filters.flightNumber}
               onChange={(e) => setFilters({ ...filters, flightNumber: e.target.value })}
-              size="md"
             />
+          </FilterField>
+
+          <FilterField label="Departure" width={{ base: "full", sm: "130px" }}>
             <Input
-              placeholder="Departure ICAO"
+              {...pillFieldProps}
+              size="lg"
+              placeholder="ICAO"
               value={filters.departureIcao}
               onChange={(e) => setFilters({ ...filters, departureIcao: e.target.value })}
-              size="md"
             />
+          </FilterField>
+
+          <FilterField label="Arrival" width={{ base: "full", sm: "130px" }}>
             <Input
-              placeholder="Arrival ICAO"
+              {...pillFieldProps}
+              size="lg"
+              placeholder="ICAO"
               value={filters.arrivalIcao}
               onChange={(e) => setFilters({ ...filters, arrivalIcao: e.target.value })}
-              size="md"
             />
-          </HStack>
+          </FilterField>
 
-          <HStack spacing={4} wrap="wrap">
-            <Input
-              placeholder="Min Time (hrs)"
-              value={filters.minTime}
-              onChange={(e) => setFilters({ ...filters, minTime: e.target.value.replace(/\D/g, "") })}
-              size="md"
-            />
-            <Input
-              placeholder="Max Time (hrs)"
-              value={filters.maxTime}
-              onChange={(e) => setFilters({ ...filters, maxTime: e.target.value.replace(/\D/g, "") })}
-              size="md"
-            />
-          </HStack>
-
-          <HStack spacing={4} wrap="wrap">
+          <FilterField label="Aircraft" width={{ base: "full", sm: "230px" }}>
             <Select.Root
               collection={aircraftOptions}
               value={filters.aircraft ? [ filters.aircraft ] : []}
               onValueChange={({ value }) => setFilters({ ...filters, aircraft: value[ 0 ] || "" })}
-              placeholder="Select Aircraft"
-              size="md"
+              size="lg"
               colorPalette="blue"
             >
               <Select.HiddenSelect />
-              <Select.Label>Select Aircraft</Select.Label>
               <Select.Control>
-                <Select.Trigger>
-                  <Select.ValueText placeholder="Select Aircraft" />
+                <Select.Trigger {...pillFieldProps} px="5">
+                  <Select.ValueText placeholder="Any aircraft" />
                 </Select.Trigger>
-                <Select.IndicatorGroup>
+                <Select.IndicatorGroup pr="4">
                   <Select.Indicator />
                   <Select.ClearTrigger />
                 </Select.IndicatorGroup>
               </Select.Control>
               <Select.Positioner>
-                <Select.Content>
+                <Select.Content borderRadius="xl" boxShadow="lg">
                   {aircraftOptions.items.map(option => (
                     <Select.Item item={option} key={option.value}>
                       {option.label}
@@ -265,28 +329,28 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
                 </Select.Content>
               </Select.Positioner>
             </Select.Root>
+          </FilterField>
 
+          <FilterField label="Rank" width={{ base: "full", sm: "180px" }}>
             <Select.Root
               collection={rankOptions}
               value={filters.rank ? [ filters.rank ] : []}
               onValueChange={({ value }) => setFilters({ ...filters, rank: value[ 0 ] || "" })}
-              placeholder="Select Rank"
-              size="md"
+              size="lg"
               colorPalette="blue"
             >
               <Select.HiddenSelect />
-              <Select.Label>Select Rank</Select.Label>
               <Select.Control>
-                <Select.Trigger>
-                  <Select.ValueText placeholder="Select Rank" />
+                <Select.Trigger {...pillFieldProps} px="5">
+                  <Select.ValueText placeholder="Any rank" />
                 </Select.Trigger>
-                <Select.IndicatorGroup>
+                <Select.IndicatorGroup pr="4">
                   <Select.Indicator />
                   <Select.ClearTrigger />
                 </Select.IndicatorGroup>
               </Select.Control>
               <Select.Positioner>
-                <Select.Content>
+                <Select.Content borderRadius="xl" boxShadow="lg">
                   {rankOptions.items.map(option => (
                     <Select.Item item={option} key={option.value}>
                       {option.label}
@@ -296,26 +360,71 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
                 </Select.Content>
               </Select.Positioner>
             </Select.Root>
-          </HStack>
-        </VStack>
+          </FilterField>
+
+          <FilterField
+            label="Flight Time"
+            width={{ base: "full", md: "280px" }}
+            flex={{ base: undefined, md: "1" }}
+          >
+            <Box
+              {...pillFieldProps}
+              borderRadius="2xl"
+              px="5"
+              py="2.5"
+              _focusVisible={undefined}
+              _hover={undefined}
+            >
+              <HStack justify="space-between" mb="1">
+                <Text fontSize="xs" fontWeight="600" color={{ base: "gray.700", _dark: "gray.200" }}>
+                  {filters.timeRange[ 0 ]}h – {filters.timeRange[ 1 ]}h
+                </Text>
+              </HStack>
+              <Slider.Root
+                value={filters.timeRange}
+                onValueChange={({ value }) => setFilters({ ...filters, timeRange: value })}
+                min={timeBounds.min}
+                max={timeBounds.max}
+                step={1}
+                minStepsBetweenThumbs={1}
+              >
+                <Slider.Control>
+                  <Slider.Track bg={{ base: "gray.200", _dark: "whiteAlpha.200" }}>
+                    <Slider.Range bg={ACCENT} />
+                  </Slider.Track>
+                  <Slider.Thumbs
+                    borderColor={ACCENT}
+                    bg="white"
+                    borderWidth="2px"
+                    boxShadow="sm"
+                  />
+                </Slider.Control>
+                <Slider.Marks
+                  marks={timeMarks}
+                  color={{ base: "gray.400", _dark: "gray.500" }}
+                />
+              </Slider.Root>
+            </Box>
+          </FilterField>
+        </Flex>
       </Box>
 
       {/* Random Route Button */}
       <Box>
-        <Button onClick={handleRandomRoute} colorPalette="blue" variant="solid">
+        <Button onClick={handleRandomRoute} colorPalette="blue" variant="solid" borderRadius="full">
           🎲 Random Route
         </Button>
       </Box>
 
       {/* Random Route Display */}
       {randomRoute && (
-        <Card.Root variant="outline" colorPalette="green">
+        <Card.Root variant="outline" colorPalette="green" borderRadius="2xl">
           <Card.Header pb={2}>
             <HStack justifyContent="space-between">
               <Text fontWeight="bold" fontSize="lg">
                 #{randomRoute.flight_number}
               </Text>
-              <Badge colorPalette="green" variant="solid">
+              <Badge colorPalette="green" variant="solid" borderRadius="full" px="3">
                 {formatTime(randomRoute.flight_time_hours, randomRoute.flight_time_minutes)}
               </Badge>
             </HStack>
@@ -370,13 +479,14 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
               colorPalette="blue"
               width="100%"
               height="100%"
+              borderRadius="2xl"
             >
               <Card.Header pb={2}>
                 <HStack justifyContent="space-between">
                   <Text fontWeight="bold" fontSize="lg">
                     #{route.flight_number}
                   </Text>
-                  <Badge colorPalette="blue" variant="solid">
+                  <Badge colorPalette="blue" variant="solid" borderRadius="full" px="3">
                     {formatTime(route.flight_time_hours, route.flight_time_minutes)}
                   </Badge>
                 </HStack>
@@ -402,6 +512,7 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
                       size="sm"
                       colorPalette="blue"
                       variant="solid"
+                      borderRadius="full"
                     >
                       File
                     </Button>
@@ -411,6 +522,7 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
                       size="sm"
                       colorPalette="purple"
                       variant="outline"
+                      borderRadius="full"
                     >
                       FPL
                     </Button>
@@ -433,19 +545,19 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
           >
             <ButtonGroup variant="outline" size="sm">
               <Pagination.PrevTrigger asChild>
-                <IconButton>
+                <IconButton borderRadius="full">
                   &lt;
                 </IconButton>
               </Pagination.PrevTrigger>
               <Pagination.Items
                 render={(page) => (
-                  <IconButton variant={{ base: "outline", _selected: "solid" }}>
+                  <IconButton borderRadius="full" variant={{ base: "outline", _selected: "solid" }}>
                     {page.value}
                   </IconButton>
                 )}
               />
               <Pagination.NextTrigger asChild>
-                <IconButton>
+                <IconButton borderRadius="full">
                   &gt;
                 </IconButton>
               </Pagination.NextTrigger>

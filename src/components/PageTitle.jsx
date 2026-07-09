@@ -2,14 +2,14 @@
 
 import { Heading } from '@chakra-ui/react';
 
-// Bold, condensed, all-caps page title used at the top of every crew-center
-// page (Logbook, Leaderboard, Events, ...) for a heavy "horizon"-style look.
+// Bold, all-caps page title used at the top of every crew-center page
+// (Logbook, Leaderboard, Events, ...), set in the Horizon display font.
 const PageTitle = ({ children, as = 'h1', ...rest }) => (
   <Heading
     as={as}
     textTransform="uppercase"
-    fontFamily="'Montserrat', sans-serif"
-    fontWeight="900"
+    fontFamily="var(--font-horizon), sans-serif"
+    fontWeight="700"
     letterSpacing="0.03em"
     fontSize={{ base: '2xl', md: '3xl' }}
     lineHeight={1.1}
