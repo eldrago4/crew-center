@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import NextLink from "next/link";
+import { useSession } from "next-auth/react";
 import {
   VStack,
   HStack,
@@ -21,8 +22,14 @@ import {
   Spinner,
   Alert,
   ButtonGroup,
-  IconButton
+  IconButton,
+  Dialog,
+  Field,
+  Portal,
+  CloseButton,
 } from "@chakra-ui/react";
+import { FiSend } from "react-icons/fi";
+import { Toaster, toaster } from "@/components/ui/toaster";
 
 const ACCENT = "#9e0b1f";
 
@@ -84,6 +91,25 @@ const selectContentScrollbarProps = {
 
 function onlyIcaoLetters(value) {
   return value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 4);
+}
+
+function onlyFlightNumberChars(value) {
+  return value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 8);
+}
+
+// Masks free typing into HH:MM as digits are entered (e.g. "345" -> "03:45")
+function formatFlightTimeInput(value) {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+
+function isValidFlightTime(value) {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return false;
+  const hours = Number(match[ 1 ]);
+  const minutes = Number(match[ 2 ]);
+  return hours <= 23 && minutes <= 59;
 }
 
 function computeTimeBounds(routes) {
@@ -193,7 +219,10 @@ function formatTime(h, m) {
   return `${h}:${m.toString().padStart(2, "0")}`;
 }
 
+const EMPTY_ROUTE_REQUEST = { flightNumber: "", departureIcao: "", arrivalIcao: "", flightTime: "", aircraft: "" };
+
 export default function RoutesClient({ initialRoutes, cacheVersion }) {
+  const { data: session } = useSession();
   const [ data, setData ] = useState(initialRoutes);
   const [ filtered, setFiltered ] = useState(initialRoutes);
   const [ filters, setFilters ] = useState(() => ({
@@ -207,6 +236,45 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
   const [ page, setPage ] = useState(1);
   const [ randomRoute, setRandomRoute ] = useState(null);
   const [ loading, setLoading ] = useState(false);
+
+  const [ isRequestOpen, setRequestOpen ] = useState(false);
+  const [ requestForm, setRequestForm ] = useState(EMPTY_ROUTE_REQUEST);
+  const [ submittingRequest, setSubmittingRequest ] = useState(false);
+
+  const isRequestValid = Boolean(
+    requestForm.flightNumber &&
+    requestForm.departureIcao.length === 4 &&
+    requestForm.arrivalIcao.length === 4 &&
+    isValidFlightTime(requestForm.flightTime) &&
+    requestForm.aircraft
+  );
+
+  const handleSubmitRequest = async () => {
+    if (!isRequestValid || submittingRequest) return;
+    setSubmittingRequest(true);
+    try {
+      const res = await fetch("/api/routes/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...requestForm,
+          ifcName: session?.user?.ifcName,
+          callsign: session?.user?.callsign,
+          discordId: session?.user?.discordId,
+        }),
+      });
+      const responseData = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(responseData.error || "Failed to submit request");
+
+      toaster.create({ title: "Route request sent", description: "Staff will review it shortly.", type: "success" });
+      setRequestForm(EMPTY_ROUTE_REQUEST);
+      setRequestOpen(false);
+    } catch (err) {
+      toaster.create({ title: "Couldn't send request", description: err.message, type: "error" });
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
 
   // Absolute min/max hours across the current dataset — bounds for the slider
   const timeBounds = useMemo(() => computeTimeBounds(data), [ data ]);
@@ -284,6 +352,7 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
 
   return (
     <VStack spacing={6} align="stretch">
+      <Toaster />
       {/* Filters */}
       <Box
         borderRadius="2xl"
@@ -435,12 +504,147 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
         </VStack>
       </Box>
 
-      {/* Random Route Button */}
-      <Box>
+      {/* Random Route + Request Route Buttons */}
+      <HStack spacing={3} wrap="wrap">
         <Button onClick={handleRandomRoute} colorPalette="blue" variant="solid" borderRadius="full">
           🎲 Random Route
         </Button>
-      </Box>
+        <Button
+          onClick={() => setRequestOpen(true)}
+          variant="ghost"
+          colorPalette="gray"
+          borderRadius="full"
+        >
+          <FiSend /> Request Route
+        </Button>
+      </HStack>
+
+      {/* Request Route Dialog */}
+      <Dialog.Root open={isRequestOpen} onOpenChange={(e) => setRequestOpen(e.open)}>
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content borderRadius="2xl">
+              <Dialog.Header>
+                <Dialog.Title>Request a Route</Dialog.Title>
+                <Dialog.CloseTrigger asChild position="absolute" top="4" right="4">
+                  <CloseButton size="sm" />
+                </Dialog.CloseTrigger>
+              </Dialog.Header>
+              <Dialog.Body>
+                <VStack align="stretch" spacing={4}>
+                  <Text fontSize="xs" color={{ base: "gray.500", _dark: "gray.500" }}>
+                    Only request flight numbers that aren&apos;t already in the system — don&apos;t submit a duplicate
+                    route (same operator, same city pair) under a different flight number. Aircraft updates for
+                    existing routes should be requested in the Discord channel instead.
+                  </Text>
+                  <Field.Root required>
+                    <Field.Label>Flight Number <Field.RequiredIndicator /></Field.Label>
+                    <Input
+                      {...pillFieldProps}
+                      borderRadius="lg"
+                      placeholder="e.g. IN101"
+                      value={requestForm.flightNumber}
+                      onChange={(e) => setRequestForm({ ...requestForm, flightNumber: onlyFlightNumberChars(e.target.value) })}
+                    />
+                  </Field.Root>
+
+                  <HStack spacing={4} align="flex-start">
+                    <Field.Root required flex={1}>
+                      <Field.Label>Departure ICAO <Field.RequiredIndicator /></Field.Label>
+                      <Input
+                        {...pillFieldProps}
+                        borderRadius="lg"
+                        placeholder="ICAO"
+                        maxLength={4}
+                        value={requestForm.departureIcao}
+                        onChange={(e) => setRequestForm({ ...requestForm, departureIcao: onlyIcaoLetters(e.target.value) })}
+                      />
+                    </Field.Root>
+                    <Field.Root required flex={1}>
+                      <Field.Label>Arrival ICAO <Field.RequiredIndicator /></Field.Label>
+                      <Input
+                        {...pillFieldProps}
+                        borderRadius="lg"
+                        placeholder="ICAO"
+                        maxLength={4}
+                        value={requestForm.arrivalIcao}
+                        onChange={(e) => setRequestForm({ ...requestForm, arrivalIcao: onlyIcaoLetters(e.target.value) })}
+                      />
+                    </Field.Root>
+                  </HStack>
+
+                  <HStack spacing={4} align="flex-start">
+                    <Field.Root
+                      required
+                      flex={1}
+                      invalid={requestForm.flightTime.length > 0 && !isValidFlightTime(requestForm.flightTime)}
+                    >
+                      <Field.Label>Flight Time (HH:MM) <Field.RequiredIndicator /></Field.Label>
+                      <Input
+                        {...pillFieldProps}
+                        borderRadius="lg"
+                        placeholder="HH:MM"
+                        maxLength={5}
+                        value={requestForm.flightTime}
+                        onChange={(e) => setRequestForm({ ...requestForm, flightTime: formatFlightTimeInput(e.target.value) })}
+                      />
+                      {requestForm.flightTime.length > 0 && !isValidFlightTime(requestForm.flightTime) && (
+                        <Field.ErrorText>Must be a valid 24h time, e.g. 03:45</Field.ErrorText>
+                      )}
+                    </Field.Root>
+
+                    <Field.Root required flex={1}>
+                      <Field.Label>Aircraft <Field.RequiredIndicator /></Field.Label>
+                      <Select.Root
+                        collection={aircraftOptions}
+                        value={requestForm.aircraft ? [ requestForm.aircraft ] : []}
+                        onValueChange={({ value }) => setRequestForm({ ...requestForm, aircraft: value[ 0 ] || "" })}
+                        size="md"
+                      >
+                        <Select.HiddenSelect />
+                        <Select.Control>
+                          <Select.Trigger>
+                            <Select.ValueText placeholder="Select aircraft" />
+                          </Select.Trigger>
+                          <Select.IndicatorGroup>
+                            <Select.Indicator />
+                          </Select.IndicatorGroup>
+                        </Select.Control>
+                        <Select.Positioner>
+                          <Select.Content>
+                            {aircraftOptions.items.map(option => (
+                              <Select.Item item={option} key={option.value}>
+                                {option.label}
+                                <Select.ItemIndicator />
+                              </Select.Item>
+                            ))}
+                          </Select.Content>
+                        </Select.Positioner>
+                      </Select.Root>
+                    </Field.Root>
+                  </HStack>
+                </VStack>
+              </Dialog.Body>
+              <Dialog.Footer>
+                <ButtonGroup>
+                  <Dialog.CloseTrigger asChild>
+                    <Button variant="ghost">Cancel</Button>
+                  </Dialog.CloseTrigger>
+                  <Button
+                    colorPalette="blue"
+                    onClick={handleSubmitRequest}
+                    loading={submittingRequest}
+                    disabled={!isRequestValid}
+                  >
+                    Submit Request
+                  </Button>
+                </ButtonGroup>
+              </Dialog.Footer>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
 
       {/* Random Route Display */}
       {randomRoute && (

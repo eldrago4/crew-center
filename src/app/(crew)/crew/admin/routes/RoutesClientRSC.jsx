@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import AircraftSelect from '@/components/admin/AircraftSelect';
 import {
-    Box, Button, ButtonGroup, Center, Checkbox, Container, CloseButton, Dialog, HStack, Heading, Input, InputGroup, Portal, Select, Spinner, Stack, Text, createListCollection, Field, Pagination, Table,
+    Box, Button, ButtonGroup, Badge, Center, Checkbox, Container, CloseButton, Dialog, HStack, Heading, Input, InputGroup, Portal, Select, Spinner, Stack, Text, createListCollection, Field, Pagination, Table,
 } from '@chakra-ui/react';
 import { FiPlus, FiSearch } from 'react-icons/fi';
 import { Toaster, toaster } from '@/components/ui/toaster';
@@ -241,6 +241,9 @@ export default function AdminRoutesClient({ initialFleet }) {
     };
     const [ routes, setRoutes ] = useState([]);
     const [ loading, setLoading ] = useState(true);
+    const [ routeRequests, setRouteRequests ] = useState([]);
+    const [ loadingRequests, setLoadingRequests ] = useState(true);
+    const [ decidingRequestId, setDecidingRequestId ] = useState(null);
     const [ isDialogOpen, setDialogOpen ] = useState(false);
     const [ filterType, setFilterType ] = useState('flightNumber');
     const [ searchTerm, setSearchTerm ] = useState('');
@@ -268,6 +271,51 @@ export default function AdminRoutesClient({ initialFleet }) {
         }
         fetchRoutes();
     }, []);
+
+    useEffect(() => {
+        async function fetchRequests() {
+            setLoadingRequests(true);
+            try {
+                const res = await fetch('/api/routes/requests');
+                if (!res.ok) throw new Error('Failed to fetch route requests');
+                const data = await res.json();
+                setRouteRequests(Array.isArray(data) ? data : []);
+            } catch (err) {
+                setRouteRequests([]);
+            } finally {
+                setLoadingRequests(false);
+            }
+        }
+        fetchRequests();
+    }, []);
+
+    // Accept or reject a pending route request
+    const handleDecideRequest = async (request, action) => {
+        setDecidingRequestId(request.id);
+        try {
+            const res = await fetch('/api/routes/requests', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: request.id, action }),
+            });
+            const responseData = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(responseData.error || `Failed to ${action} request`);
+
+            setRouteRequests(prev => prev.filter(r => r.id !== request.id));
+            if (action === 'accept' && responseData.route) {
+                setRoutes(prev => [ responseData.route, ...prev ].sort((a, b) => b.flightNumber.localeCompare(a.flightNumber)));
+            }
+            toaster.create({
+                title: action === 'accept' ? 'Route added' : 'Request rejected',
+                description: `${request.flightNumber} — ${request.departureIcao} to ${request.arrivalIcao}`,
+                type: 'success',
+            });
+        } catch (err) {
+            toaster.create({ title: 'Error', description: err.message, type: 'error' });
+        } finally {
+            setDecidingRequestId(null);
+        }
+    };
 
     // Filtering logic
     const filteredRoutes = useMemo(() => {
@@ -302,6 +350,59 @@ export default function AdminRoutesClient({ initialFleet }) {
                     <Container maxW="7xl">
                         <Stack spacing={6} align="stretch">
                             <Heading size="xl" color="gray.800" _dark={{ color: "white" }}>Route Management</Heading>
+
+                            {!loadingRequests && routeRequests.length > 0 && (
+                                <Box bg="white" _dark={{ bg: "gray.800", borderColor: "orange.700" }} rounded="md" shadow="sm" borderWidth="1px" borderColor="orange.200" overflow="hidden">
+                                    <HStack justify="space-between" px={4} py={3} borderBottomWidth="1px" borderColor="gray.200" _dark={{ borderColor: 'gray.700' }}>
+                                        <Heading size="md" color="gray.800" _dark={{ color: 'white' }}>Route Requests</Heading>
+                                        <Badge colorPalette="orange">{routeRequests.length} pending</Badge>
+                                    </HStack>
+                                    <Table.ScrollArea>
+                                        <Table.Root variant="simple">
+                                            <Table.Header bg="gray.100" _dark={{ bg: "gray.700" }}>
+                                                <Table.Row>
+                                                    <Table.ColumnHeader>Requested By</Table.ColumnHeader>
+                                                    <Table.ColumnHeader>Flight Number</Table.ColumnHeader>
+                                                    <Table.ColumnHeader>Departure</Table.ColumnHeader>
+                                                    <Table.ColumnHeader>Arrival</Table.ColumnHeader>
+                                                    <Table.ColumnHeader>Flight Time</Table.ColumnHeader>
+                                                    <Table.ColumnHeader>Aircraft</Table.ColumnHeader>
+                                                    <Table.ColumnHeader>Actions</Table.ColumnHeader>
+                                                </Table.Row>
+                                            </Table.Header>
+                                            <Table.Body>
+                                                {routeRequests.map((req) => (
+                                                    <Table.Row key={req.id}>
+                                                        <Table.Cell>{req.ifcName || req.callsign || 'Anonymous'}</Table.Cell>
+                                                        <Table.Cell fontWeight="medium">{req.flightNumber}</Table.Cell>
+                                                        <Table.Cell>{req.departureIcao}</Table.Cell>
+                                                        <Table.Cell>{req.arrivalIcao}</Table.Cell>
+                                                        <Table.Cell>{req.flightTime}</Table.Cell>
+                                                        <Table.Cell>{formatAircraft(req.aircraft)}</Table.Cell>
+                                                        <Table.Cell>
+                                                            <Button
+                                                                size="xs"
+                                                                colorPalette="green"
+                                                                mr={2}
+                                                                loading={decidingRequestId === req.id}
+                                                                onClick={() => handleDecideRequest(req, 'accept')}
+                                                            >Accept</Button>
+                                                            <Button
+                                                                size="xs"
+                                                                colorPalette="red"
+                                                                variant="outline"
+                                                                loading={decidingRequestId === req.id}
+                                                                onClick={() => handleDecideRequest(req, 'reject')}
+                                                            >Reject</Button>
+                                                        </Table.Cell>
+                                                    </Table.Row>
+                                                ))}
+                                            </Table.Body>
+                                        </Table.Root>
+                                    </Table.ScrollArea>
+                                </Box>
+                            )}
+
                             <HStack justify="space-between" wrap="wrap" gap={4}>
                                 <HStack flex="1" gap={4} wrap="wrap">
                                     {selectedRoutes.length > 0 && (
