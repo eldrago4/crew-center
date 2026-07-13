@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '../../../../auth';
+import { auth, unstable_update } from '../../../../auth';
 import { db as firebaseDb } from '../../../../lib/firebase';
 import db from '../../../../db/client';
 import { users } from '../../../../db/schema';
@@ -36,6 +36,9 @@ export async function POST(request) {
                     .update(users)
                     .set({ careerMode: true })
                     .where(eq(users.id, callsign));
+                // The session caches careerMode in the JWT; force a refresh so
+                // the career layout redirect works immediately, not after TTL.
+                await unstable_update({ user: { careerMode: true } }).catch(() => {});
             }
             return NextResponse.json({ enrolled: true });
         }

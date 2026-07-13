@@ -37,13 +37,17 @@ export async function getApplicantsData() {
 }
 
 let cachedStaff = null;
+let cachedStaffAt = 0;
+const STAFF_CACHE_TTL_MS = 10 * 60 * 1000; // re-read Redis so staff changes propagate across warm instances
+
 export async function getStaff() {
-  if (cachedStaff) {
+  if (cachedStaff && (Date.now() - cachedStaffAt) < STAFF_CACHE_TTL_MS) {
     return cachedStaff;
   }
   try {
     const data = await redis.json.get('staff');
     cachedStaff = data;
+    cachedStaffAt = Date.now();
     return data;
   } catch (error) {
     console.error('Error fetching staff from Redis:', error);
