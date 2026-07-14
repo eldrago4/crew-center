@@ -1,12 +1,8 @@
 {
-    "crons": [
-        {
-            "path": "/api/leaderboard/cron",
-            "schedule": "0 0 * * *"
-        },
-        {
-            "path": "/api/badges/cron",
-            "schedule": "0 0 1 * *"
-        }
-    ]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "cloudflare": false
+    }
+  }
 }
