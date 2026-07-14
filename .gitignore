@@ -62,3 +62,4 @@ INVA_Flight_Tracker
 # cloudflare / opennext build output
 .open-next
 .wrangler
+.dev.vars

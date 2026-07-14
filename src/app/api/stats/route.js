@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
 import db from '@/db/client'
-import { db as fireDb } from '@/lib/firebase'
-import admin from 'firebase-admin'
+import { db as fireDb, Timestamp } from '@/lib/firebase'
 import { Redis } from '@upstash/redis'
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -111,8 +110,8 @@ async function getCrewCenterStats(year, month) {
 
 // ── Career Mode Statistics (Firebase) ───────────────────────
 async function getCareerModeStats(monthStart, monthEnd) {
-    const tsStart = admin.firestore.Timestamp.fromDate(monthStart)
-    const tsEnd = admin.firestore.Timestamp.fromDate(monthEnd)
+    const tsStart = Timestamp.fromDate(monthStart)
+    const tsEnd = Timestamp.fromDate(monthEnd)
 
     const flightsSnap = await fireDb.collection('flights')
         .where('approvedAt', '>=', tsStart)

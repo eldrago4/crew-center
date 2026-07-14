@@ -3,15 +3,12 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: [ "@chakra-ui/react" ],
   },
-  // jose (via firebase-admin -> jwks-rsa) maps the workerd/worker/browser export
-  // conditions to dist/browser, but Next traces the package under Node semantics
-  // and only copies dist/node. The Workers bundler then can't resolve it. Force
-  // the whole dist in so every export condition has a file to point at.
+  // jose maps the workerd/worker/browser export conditions to dist/browser, but
+  // Next traces the package under Node semantics and only copies dist/node, so
+  // the Workers bundler can't resolve it. Force the whole dist in so every
+  // export condition has a file to point at.
   outputFileTracingIncludes: {
-    '/api/**/*': [
-      './node_modules/jose/dist/**/*',
-      './node_modules/jwks-rsa/node_modules/jose/dist/**/*',
-    ],
+    '/api/**/*': ['./node_modules/jose/dist/**/*'],
   },
   images: {
     remotePatterns: [
