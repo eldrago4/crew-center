@@ -11,7 +11,7 @@
   ],
   "vars": {
     // NextAuth only auto-trusts the request host on Vercel. Without this,
-    // every auth call on Workers fails with UntrustedHost and login breaks.
+    // every auth call on Workers fails with UntrustedHost and login bbreaks.
     "AUTH_TRUST_HOST": "true"
   },
   "assets": {
