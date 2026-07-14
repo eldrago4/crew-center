@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "crew-center",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-07-14",
+  // nodejs_compat is required: firebase-admin, drizzle and the Neon driver all
+  // reach for Node built-ins. enable_nodejs_process_v2 keeps process.env working.
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
