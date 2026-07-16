@@ -79,21 +79,6 @@ export default function RootLayout({ children }) {
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `
-                        (function() {
-                          try {
-                            // The public site is always light. The root layout's script runs
-                            // first and applies the visitor's OS preference, which is right for
-                            // /crew but left these pages with dark text panels on a light green
-                            // background. Undo it here; /crew keeps its own colour mode.
-                            document.documentElement.classList.remove('dark');
-                          } catch (e) {}
-                        })();
-                      `,
-                    }}
-                />
             </head>
             <body>
                 <ChakraProvider>
