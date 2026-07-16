@@ -9,6 +9,7 @@ import ApplicationForm from '@/components/ApplicationForm';
 import WrittenTest from '@/components/WrittenTest';
 import ResultsDisplay from '@/components/ResultsDisplay';
 import ErrorDialog from '@/components/ErrorDialog';
+import NeedHelp from '@/components/apply/NeedHelp';
 
 export default function ApplyPage() {
     const { state, questions, ...handlers } = useApplicationProcess();
@@ -76,6 +77,14 @@ export default function ApplyPage() {
                         <Box as="section" w="full" py="8" px={{ base: '4', lg: '8' }}>
                             <Box maxW="4xl" mx="auto">
                                 {renderCurrentStep()}
+                            </Box>
+                        </Box>
+
+                        {/* Kept on every step: whatever an applicant gets stuck on, the
+                            way to reach a human is at the bottom of the page. */}
+                        <Box as="section" w="full" pb="16" pt="4" px={{ base: '4', lg: '8' }}>
+                            <Box maxW="4xl" mx="auto">
+                                <NeedHelp />
                             </Box>
                         </Box>
                 </Box>

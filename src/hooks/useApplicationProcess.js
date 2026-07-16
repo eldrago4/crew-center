@@ -56,7 +56,10 @@ const initialState = {
 // closed tab, or a trip through the Discord OAuth window doesn't drop them back at
 // step 1. Only the post-pass screen is restored: the test itself draws a fresh set
 // of 10 questions on every load, so stored answers would no longer line up.
-const PROGRESS_KEY = 'applyProgress';
+// v2 deliberately abandons any v1 entry: those could hold discordLinked: true from
+// a bug where merely having a Discord session (a crew login, say) counted as the
+// applicant having linked, which skipped callsign selection entirely.
+const PROGRESS_KEY = 'inva-apply-progress-v2';
 const PROGRESS_TTL = 7 * 24 * 60 * 60 * 1000;
 
 function loadProgress() {
