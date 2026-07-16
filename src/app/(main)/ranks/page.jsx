@@ -85,7 +85,7 @@ const ranks = [
         cardBg: 'linear-gradient(135deg, #fde68a 0%, #fef3c7 50%, #fde68a 100%)',
         icon: '🛡️',
         accent: '#d97706',
-        aircraft: ['AIRBUS A380'],
+        aircraft: ['A35K', 'AIRBUS A380'],
         badge: { label: 'LEGENDARY', bg: AMBER, color: '#fff' },
         club: {
             name: 'Akasharatha Club',
