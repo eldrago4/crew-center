@@ -2,7 +2,7 @@
 import { Input, InputGroup, Field, Text, Box } from "@chakra-ui/react";
 import { DarkMode } from "./ui/color-mode";
 
-// status: 'idle' | 'checking' | 'available' | 'taken'
+// status: 'idle' | 'checking' | 'available' | 'taken' | 'error'
 export default function CallsignInput({ value, onChange, status = 'idle', label = 'Login', ...rest }) {
   const handleChange = (e) => {
     const digits = e.target.value.replace(/\D/g, "").slice(0, 3);
@@ -12,8 +12,9 @@ export default function CallsignInput({ value, onChange, status = 'idle', label 
   const isTaken    = status === 'taken';
   const isAvailable = status === 'available';
   const isChecking  = status === 'checking';
+  const isError     = status === 'error';
 
-  const borderColor = isTaken ? 'red.500' : isAvailable ? 'green.500' : 'gray.700';
+  const borderColor = isTaken || isError ? 'red.500' : isAvailable ? 'green.500' : 'gray.700';
   const borderWidth = isTaken ? '2px' : '1px';
   const focusShadow = isTaken
     ? '0 0 0 3px rgba(229,62,62,0.4)'
@@ -23,7 +24,7 @@ export default function CallsignInput({ value, onChange, status = 'idle', label 
 
   return (
     <DarkMode>
-      <Field.Root invalid={isTaken} mb={3}>
+      <Field.Root invalid={isTaken || isError} mb={3}>
         <Field.Label>{label}</Field.Label>
         <InputGroup roundedLeft="sm" startAddon="INVA" bgColor="gray.900" color="fg">
           <Input
@@ -75,6 +76,12 @@ export default function CallsignInput({ value, onChange, status = 'idle', label 
         {isChecking && (
           <Text color="whiteAlpha.500" fontSize="sm" mt={1}>
             Checking availability…
+          </Text>
+        )}
+
+        {isError && (
+          <Text color="red.400" fontSize="sm" mt={1} fontWeight="medium">
+            Couldn’t check this callsign — check your connection and try again.
           </Text>
         )}
 

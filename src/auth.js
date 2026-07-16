@@ -113,15 +113,39 @@ const { handlers, signIn, signOut, auth: uncachedAuth, unstable_update } = NextA
       if (!callsign) return false;
 
       if (isApplicant) {
-        await db.insert(applicants).values({
-          id: callsign,
-          ifcName: ifcName,
-          discordId: account.providerAccountId,
-          passedAt: new Date(),
-        });
+        const applicantDiscordId = account.providerAccountId;
 
+        // An unhandled insert here used to throw out of the callback, which sent the
+        // applicant to pages.error (/crew) with no way back. Re-authing with the same
+        // account is now a no-op, and the insert-then-read settles the race between
+        // two applicants claiming the same number at once.
         try {
-          await fetch(`https://discord.com/api/v10/guilds/${process.env.DISCORD_GUILD_ID}/members/${account.providerAccountId}`, {
+          await db.insert(applicants).values({
+            id: callsign,
+            ifcName: ifcName,
+            discordId: applicantDiscordId,
+            passedAt: new Date(),
+          }).onConflictDoNothing();
+
+          const [ row ] = await db
+            .select({ discordId: applicants.discordId })
+            .from(applicants)
+            .where(eq(applicants.id, callsign))
+            .limit(1);
+
+          if (!row || String(row.discordId) !== String(applicantDiscordId)) {
+            return '/apply?error=callsign-taken';
+          }
+        } catch (e) {
+          console.error('[AUTH] Failed to record applicant:', e);
+          return '/apply?error=server';
+        }
+
+        // Non-fatal: the applicant row is already saved, and the apply screen falls
+        // back to a plain invite link. 201 = added, 204 = already a member. fetch only
+        // rejects on network errors, so a rejected join needs an explicit status check.
+        try {
+          const res = await fetch(`https://discord.com/api/v10/guilds/${process.env.DISCORD_GUILD_ID}/members/${applicantDiscordId}`, {
             method: 'PUT',
             headers: {
               Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
@@ -129,12 +153,15 @@ const { handlers, signIn, signOut, auth: uncachedAuth, unstable_update } = NextA
             },
             body: JSON.stringify({ access_token: account.access_token }),
           });
+          if (!res.ok) {
+            console.error(`[AUTH] Guild join rejected for ${callsign} (${res.status}):`, await res.text());
+          }
         } catch (e) {
           console.error('[AUTH] Failed to add applicant to guild:', e);
         }
 
         user.callsign = callsign;
-        user.discordId = account.providerAccountId;
+        user.discordId = applicantDiscordId;
         user.isApplicant = true;
         return true;
       }

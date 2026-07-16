@@ -48,13 +48,48 @@ const initialState = {
     callsign: '',
     answers: {},
     testResult: null,
+    discordLinked: false,
 };
+
+// A passed applicant still has to pick a callsign and join Discord, which can take
+// more than one sitting. Their progress is kept in localStorage so a refresh, a
+// closed tab, or a trip through the Discord OAuth window doesn't drop them back at
+// step 1. Only the post-pass screen is restored: the test itself draws a fresh set
+// of 10 questions on every load, so stored answers would no longer line up.
+const PROGRESS_KEY = 'applyProgress';
+const PROGRESS_TTL = 7 * 24 * 60 * 60 * 1000;
+
+function loadProgress() {
+    try {
+        const raw = localStorage.getItem(PROGRESS_KEY);
+        if (!raw) return null;
+        const saved = JSON.parse(raw);
+        if (!saved?.testResult?.passed) return null;
+        if (Date.now() - saved.timestamp > PROGRESS_TTL) {
+            localStorage.removeItem(PROGRESS_KEY);
+            return null;
+        }
+        return {
+            step: 3,
+            formData: { ...initialState.formData, ...saved.formData },
+            callsign: saved.callsign ?? '',
+            testResult: saved.testResult,
+            discordLinked: Boolean(saved.discordLinked),
+        };
+    } catch {
+        return null;
+    }
+}
 
 // The reducer function manages all state transitions in a predictable way.
 function applicationReducer(state, action) {
     switch (action.type) {
         case 'CHECK_BLOCK_STATUS':
             return {...state, isBlocked: action.payload };
+        case 'RESTORE_PROGRESS':
+            return {...state, ...action.payload };
+        case 'DISCORD_LINKED':
+            return {...state, discordLinked: true };
         case 'UPDATE_FORM_FIELD':
             return {...state, formData: {...state.formData, [action.payload.field]: action.payload.value } };
         case 'UPDATE_CALLSIGN':
@@ -95,6 +130,32 @@ export function useApplicationProcess() {
             }
         }
     }, []);
+
+    // Restored after mount rather than in the reducer initialiser, so the server
+    // and first client render agree.
+    useEffect(() => {
+        const progress = loadProgress();
+        if (progress) {
+            dispatch({ type: 'RESTORE_PROGRESS', payload: progress });
+        }
+    }, []);
+
+    // Only a pass is written, which also keeps this from clobbering stored progress
+    // with the initial state on mount before the restore above lands.
+    useEffect(() => {
+        if (state.step !== 3 || !state.testResult?.passed) return;
+        try {
+            localStorage.setItem(PROGRESS_KEY, JSON.stringify({
+                timestamp: Date.now(),
+                formData: state.formData,
+                callsign: state.callsign,
+                testResult: state.testResult,
+                discordLinked: state.discordLinked,
+            }));
+        } catch {
+            // Storage full or blocked; the applicant just loses the resume-on-refresh safety net.
+        }
+    }, [state.step, state.testResult, state.formData, state.callsign, state.discordLinked]);
 
     const handleInputChange = useCallback((e) => {
         dispatch({ type: 'UPDATE_FORM_FIELD', payload: { field: e.target.name, value: e.target.value } });
@@ -155,8 +216,17 @@ export function useApplicationProcess() {
         }
     }, [state.answers, state.formData]);
 
-    const resetApplication = useCallback(() => dispatch({ type: 'RESET_APPLICATION' }), []);
+    const markDiscordLinked = useCallback(() => dispatch({ type: 'DISCORD_LINKED' }), []);
+
+    const resetApplication = useCallback(() => {
+        try {
+            localStorage.removeItem(PROGRESS_KEY);
+        } catch {
+            // Nothing to clean up if storage is unavailable.
+        }
+        dispatch({ type: 'RESET_APPLICATION' });
+    }, []);
     const dismissError = useCallback(() => dispatch({ type: 'DISMISS_ERROR' }), []);
 
-    return { state, questions, handleInputChange, handleCallsignChange, handleAnswerChange, handleApplicationSubmit, handleTestSubmit, resetApplication, dismissError };
+    return { state, questions, handleInputChange, handleCallsignChange, handleAnswerChange, handleApplicationSubmit, handleTestSubmit, markDiscordLinked, resetApplication, dismissError };
 }
