@@ -68,8 +68,8 @@ export default function NeedHelp() {
                         rounded="xl"
                         p="4"
                         textDecoration="none"
-                        transition="all 0.2s"
-                        _hover={{ borderColor: accent, transform: 'translateY(-2px)', boxShadow: 'md' }}
+                        transition="border-color 0.2s, background-color 0.2s"
+                        _hover={{ borderColor: accent, bg: 'gray.50' }}
                     >
                         <HStack gap="3" align="start">
                             <ChannelIcon accent={accent} icon={icon} />

@@ -2,6 +2,7 @@ import { Provider as ChakraProvider } from "@/components/ui/provider"
 import { Toaster, toaster } from "@/components/ui/toaster"
 import Navbar, { MobileNavMenu } from "@/components/NavBar";
 import Footer from "@/components/Footer"
+import { LightMode } from "@/components/ui/color-mode"
 
 const BASE = 'https://indianvirtual.site'
 const OG_IMAGE = `${BASE}/invaHomeBg.png`
@@ -83,10 +84,11 @@ export default function RootLayout({ children }) {
                         __html: `
                         (function() {
                           try {
-                            var theme = localStorage.getItem('chakra-ui-color-mode');
-                            if (theme === 'dark') {
-                              document.documentElement.classList.add('dark');
-                            }
+                            // The public site is always light. The root layout's script runs
+                            // first and applies the visitor's OS preference, which is right for
+                            // /crew but left these pages with dark text panels on a light green
+                            // background. Undo it here; /crew keeps its own colour mode.
+                            document.documentElement.classList.remove('dark');
                           } catch (e) {}
                         })();
                       `,
@@ -95,11 +97,15 @@ export default function RootLayout({ children }) {
             </head>
             <body>
                 <ChakraProvider>
-                    <Navbar />
-                    <MobileNavMenu />
-                    {children}
-                    <Toaster />
-                    <Footer />
+                    {/* Pins the whole public site light, including on client-side
+                        navigation back from /crew, where the script above never re-runs. */}
+                    <LightMode>
+                        <Navbar />
+                        <MobileNavMenu />
+                        {children}
+                        <Toaster />
+                        <Footer />
+                    </LightMode>
                 </ChakraProvider>
             </body>
         </html>

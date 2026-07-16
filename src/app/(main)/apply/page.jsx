@@ -1,7 +1,7 @@
 // src/app/apply/page.js
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Heading, Text, VStack, Flex } from '@chakra-ui/react';
 import { SessionProvider } from 'next-auth/react';
 import { useApplicationProcess } from '@/hooks/useApplicationProcess';
@@ -14,10 +14,22 @@ import NeedHelp from '@/components/apply/NeedHelp';
 export default function ApplyPage() {
     const { state, questions, ...handlers } = useApplicationProcess();
     const [ isVisible, setIsVisible ] = useState(false);
+    const contentRef = useRef(null);
+    const previousStep = useRef(state.step);
 
     useEffect(() => {
         setIsVisible(true);
     }, []);
+
+    // Submitting the test from the bottom of a ten-question form leaves the applicant
+    // scrolled past the much shorter card that replaces it, so the result looks like
+    // nothing happened. Bring them back to whatever they're meant to do next.
+    useEffect(() => {
+        if (previousStep.current !== state.step) {
+            contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            previousStep.current = state.step;
+        }
+    }, [ state.step ]);
 
     const renderCurrentStep = () => {
         switch (state.step) {
@@ -74,7 +86,7 @@ export default function ApplyPage() {
                         </VStack>
                     </Box>
 
-                        <Box as="section" w="full" py="8" px={{ base: '4', lg: '8' }}>
+                        <Box as="section" ref={contentRef} scrollMarginTop="4" w="full" py="8" px={{ base: '4', lg: '8' }}>
                             <Box maxW="4xl" mx="auto">
                                 {renderCurrentStep()}
                             </Box>

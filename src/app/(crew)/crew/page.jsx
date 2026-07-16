@@ -16,6 +16,7 @@ import { signIn } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import CallsignInput from '@/components/CallsignInput'
+import { DarkMode } from '@/components/ui/color-mode'
 // import { getDummyData } from '@/app/shared/users'
 import Cookies from 'js-cookie'
 import { FaDiscord } from "react-icons/fa"
@@ -115,6 +116,10 @@ export default function CrewLoginPage() {
   }
 
   return (
+    // Login is dark-only: the page hardcodes a dark backdrop and white text, so
+    // letting the semantic tokens follow the visitor's OS put dark text on it.
+    // Only this page — /crew/* below keeps the toggleable OS-driven mode.
+    <DarkMode>
     <Box position="relative" minH="100vh" bg="blackAlpha.700" color="white">
       <Box
         position="absolute"
@@ -219,6 +224,7 @@ export default function CrewLoginPage() {
         </Box>
       </Center>
     </Box>
+    </DarkMode>
   )
 }
 

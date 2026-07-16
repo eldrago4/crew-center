@@ -27,6 +27,12 @@ export default function RootLayout({ children }) {
                             if (!mode) {
                                 mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                             }
+                            // The crew login is dark-only, whatever the visitor prefers.
+                            // The public site undoes this in the (main) layout's script;
+                            // /crew/* keeps the preference and stays toggleable.
+                            if (window.location.pathname === '/crew') {
+                                mode = 'dark';
+                            }
                             if (mode === 'dark') {
                                 document.documentElement.classList.add('dark');
                             }
