@@ -16,7 +16,6 @@ import { signIn } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import CallsignInput from '@/components/CallsignInput'
-import { DarkMode } from '@/components/ui/color-mode'
 // import { getDummyData } from '@/app/shared/users'
 import Cookies from 'js-cookie'
 import { FaDiscord } from "react-icons/fa"
@@ -116,10 +115,11 @@ export default function CrewLoginPage() {
   }
 
   return (
-    // Login is dark-only: the page hardcodes a dark backdrop and white text, so
-    // letting the semantic tokens follow the visitor's OS put dark text on it.
-    // Only this page — /crew/* below keeps the toggleable OS-driven mode.
-    <DarkMode>
+    // Dark-only, but enforced by the root layout's theme script rather than a
+    // DarkMode wrapper here: this page is only ever reached by a full page load
+    // (the navbar links to it with a plain target="_blank" anchor), so the script
+    // always runs and sets `dark` on <html> before paint. A wrapper would add a
+    // .chakra-theme scope for no token benefit.
     <Box position="relative" minH="100vh" bg="blackAlpha.700" color="white">
       <Box
         position="absolute"
@@ -224,7 +224,6 @@ export default function CrewLoginPage() {
         </Box>
       </Center>
     </Box>
-    </DarkMode>
   )
 }
 
