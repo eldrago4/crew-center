@@ -1,21 +1,27 @@
 import 'server-only';
 import { unstable_cache } from 'next/cache';
+import admin from 'firebase-admin';
 import db from '@/db/client';
+import { db as fireDb } from '@/lib/firebase';
 import { sql } from 'drizzle-orm';
 import { AKASHARATHA_HOURS } from './constants';
 
-// Credited hours are flightTime × multiplier — the same rule the PIREP approval
-// route applies when it adds to users.flightTime (see api/users/pireps/route.js).
-// Summing raw flightTime here would quietly disagree with every all-time total on
-// the site. Only approved (valid) PIREPs count, matching what approval credits.
-const CREDITED_SECONDS = sql`SUM(EXTRACT(EPOCH FROM p."flightTime") * COALESCE(p.multiplier, 1))`;
+// Raw flight time, deliberately NOT flightTime × multiplier. The multiplier is what
+// api/users/pireps/route.js credits to users.flightTime, but these panels report time
+// actually flown, and career flights carry no equivalent multiplier — mixing the two
+// would make the crew-centre half of every total silently larger than the career half.
+// The existing /api/stats route sums raw seconds for the same reason.
+const RAW_SECONDS = sql`COALESCE(SUM(EXTRACT(EPOCH FROM p."flightTime")), 0)`;
 
-// Stats are read by a handful of staff and change only when a PIREP is approved,
-// so they are cached rather than recomputed per request. Tagged so approval can
-// revalidateTag('pireps') later without waiting out the window.
+// Stats change only when a PIREP or career flight is approved, so they are cached
+// rather than recomputed per request. Firestore bills per document read, which makes
+// the cache a cost control here and not just a latency one.
 const CACHE = { revalidate: 600, tags: ['pireps'] };
 
-
+// A pilot can fly both crew-centre and career, and career-mode users are created with
+// callsign = the crew-centre users.id (see api/career-accept), so the callsign is the
+// join key between the two systems.
+const normaliseCallsign = (v) => String(v ?? '').trim().toUpperCase();
 
 // Weeks run Monday–Sunday. On a Monday the current week is only hours old and the
 // board would read as empty, so the week that just closed is shown instead.
@@ -38,23 +44,81 @@ function toDateOnly(d) {
     return d.toISOString().slice(0, 10);
 }
 
-export const getWeeklyTopPilots = unstable_cache(
+function round1(n) {
+    return Math.round(n * 10) / 10;
+}
+
+// ── Crew centre (Neon) ───────────────────────────────────────────────────────
+
+// Returns the pilot ids rather than a count: "pilots flying" has to be deduplicated
+// against the career-mode set, and two COUNT(DISTINCT)s can't be added together
+// without double-counting anyone who flew on both.
+export const getNeonWeek = unstable_cache(
+    async (start, end) => {
+        const totals = await db.execute(sql`
+            SELECT COUNT(*)::int AS "flights", ${RAW_SECONDS}::float8 AS "seconds"
+            FROM pireps p
+            WHERE p.valid = true AND p.date >= ${start} AND p.date <= ${end}
+        `);
+        const pilots = await db.execute(sql`
+            SELECT DISTINCT p."userId" AS "callsign"
+            FROM pireps p
+            WHERE p.valid = true AND p.date >= ${start} AND p.date <= ${end}
+        `);
+        const t = (totals.rows ?? totals)[ 0 ] ?? {};
+        return {
+            flights: Number(t.flights) || 0,
+            hours: round1((Number(t.seconds) || 0) / 3600),
+            callsigns: (pilots.rows ?? pilots).map((r) => normaliseCallsign(r.callsign)),
+        };
+    },
+    ['admin-stats-neon-week'],
+    CACHE,
+);
+
+export const getNeonWeekPilots = unstable_cache(
     async (start, end) => {
         const rows = await db.execute(sql`
             SELECT u."ifcName" AS "ifcName",
                    u.id AS "callsign",
-                   COUNT(*)::int AS "pireps",
-                   ${CREDITED_SECONDS}::float8 AS "seconds"
+                   COUNT(*)::int AS "flights",
+                   ${RAW_SECONDS}::float8 AS "seconds"
             FROM pireps p
             JOIN users u ON u.id = p."userId"
             WHERE p.valid = true AND p.date >= ${start} AND p.date <= ${end}
             GROUP BY u.id, u."ifcName"
-            ORDER BY "seconds" DESC NULLS LAST
-            LIMIT 5
         `);
-        return (rows.rows ?? rows).map(normalisePilot);
+        return (rows.rows ?? rows).map((r) => ({
+            callsign: normaliseCallsign(r.callsign),
+            ifcName: r.ifcName ?? null,
+            flights: Number(r.flights) || 0,
+            hours: round1((Number(r.seconds) || 0) / 3600),
+        }));
     },
-    ['admin-stats-weekly-top-pilots'],
+    ['admin-stats-neon-week-pilots'],
+    CACHE,
+);
+
+// Buckets by day, so the same rows can be folded into weeks or months without a
+// second trip to the database.
+export const getNeonDaily = unstable_cache(
+    async (fromDate) => {
+        const rows = await db.execute(sql`
+            SELECT p.date::text AS "day",
+                   COUNT(*)::int AS "flights",
+                   ${RAW_SECONDS}::float8 AS "seconds"
+            FROM pireps p
+            WHERE p.valid = true AND p.date >= ${fromDate}
+            GROUP BY p.date
+            ORDER BY p.date
+        `);
+        return (rows.rows ?? rows).map((r) => ({
+            day: String(r.day).slice(0, 10),
+            flights: Number(r.flights) || 0,
+            hours: round1((Number(r.seconds) || 0) / 3600),
+        }));
+    },
+    ['admin-stats-neon-daily'],
     CACHE,
 );
 
@@ -68,113 +132,177 @@ export const getAkasharathaClub = unstable_cache(
             WHERE u."flightTime" > ${`${AKASHARATHA_HOURS} hours`}::interval
             ORDER BY u."flightTime" DESC
         `);
-        return (rows.rows ?? rows).map(normalisePilot);
+        return (rows.rows ?? rows).map((r) => ({
+            ifcName: r.ifcName ?? '—',
+            callsign: normaliseCallsign(r.callsign),
+            hours: round1((Number(r.seconds) || 0) / 3600),
+        }));
     },
     ['admin-stats-akasharatha-club'],
     CACHE,
 );
 
-// Headline totals for a single week. Separate from the top-5 query because that one
-// is LIMITed — counting pilots or flights from five rows would undercount everyone
-// outside the podium.
-export const getWeekSummary = unstable_cache(
-    async (start, end) => {
-        const rows = await db.execute(sql`
-            SELECT COUNT(*)::int AS "flights",
-                   COUNT(DISTINCT p."userId")::int AS "pilots",
-                   ${CREDITED_SECONDS}::float8 AS "seconds"
-            FROM pireps p
-            WHERE p.valid = true AND p.date >= ${start} AND p.date <= ${end}
-        `);
-        const r = (rows.rows ?? rows)[ 0 ] ?? {};
-        return {
-            flights: Number(r.flights) || 0,
-            pilots: Number(r.pilots) || 0,
-            hours: round1((Number(r.seconds) || 0) / 3600),
-        };
-    },
-    ['admin-stats-week-summary'],
-    CACHE,
-);
+// ── Career mode (Firestore) ──────────────────────────────────────────────────
 
-export const getMonthlyActivity = unstable_cache(
+// One fetch covering the longest window any panel needs, folded into weeks, months
+// and per-pilot totals in memory. Firestore charges per document read, so querying
+// once per cache window and reusing the rows costs a fraction of a query per panel.
+// `flights` (not `pireps`) is the approved-flight collection — the same one
+// /api/stats reads — and flightTime there is already a number of hours.
+export const getCareerFlights = unstable_cache(
     async (fromDate) => {
-        const rows = await db.execute(sql`
-            SELECT date_trunc('month', p.date)::date AS "monthStart",
-                   COUNT(*)::int AS "flights",
-                   ${CREDITED_SECONDS}::float8 AS "seconds"
-            FROM pireps p
-            WHERE p.valid = true AND p.date >= ${fromDate}
-            GROUP BY 1
-            ORDER BY 1
-        `);
-        return (rows.rows ?? rows).map((r) => ({
-            monthStart: String(r.monthStart).slice(0, 10),
-            flights: Number(r.flights) || 0,
-            hours: round1((Number(r.seconds) || 0) / 3600),
-        }));
+        const snap = await fireDb
+            .collection('flights')
+            .where('approvedAt', '>=', admin.firestore.Timestamp.fromDate(new Date(`${fromDate}T00:00:00Z`)))
+            .select('pilotCallsign', 'pilotName', 'flightTime', 'approvedAt')
+            .get();
+
+        const out = [];
+        snap.forEach((doc) => {
+            const d = doc.data();
+            const at = d.approvedAt?.toDate?.();
+            if (!at) return;
+            out.push({
+                day: toDateOnly(at),
+                callsign: normaliseCallsign(d.pilotCallsign),
+                name: d.pilotName || null,
+                hours: Number(d.flightTime) || 0,
+            });
+        });
+        return out;
     },
-    ['admin-stats-monthly-activity'],
+    ['admin-stats-career-flights'],
     CACHE,
 );
 
-// date_trunc('week') is Monday-based in Postgres, so these buckets line up with
-// getStatsWeek above.
-export const getWeeklyActivity = unstable_cache(
-    async (fromDate) => {
-        const rows = await db.execute(sql`
-            SELECT date_trunc('week', p.date)::date AS "weekStart",
-                   COUNT(*)::int AS "flights",
-                   ${CREDITED_SECONDS}::float8 AS "seconds"
-            FROM pireps p
-            WHERE p.valid = true AND p.date >= ${fromDate}
-            GROUP BY 1
-            ORDER BY 1
-        `);
-        return (rows.rows ?? rows).map((r) => ({
-            weekStart: String(r.weekStart).slice(0, 10),
-            flights: Number(r.flights) || 0,
-            hours: round1((Number(r.seconds) || 0) / 3600),
-        }));
-    },
-    ['admin-stats-weekly-activity'],
-    CACHE,
-);
+// ── Folding ──────────────────────────────────────────────────────────────────
 
-function normalisePilot(r) {
+export function mondayOf(dateOnly) {
+    const d = new Date(`${dateOnly}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+    return toDateOnly(d);
+}
+
+export function firstOfMonth(dateOnly) {
+    return `${dateOnly.slice(0, 7)}-01`;
+}
+
+function withinWeek(day, week) {
+    return day >= week.start && day <= week.end;
+}
+
+// Crew-centre and career totals for one week, with pilots counted once across both.
+export function combineWeek(neon, careerFlights, week) {
+    const mine = careerFlights.filter((f) => withinWeek(f.day, week));
+    const callsigns = new Set(neon.callsigns);
+    let flights = 0;
+    let hours = 0;
+    for (const f of mine) {
+        flights++;
+        hours += f.hours;
+        if (f.callsign) callsigns.add(f.callsign);
+    }
     return {
-        ifcName: r.ifcName ?? '—',
-        callsign: (r.callsign ?? '').trim(),
-        pireps: r.pireps === undefined ? undefined : Number(r.pireps) || 0,
-        hours: round1((Number(r.seconds) || 0) / 3600),
+        flights: neon.flights + flights,
+        hours: round1(neon.hours + hours),
+        pilots: callsigns.size,
+        career: { flights, hours: round1(hours) },
+        crew: { flights: neon.flights, hours: neon.hours },
     };
 }
 
-function round1(n) {
-    return Math.round(n * 10) / 10;
+// One row per pilot, merging a pilot who flew on both. IFC name comes from the crew
+// centre where it exists; a career-only pilot falls back to the name Firestore holds.
+export function combineTopPilots(neonPilots, careerFlights, week, limit = 5) {
+    const byCallsign = new Map();
+
+    for (const p of neonPilots) {
+        byCallsign.set(p.callsign, {
+            callsign: p.callsign,
+            ifcName: p.ifcName || p.callsign,
+            flights: p.flights,
+            hours: p.hours,
+            career: { flights: 0, hours: 0 },
+        });
+    }
+
+    for (const f of careerFlights) {
+        if (!withinWeek(f.day, week)) continue;
+        const key = f.callsign || `name:${f.name ?? 'unknown'}`;
+        const hit = byCallsign.get(key) ?? {
+            callsign: f.callsign || '',
+            ifcName: f.name || f.callsign || 'Unknown pilot',
+            flights: 0,
+            hours: 0,
+            career: { flights: 0, hours: 0 },
+        };
+        hit.flights += 1;
+        hit.hours = round1(hit.hours + f.hours);
+        hit.career.flights += 1;
+        hit.career.hours = round1(hit.career.hours + f.hours);
+        byCallsign.set(key, hit);
+    }
+
+    return [...byCallsign.values()]
+        .sort((a, b) => b.hours - a.hours || b.flights - a.flights)
+        .slice(0, limit);
 }
 
-// Five Monday-aligned buckets ending with the stats week, with empty weeks filled
-// in — a gap in the data must read as zero activity, not as a missing week that
-// the line silently skips over.
-export function buildActivitySeries(rows, weekEndingStart) {
-    const byWeek = new Map(rows.map((r) => [r.weekStart, r]));
-    const out = [];
-    const cursor = new Date(`${weekEndingStart}T00:00:00Z`);
+// Five Monday-aligned buckets ending with the stats week, gaps filled — an empty week
+// must read as zero activity, not as a week the line quietly skips.
+export function buildWeeklySeries(neonDaily, careerFlights, weekStart) {
+    const buckets = new Map();
+    const cursor = new Date(`${weekStart}T00:00:00Z`);
     cursor.setUTCDate(cursor.getUTCDate() - 7 * 4);
 
+    const keys = [];
     for (let i = 0; i < 5; i++) {
         const key = toDateOnly(cursor);
-        const hit = byWeek.get(key);
-        out.push({
-            weekStart: key,
-            label: formatWeekLabel(key),
-            flights: hit?.flights ?? 0,
-            hours: hit?.hours ?? 0,
-        });
+        keys.push(key);
+        buckets.set(key, { flights: 0, hours: 0 });
         cursor.setUTCDate(cursor.getUTCDate() + 7);
     }
-    return out;
+
+    const add = (day, flights, hours) => {
+        const b = buckets.get(mondayOf(day));
+        if (!b) return;
+        b.flights += flights;
+        b.hours += hours;
+    };
+    for (const r of neonDaily) add(r.day, r.flights, r.hours);
+    for (const f of careerFlights) add(f.day, 1, f.hours);
+
+    return keys.map((key) => ({
+        label: formatWeekLabel(key),
+        flights: buckets.get(key).flights,
+        hours: round1(buckets.get(key).hours),
+    }));
+}
+
+export function buildMonthlySeries(neonDaily, careerFlights, now = new Date()) {
+    const buckets = new Map();
+    const keys = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+        const key = toDateOnly(d);
+        keys.push({ key, label: d.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' }) });
+        buckets.set(key, { flights: 0, hours: 0 });
+    }
+
+    const add = (day, flights, hours) => {
+        const b = buckets.get(firstOfMonth(day));
+        if (!b) return;
+        b.flights += flights;
+        b.hours += hours;
+    };
+    for (const r of neonDaily) add(r.day, r.flights, r.hours);
+    for (const f of careerFlights) add(f.day, 1, f.hours);
+
+    return keys.map(({ key, label }) => ({
+        label,
+        flights: buckets.get(key).flights,
+        hours: round1(buckets.get(key).hours),
+    }));
 }
 
 export function formatWeekLabel(dateOnly) {
@@ -188,6 +316,10 @@ export function fiveWeeksBefore(weekStart) {
     return toDateOnly(d);
 }
 
+export function sixMonthsBefore(now = new Date()) {
+    return toDateOnly(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1)));
+}
+
 export function previousWeek(week) {
     const start = new Date(`${week.start}T00:00:00Z`);
     start.setUTCDate(start.getUTCDate() - 7);
@@ -196,26 +328,9 @@ export function previousWeek(week) {
     return { start: toDateOnly(start), end: toDateOnly(end) };
 }
 
-export function sixMonthsBefore(now = new Date()) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
-    return toDateOnly(d);
-}
-
-// Six month buckets ending with the current month, gaps filled — same reasoning as
-// the weekly series: a month with no flights must plot as zero, not vanish.
-export function buildMonthlySeries(rows, now = new Date()) {
-    const byMonth = new Map(rows.map((r) => [r.monthStart, r]));
-    const out = [];
-    for (let i = 5; i >= 0; i--) {
-        const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
-        const key = toDateOnly(d);
-        const hit = byMonth.get(key);
-        out.push({
-            monthStart: key,
-            label: d.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' }),
-            flights: hit?.flights ?? 0,
-            hours: hit?.hours ?? 0,
-        });
-    }
-    return out;
+// The earliest date any panel needs, so Neon and Firestore are each read once.
+export function earliestNeeded(week, now = new Date()) {
+    const a = fiveWeeksBefore(week.start);
+    const b = sixMonthsBefore(now);
+    return a < b ? a : b;
 }

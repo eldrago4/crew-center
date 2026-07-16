@@ -60,11 +60,18 @@ function PilotBar({ pilot, index, max }) {
                     )}
                 </HStack>
                 <HStack gap="3" flexShrink="0">
+                    {/* Career contribution is named rather than colour-coded: the split
+                        matters when reading a total, but only for the pilots who have one. */}
+                    {pilot.career?.flights > 0 && (
+                        <Text fontSize="xs" color="cyan.fg" flexShrink="0">
+                            {pilot.career.hours.toFixed(1)} h career
+                        </Text>
+                    )}
                     <Text fontSize="sm" fontWeight="semibold" color="fg" fontVariantNumeric="tabular-nums">
                         {pilot.hours.toFixed(1)} h
                     </Text>
                     <Text fontSize="xs" color="fg.muted" fontVariantNumeric="tabular-nums" minW="14" textAlign="end">
-                        {pilot.pireps} {pilot.pireps === 1 ? 'flight' : 'flights'}
+                        {pilot.flights} {pilot.flights === 1 ? 'flight' : 'flights'}
                     </Text>
                 </HStack>
             </HStack>
@@ -85,8 +92,12 @@ function ActivityChart({ data, dataKey, label, color, unit }) {
         <Box>
             <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb="2">{label}</Text>
             <Box position="relative">
+                {/* `responsive` is required, not optional polish: it defaults to false,
+                    and Chart.Root is only a Box — it provides no ResponsiveContainer — so
+                    without this recharts renders at the width/height it was never given,
+                    i.e. nothing at all. */}
                 <Chart.Root height="11rem" chart={chart}>
-                    <LineChart data={chart.data} margin={{ top: 8, right: 10, bottom: 0, left: -18 }}>
+                    <LineChart responsive data={chart.data} margin={{ top: 8, right: 10, bottom: 0, left: -18 }}>
                         <CartesianGrid stroke={chart.color('border')} vertical={false} />
                         <XAxis
                             dataKey={chart.key('label')}
@@ -156,7 +167,7 @@ function ActivityPanel({ title, subtitle, data }) {
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
-export default function StatisticsClient({ week, summary, delta, topPilots, club, weekly, monthly, failed }) {
+export default function StatisticsClient({ week, summary, delta, topPilots, club, weekly, monthly, failed, careerFailed }) {
     const maxHours = topPilots.reduce((m, p) => Math.max(m, p.hours), 0);
     const weekNote = week.isPreviousWeek ? 'last full week' : 'week to date';
 
@@ -165,7 +176,8 @@ export default function StatisticsClient({ week, summary, delta, topPilots, club
             <Box>
                 <Heading as="h1" size="lg" color="fg">Statistics</Heading>
                 <Text fontSize="sm" color="fg.muted" mt="1">
-                    Approved PIREPs only. Hours are credited hours — flight time × multiplier.
+                    Crew centre and career mode combined. Approved flights only, actual time flown —
+                    multipliers are not applied. Pilots flying counts anyone once, even if they flew both.
                 </Text>
             </Box>
 
@@ -173,10 +185,22 @@ export default function StatisticsClient({ week, summary, delta, topPilots, club
                 <Alert.Root status="error" variant="subtle" rounded="lg">
                     <Alert.Indicator />
                     <Alert.Content>
-                        <Alert.Title>Couldn&apos;t load statistics</Alert.Title>
+                        <Alert.Title>Couldn&apos;t load crew centre statistics</Alert.Title>
                         <Alert.Description>
                             The database didn&apos;t answer. Everything below is showing empty rather than real
                             figures — reload in a moment.
+                        </Alert.Description>
+                    </Alert.Content>
+                </Alert.Root>
+            )}
+
+            {careerFailed && (
+                <Alert.Root status="warning" variant="subtle" rounded="lg">
+                    <Alert.Indicator />
+                    <Alert.Content>
+                        <Alert.Title>Career mode figures are missing</Alert.Title>
+                        <Alert.Description>
+                            Firestore didn&apos;t answer, so these totals are crew centre only and will read low.
                         </Alert.Description>
                     </Alert.Content>
                 </Alert.Root>
