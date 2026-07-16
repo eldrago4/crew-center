@@ -6,8 +6,8 @@ import { Box, Button, Heading, Text, Icon, Link, VStack, HStack, Flex } from '@c
 import { MdCheckCircle, MdCancel } from 'react-icons/md';
 import { RiDiscordFill } from 'react-icons/ri';
 import { FaDiscord } from "react-icons/fa"
-import CallsignInput from './CallsignInput';
-import { isSelectableApplicantCallsign, APPLICANT_CALLSIGN_RANGE } from '@/lib/callsign';
+import ApplicantCallsignInput from './apply/ApplicantCallsignInput';
+import { toCallsignDigits, isSelectableApplicantCallsign, APPLICANT_CALLSIGN_RANGE } from '@/lib/callsign';
 import { signIn } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
 import Cookies from 'js-cookie'
@@ -71,6 +71,7 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
     const [ authError, setAuthError ] = useState(null);
 
     const fullCallsign = `INVA${callsign}`;
+    const ifcUsername = state.formData.ifcUsername;
     const callsignReady = callsignStatus === 'available';
 
     const handleDiscordLogin = async () => {
@@ -102,8 +103,14 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
     }, [ status, session, linkPendingFor, discordLinked, markDiscordLinked ]);
 
     useEffect(() => {
-        if (!isSelectableApplicantCallsign(callsign)) {
+        // Three digits that are out of range get told so, rather than silently sitting
+        // at 'idle' with a disabled button and no explanation.
+        if (!toCallsignDigits(callsign)) {
             setCallsignStatus('idle');
+            return;
+        }
+        if (!isSelectableApplicantCallsign(callsign)) {
+            setCallsignStatus('reserved');
             return;
         }
         setCallsignStatus('checking');
@@ -160,7 +167,7 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
             <Box bg="whiteAlpha.900" p={{ base: '8', lg: '12' }} rounded="3xl" boxShadow="2xl" textAlign="center">
                 <Icon as={MdCheckCircle} w="16" h="16" color="green.500" mx="auto" mb="4" />
                 <Heading as="h2" fontSize={{ base: '3xl', lg: '4xl' }} color="green.600" fontFamily="Playfair Display, serif">
-                    You&apos;re in{callsign ? `, ${fullCallsign}` : ''}!
+                    You&apos;re in{ifcUsername ? `, ${ifcUsername}` : ''}!
                 </Heading>
                 <Text fontSize="lg" color="gray.700" mt="3" maxW="md" mx="auto">
                     Your Discord is linked and we&apos;ve added you to our server. Head over to meet the crew — a staff member will take it from there.
@@ -218,13 +225,10 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
                     description={`Any number from ${APPLICANT_CALLSIGN_RANGE} that isn't taken yet.`}
                     state={callsignReady ? 'done' : 'active'}
                 >
-                    <CallsignInput
+                    <ApplicantCallsignInput
                         value={callsign}
                         onChange={handleCallsignChange}
                         status={callsignStatus}
-                        label="Your callsign"
-                        tone="light"
-                        helperText={`Enter a number between ${APPLICANT_CALLSIGN_RANGE}`}
                     />
                 </Step>
 
@@ -256,12 +260,6 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
                     </Text>
                 </Step>
             </VStack>
-
-            <Flex justify="center" mt="8">
-                <Button onClick={resetApplication} variant="ghost" color="gray.500" size="sm" _hover={{ color: 'gray.700', bg: 'gray.100' }}>
-                    Start over
-                </Button>
-            </Flex>
         </Box>
     );
 }
