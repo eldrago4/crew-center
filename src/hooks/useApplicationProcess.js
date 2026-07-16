@@ -49,6 +49,7 @@ const initialState = {
     answers: {},
     testResult: null,
     discordLinked: false,
+    linkPendingFor: null,
 };
 
 // A passed applicant still has to pick a callsign and join Discord, which can take
@@ -61,6 +62,13 @@ const initialState = {
 // applicant having linked, which skipped callsign selection entirely.
 const PROGRESS_KEY = 'inva-apply-progress-v2';
 const PROGRESS_TTL = 7 * 24 * 60 * 60 * 1000;
+
+// Written synchronously right before handing off to Discord, and the only thing that
+// makes a returning session count as a successful link. Without it, an unrelated
+// login already carrying the same callsign — a crew member who happens to be INVA011
+// typing 011 — reads as "already linked". Kept out of PROGRESS_KEY because that one
+// is saved from an effect, which is not guaranteed to flush before the redirect.
+const LINK_PENDING_KEY = 'inva-apply-link-pending';
 
 function loadProgress() {
     try {
@@ -91,8 +99,10 @@ function applicationReducer(state, action) {
             return {...state, isBlocked: action.payload };
         case 'RESTORE_PROGRESS':
             return {...state, ...action.payload };
+        case 'DISCORD_LINK_REQUESTED':
+            return {...state, linkPendingFor: action.payload };
         case 'DISCORD_LINKED':
-            return {...state, discordLinked: true };
+            return {...state, discordLinked: true, linkPendingFor: null };
         case 'UPDATE_FORM_FIELD':
             return {...state, formData: {...state.formData, [action.payload.field]: action.payload.value } };
         case 'UPDATE_CALLSIGN':
@@ -140,6 +150,12 @@ export function useApplicationProcess() {
         const progress = loadProgress();
         if (progress) {
             dispatch({ type: 'RESTORE_PROGRESS', payload: progress });
+        }
+        try {
+            const pending = localStorage.getItem(LINK_PENDING_KEY);
+            if (pending) dispatch({ type: 'DISCORD_LINK_REQUESTED', payload: pending });
+        } catch {
+            // No pending link recoverable; the applicant can just press the button again.
         }
     }, []);
 
@@ -219,11 +235,31 @@ export function useApplicationProcess() {
         }
     }, [state.answers, state.formData]);
 
-    const markDiscordLinked = useCallback(() => dispatch({ type: 'DISCORD_LINKED' }), []);
+    // Called synchronously on the click, before signIn() navigates away — an effect
+    // might not flush in time.
+    const requestDiscordLink = useCallback((fullCallsign) => {
+        try {
+            localStorage.setItem(LINK_PENDING_KEY, fullCallsign);
+        } catch {
+            // Without the marker the applicant lands back on the callsign step and
+            // presses the button again, which is recoverable.
+        }
+        dispatch({ type: 'DISCORD_LINK_REQUESTED', payload: fullCallsign });
+    }, []);
+
+    const markDiscordLinked = useCallback(() => {
+        try {
+            localStorage.removeItem(LINK_PENDING_KEY);
+        } catch {
+            // Nothing to clean up if storage is unavailable.
+        }
+        dispatch({ type: 'DISCORD_LINKED' });
+    }, []);
 
     const resetApplication = useCallback(() => {
         try {
             localStorage.removeItem(PROGRESS_KEY);
+            localStorage.removeItem(LINK_PENDING_KEY);
         } catch {
             // Nothing to clean up if storage is unavailable.
         }
@@ -231,5 +267,5 @@ export function useApplicationProcess() {
     }, []);
     const dismissError = useCallback(() => dispatch({ type: 'DISMISS_ERROR' }), []);
 
-    return { state, questions, handleInputChange, handleCallsignChange, handleAnswerChange, handleApplicationSubmit, handleTestSubmit, markDiscordLinked, resetApplication, dismissError };
+    return { state, questions, handleInputChange, handleCallsignChange, handleAnswerChange, handleApplicationSubmit, handleTestSubmit, requestDiscordLink, markDiscordLinked, resetApplication, dismissError };
 }

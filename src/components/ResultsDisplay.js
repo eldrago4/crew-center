@@ -7,6 +7,7 @@ import { MdCheckCircle, MdCancel } from 'react-icons/md';
 import { RiDiscordFill } from 'react-icons/ri';
 import { FaDiscord } from "react-icons/fa"
 import CallsignInput from './CallsignInput';
+import { isSelectableApplicantCallsign, APPLICANT_CALLSIGN_RANGE } from '@/lib/callsign';
 import { signIn } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
 import Cookies from 'js-cookie'
@@ -15,6 +16,7 @@ const DISCORD_INVITE = 'https://discord.gg/SuYxKzhbHe';
 
 const AUTH_ERROR_MESSAGES = {
     'callsign-taken': 'That callsign was claimed while you were linking Discord. Pick another number and try again.',
+    'callsign-reserved': `That callsign is reserved. Pick a number between ${APPLICANT_CALLSIGN_RANGE}.`,
     'server': "We couldn't link your Discord account just then. Your test result is saved — please try again.",
 };
 
@@ -61,9 +63,9 @@ function Step({ index, title, description, state, children }) {
     );
 }
 
-export default function ResultsDisplay({ state, resetApplication, handleCallsignChange, markDiscordLinked }) {
+export default function ResultsDisplay({ state, resetApplication, handleCallsignChange, requestDiscordLink, markDiscordLinked }) {
     const { status, data: session } = useSession()
-    const { testResult, callsign, discordLinked } = state;
+    const { testResult, callsign, discordLinked, linkPendingFor } = state;
     const [ callsignStatus, setCallsignStatus ] = useState('idle'); // idle | checking | available | taken | error
     const [ pendingAuth, setPendingAuth ] = useState(false);
     const [ authError, setAuthError ] = useState(null);
@@ -77,6 +79,7 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
             Cookies.set('applicant-callsign', fullCallsign, { path: '/' }) // Set cookie for applicants
             Cookies.set('applicant-ifcName', state.formData.ifcUsername, { path: '/' }) // Set IFC name cookie
             Cookies.remove('pending-callsign', { path: '/' }) // Remove any crew cookie to avoid conflict
+            requestDiscordLink(fullCallsign) // Marks this callsign as the one we're linking
             // Redirects this tab rather than opening a popup: window.open after an
             // awaited signIn() has lost the user gesture and gets blocked. Coming back
             // is safe now that the passed screen is restored from localStorage.
@@ -87,18 +90,19 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
         }
     };
 
-    // Only a session carrying *this* callsign proves the applicant linked. Checking
-    // merely for a Discord session would treat an unrelated login — a crew member's,
-    // say — as proof and skip the callsign step entirely.
+    // A link only counts if this flow asked for it and the session came back carrying
+    // that exact callsign. Matching on the session alone treated a login that already
+    // existed as proof — a crew member who is INVA011, typing 011, was told they were
+    // already in without ever touching Discord.
     useEffect(() => {
-        if (status !== 'authenticated' || discordLinked) return;
-        if (callsign && session?.user?.callsign === `INVA${callsign}`) {
+        if (status !== 'authenticated' || discordLinked || !linkPendingFor) return;
+        if (session?.user?.callsign === linkPendingFor) {
             markDiscordLinked();
         }
-    }, [ status, session, callsign, discordLinked, markDiscordLinked ]);
+    }, [ status, session, linkPendingFor, discordLinked, markDiscordLinked ]);
 
     useEffect(() => {
-        if (callsign.length !== 3 || parseInt(callsign) <= 99) {
+        if (!isSelectableApplicantCallsign(callsign)) {
             setCallsignStatus('idle');
             return;
         }
@@ -128,7 +132,7 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
         const error = params.get('error');
         if (!error) return;
         setAuthError(error);
-        if (error === 'callsign-taken') handleCallsignChange('');
+        if (error === 'callsign-taken' || error === 'callsign-reserved') handleCallsignChange('');
         const url = new URL(window.location.href);
         url.searchParams.delete('error');
         window.history.replaceState({}, '', url);
@@ -211,7 +215,7 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
                 <Step
                     index={1}
                     title="Choose your callsign"
-                    description="Any number from 100 to 999 that isn't taken yet."
+                    description={`Any number from ${APPLICANT_CALLSIGN_RANGE} that isn't taken yet.`}
                     state={callsignReady ? 'done' : 'active'}
                 >
                     <CallsignInput
@@ -220,6 +224,7 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
                         status={callsignStatus}
                         label="Your callsign"
                         tone="light"
+                        helperText={`Enter a number between ${APPLICANT_CALLSIGN_RANGE}`}
                     />
                 </Step>
 

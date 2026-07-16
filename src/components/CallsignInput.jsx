@@ -4,7 +4,9 @@ import { DarkMode } from "./ui/color-mode";
 
 // status: 'idle' | 'checking' | 'available' | 'taken' | 'error'
 // tone:   'dark' for the crew login's dark page, 'light' for the apply card.
-export default function CallsignInput({ value, onChange, status = 'idle', label = 'Login', tone = 'dark', ...rest }) {
+// helperText: the selectable range differs by caller — applicants can't take the
+//   reserved low numbers, but existing crew log in with whatever they were given.
+export default function CallsignInput({ value, onChange, status = 'idle', label = 'Login', tone = 'dark', helperText = 'Enter your 3-digit callsign number', ...rest }) {
   const handleChange = (e) => {
     const digits = e.target.value.replace(/\D/g, "").slice(0, 3);
     onChange(digits);
@@ -93,7 +95,7 @@ export default function CallsignInput({ value, onChange, status = 'idle', label 
 
       {status === 'idle' && (
         <Field.HelperText color={mutedColor}>
-          Enter a number between 100–999
+          {helperText}
         </Field.HelperText>
       )}
     </Field.Root>

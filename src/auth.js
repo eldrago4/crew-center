@@ -7,6 +7,7 @@ import { cache } from 'react'
 import db from './db/client'
 import { applicants, users } from './db/schema'
 import { eq } from 'drizzle-orm'
+import { isSelectableApplicantCallsign } from './lib/callsign'
 
 // Profile (rank/careerMode/ifcName/discordId) and staff permissions are cached
 // inside the JWT and only re-fetched after these TTLs, so most auth() calls do
@@ -114,6 +115,14 @@ const { handlers, signIn, signOut, auth: uncachedAuth, unstable_update } = NextA
 
       if (isApplicant) {
         const applicantDiscordId = account.providerAccountId;
+
+        // The form and the availability API both refuse reserved numbers, but the
+        // callsign arrives here in a cookie the client sets, so this is the gate that
+        // actually holds.
+        if (!isSelectableApplicantCallsign(callsign)) {
+          console.warn(`[AUTH] Rejected reserved applicant callsign: ${callsign}`);
+          return '/apply?error=callsign-reserved';
+        }
 
         // An unhandled insert here used to throw out of the callback, which sent the
         // applicant to pages.error (/crew) with no way back. Re-authing with the same

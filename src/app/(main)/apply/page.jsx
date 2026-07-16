@@ -38,7 +38,7 @@ export default function ApplyPage() {
             case 2:
                 return <WrittenTest state={state} questions={questions} {...handlers} />;
             case 3:
-                return <ResultsDisplay state={state} resetApplication={handlers.resetApplication} handleCallsignChange={handlers.handleCallsignChange} markDiscordLinked={handlers.markDiscordLinked} />;
+                return <ResultsDisplay state={state} resetApplication={handlers.resetApplication} handleCallsignChange={handlers.handleCallsignChange} requestDiscordLink={handlers.requestDiscordLink} markDiscordLinked={handlers.markDiscordLinked} />;
             default:
                 return <ApplicationForm state={state} {...handlers} />;
         }

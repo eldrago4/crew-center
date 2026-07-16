@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '@/db/client';
 import { applicants, users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { toCallsignDigits, isSelectableApplicantCallsign } from '@/lib/callsign';
 
 // Two callers with opposite needs share this route:
 //   - /crew sends a full "INVA136" and reads `valid` as "this crew member exists,
@@ -12,8 +13,8 @@ import { eq } from 'drizzle-orm';
 export async function POST(request) {
     try {
         const { callsign } = await request.json();
-        const digits = String(callsign ?? '').replace(/\D/g, '');
-        if (digits.length !== 3) {
+        const digits = toCallsignDigits(callsign);
+        if (!digits) {
             return NextResponse.json({ valid: false, available: false, error: 'Callsign must be three digits' }, { status: 400 });
         }
         const id = `INVA${digits}`;
@@ -34,8 +35,10 @@ export async function POST(request) {
         const heldByUser = Boolean(userRow) && userRow.ifcName !== 'NA';
 
         return NextResponse.json({
+            // `valid` answers the crew login's question — does this member exist — and
+            // must ignore the applicant range, since existing crew hold low numbers.
             valid: Boolean(userRow),
-            available: !heldByUser && !applicantRow,
+            available: isSelectableApplicantCallsign(digits) && !heldByUser && !applicantRow,
         });
     } catch (e) {
         return NextResponse.json({ valid: false, available: false, error: e.message }, { status: 500 });
