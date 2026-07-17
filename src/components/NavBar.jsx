@@ -26,11 +26,12 @@ import { useEffect, useRef, useState } from "react";
 const MENU_LINKS = [
   [
     { label: "Routes", href: "/operations/routes" },
+    { label: "Maharaja Trails", href: "/operations/trails" },
     { label: "Hubs", href: "/hubs" },
     { label: "Ranks", href: "/ranks" },
-    { label: "Career", href: "/career" },
   ],
   [
+    { label: "Career", href: "/career" },
     { label: "Fleet", href: "/fleet" },
     { label: "Stats", href: "/stats" },
     { label: "Briefings", href: "/briefings" },
