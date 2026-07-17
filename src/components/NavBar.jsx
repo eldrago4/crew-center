@@ -15,28 +15,58 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { FaChevronDown } from "react-icons/fa";
+import {
+  FaRoute,
+  FaCrown,
+  FaTowerBroadcast,
+  FaMedal,
+  FaPlane,
+  FaBriefcase,
+  FaChartLine,
+  FaBookOpen,
+} from "react-icons/fa6";
 import { CgMenuRight } from "react-icons/cg";
 import { IoCloseOutline } from "react-icons/io5";
 import NextImage from "next/image";
 import NextLink from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-// Rendered as columns in the desktop dropdown, and flattened for the mobile
-// menu — so an entry here reaches both.
-const MENU_LINKS = [
-  [
-    { label: "Routes", href: "/operations/routes" },
-    { label: "Maharaja Trails", href: "/operations/trails" },
-    { label: "Hubs", href: "/hubs" },
-    { label: "Ranks", href: "/ranks" },
-  ],
-  [
-    { label: "Career", href: "/career" },
-    { label: "Fleet", href: "/fleet" },
-    { label: "Stats", href: "/stats" },
-    { label: "Briefings", href: "/briefings" },
-  ],
+const BLUE = "#2b4bee";
+const ORANGE = "#ff6b35";
+const PURPLE = "#8223F6";
+
+// Rendered as three accented columns in the desktop mega-menu, and flattened
+// for the mobile slide-in menu — so an entry here reaches both.
+const OPERATIONS_MENU = [
+  {
+    heading: "The Network",
+    accent: BLUE,
+    items: [
+      { label: "Routes", href: "/operations/routes", icon: FaRoute, description: "The full route map" },
+      { label: "Maharaja Trails", href: "/operations/trails", icon: FaCrown, description: "Curated flight itineraries", badge: "NEW" },
+      { label: "Hubs", href: "/hubs", icon: FaTowerBroadcast, description: "Where INVA calls home" },
+    ],
+  },
+  {
+    heading: "Fleet & Ranks",
+    accent: ORANGE,
+    items: [
+      { label: "Fleet", href: "/fleet", icon: FaPlane, description: "Every aircraft we fly" },
+      { label: "Ranks", href: "/ranks", icon: FaMedal, description: "The Maharaja's chain of command" },
+    ],
+  },
+  {
+    heading: "Resources",
+    accent: PURPLE,
+    items: [
+      { label: "Career", href: "/career", icon: FaBriefcase, description: "Join the flight deck" },
+      { label: "Stats", href: "/stats", icon: FaChartLine, description: "Network numbers, live" },
+      { label: "Briefings", href: "/briefings", icon: FaBookOpen, description: "Read before you fly" },
+    ],
+  },
 ];
+
+const MENU_LINKS = OPERATIONS_MENU.map(col => col.items);
 
 const glassBg = {
   bg: "rgba(0,0,0,0.6)",
@@ -49,72 +79,153 @@ function OperationsMenu({ open, setOpen }) {
     <Menu.Root
       open={open}
       onOpenChange={details => setOpen(details.open)}
-      colorPalette="purple"
       variant="subtle"
       size="sm"
       positioning={{
-        placement: "bottom",
-        gutter: 14,
+        placement: "bottom-start",
+        gutter: 16,
         strategy: "absolute",
       }}
     >
       <Menu.Trigger asChild>
         <Button
           variant="ghost"
-          colorScheme="purple"
-          fontWeight="600"
+          fontWeight="700"
+          fontSize="sm"
           size="sm"
           bg="white"
-          color="purple.700"
-          _hover={{ bg: "gray.100", color: "purple.800" }}
-          _focus={{ boxShadow: "outline" }}
-          px={3}
-          py={2}
+          color={BLUE}
+          border="1px solid"
+          borderColor="white"
+          rounded="full"
+          px={4}
+          py={2.5}
+          gap={2}
+          letterSpacing="0.01em"
+          transition="all 0.2s ease"
+          boxShadow={open ? `0 0 0 4px rgba(43,75,238,0.25)` : "none"}
+          _hover={{ bg: "white", color: BLUE }}
+          _focus={{ boxShadow: "none" }}
         >
-          Operations <FaChevronDown />
+          Operations
+          <Box
+            as={FaChevronDown}
+            fontSize="10px"
+            transform={open ? "rotate(180deg)" : "rotate(0deg)"}
+            transition="transform 0.25s ease"
+          />
         </Button>
       </Menu.Trigger>
       <Portal>
         <Menu.Positioner>
           <Menu.Content
-            borderColor="purple.300"
-            borderWidth="2px"
-            boxShadow="lg"
-            bgGradient="linear(135deg, #f8f6ff 60%, #f3eaff 100%)"
-            borderRadius="xl"
-            minW="240px"
-            maxW="340px"
-            px={0}
-            py={3}
+            border="1px solid"
+            borderColor="gray.100"
+            boxShadow="0 24px 60px -12px rgba(15, 23, 42, 0.35)"
+            bg="white"
+            borderRadius="2xl"
+            minW="600px"
+            maxW="94vw"
+            p={0}
+            overflow="hidden"
             fontFamily="Inter, system-ui, sans-serif"
-            fontSize="sm"
-            style={{ transition: "background 0.4s" }}
           >
-            <Flex>
-              {MENU_LINKS.map((col, idx) => (
-                <VStack key={idx} align="stretch" spacing={1} flex={1} px={2}>
-                  {col.map(item => (
-                    <Menu.Item
-                      asChild
-                      key={item.href}
-                      value={item.label.toLowerCase()}
-                      _focus={{
-                        bg: "purple.100",
-                        fontWeight: "600",
-                      }}
-                      px={3}
-                      py={2}
-                      cursor="pointer"
-                      borderRadius="md"
-                      fontWeight="500"
-                      color="gray.800"
-                    >
-                      <Link as={NextLink} href={item.href}>{item.label}</Link>
-                    </Menu.Item>
-                  ))}
-                </VStack>
+            {/* Brand accent bar */}
+            <Box h="4px" w="full" bgGradient="linear(90.18deg, #2D37DB 0%, #8223F6 95.74%)" />
+
+            <Grid templateColumns="repeat(3, 1fr)" gap={0} px={7} py={6}>
+              {OPERATIONS_MENU.map((col, idx) => (
+                <Box
+                  key={col.heading}
+                  pr={idx < OPERATIONS_MENU.length - 1 ? 3 : 0}
+                  pl={idx > 0 ? 3 : 0}
+                  borderLeft={idx > 0 ? "1px solid" : "none"}
+                  borderColor="gray.100"
+                >
+                  <Text
+                    fontSize="10px"
+                    fontWeight="800"
+                    letterSpacing="0.14em"
+                    textTransform="uppercase"
+                    color={col.accent}
+                    mb={3}
+                  >
+                    {col.heading}
+                  </Text>
+                  <VStack align="stretch" gap={1}>
+                    {col.items.map(item => (
+                      <Menu.Item
+                        asChild
+                        key={item.href}
+                        value={item.label.toLowerCase()}
+                        px={0}
+                        py={0}
+                        borderRadius="lg"
+                        cursor="pointer"
+                        _focus={{ bg: "transparent" }}
+                      >
+                        <Link
+                          as={NextLink}
+                          href={item.href}
+                          _hover={{ textDecoration: "none" }}
+                          display="block"
+                          className="group"
+                        >
+                          <HStack
+                            align="start"
+                            gap={3}
+                            px={3}
+                            py={2.5}
+                            borderRadius="lg"
+                            transition="background 0.15s ease"
+                            _hover={{ bg: `${col.accent}0F` }}
+                          >
+                            <Flex
+                              w="34px"
+                              h="34px"
+                              rounded="md"
+                              align="center"
+                              justify="center"
+                              bg={`${col.accent}14`}
+                              color={col.accent}
+                              fontSize="14px"
+                              flexShrink={0}
+                            >
+                              <item.icon />
+                            </Flex>
+                            <Box minW={0}>
+                              <HStack gap={2}>
+                                <Text fontWeight="700" fontSize="sm" color="gray.900">
+                                  {item.label}
+                                </Text>
+                                {item.badge && (
+                                  <Box
+                                    as="span"
+                                    fontSize="9px"
+                                    fontWeight="800"
+                                    letterSpacing="0.06em"
+                                    color="white"
+                                    bg={ORANGE}
+                                    px={1.5}
+                                    py="1px"
+                                    borderRadius="full"
+                                  >
+                                    {item.badge}
+                                  </Box>
+                                )}
+                              </HStack>
+                              <Text fontSize="xs" color="gray.500" mt="1px" lineHeight="1.4">
+                                {item.description}
+                              </Text>
+                            </Box>
+                          </HStack>
+                        </Link>
+                      </Menu.Item>
+                    ))}
+                  </VStack>
+                </Box>
               ))}
-            </Flex>
+            </Grid>
           </Menu.Content>
         </Menu.Positioner>
       </Portal>
