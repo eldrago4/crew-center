@@ -208,6 +208,11 @@ const { handlers, signIn, signOut, auth: uncachedAuth, unstable_update } = NextA
           delete token.redirectToIfcName;
         }
         if (user.discordId) token.discordId = user.discordId;
+        // signIn() flags applicants but this was never carried onto the token, so the
+        // guards below that read token.isApplicant never fired: every applicant paid
+        // for a users lookup that by definition finds nothing, plus a staff-permission
+        // fetch, on each refresh.
+        if (user.isApplicant) token.isApplicant = true;
         // Force a fresh fetch of profile/permissions on new sign-in
         delete token.profileRefreshedAt;
         delete token.permissionsRefreshedAt;
@@ -248,7 +253,18 @@ const { handlers, signIn, signOut, auth: uncachedAuth, unstable_update } = NextA
 
     async session({ session, token }) {
       if (token?.isApplicant) {
-        // Don't set user properties for applicants
+        // Applicants get only what the apply flow needs to recognise its own
+        // completed link, and no crew profile. redirectToIfcName is asserted rather
+        // than inherited: until now it came out true only as a side effect of the
+        // profile lookup above failing to find an applicant in `users`, and that
+        // accident is what keeps applicants out of /crew/dashboard, whose layout
+        // redirects on exactly this flag. Skipping the lookup without setting it
+        // would have walked applicants straight into the dashboard.
+        session.user.isApplicant = true;
+        session.user.callsign = token.callsign ?? null;
+        session.user.redirectToIfcName = true;
+        session.user.permissions = [];
+        if (token.discordId) session.user.discordId = token.discordId;
         return session;
       }
       if (token?.callsign) {
