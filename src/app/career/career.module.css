@@ -1,0 +1,1022 @@
+/* Design tokens lifted verbatim from the Stitch project "INVA Career Pulse"
+   (screen: "INVA Career Mode: The Rajvanshi Manual"). Stitch ships these as a
+   tailwind.config; this page has no Tailwind, so they live here as variables. */
+.page {
+    --paper-bg: #fdfbf7;
+    --paper-muted: #e5e0d8;
+    --ink-black: #2d2d2d;
+    --marker-red: #ff4d4d;
+    --ballpoint-blue: #2d5da1;
+    --primary: #b71422;
+    --on-surface: #1b1c1c;
+    --on-surface-variant: #5b403e;
+    --secondary: #2e5ea2;
+    --secondary-fixed: #d6e3ff;
+    --secondary-fixed-dim: #a9c7ff;
+    --secondary-container: #89b4fe;
+    --on-secondary-container: #064487;
+    --on-secondary-fixed: #001b3d;
+    --primary-fixed: #ffdad7;
+    --tape-gray: rgba(45, 45, 45, 0.1);
+    --sticky-note: #fff9c4;
+
+    /* Stitch references .paper-dots/.wobbly-border/.tape-effect but never emits
+       their CSS, so they are reconstructed below. The two radii are exact: they
+       come from the config's `spacing.wobbly` / `spacing.wobbly-md` values. */
+    --wobbly: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    --wobbly-alt: 15px 225px 15px 255px / 255px 15px 225px 15px;
+
+    min-height: 100vh;
+    overflow-x: hidden;
+    color: var(--on-surface);
+    font-family: var(--font-patrick-hand), ui-sans-serif, system-ui, sans-serif;
+    font-size: 18px;
+    line-height: 1.5;
+    background-color: var(--paper-bg);
+    background-image: radial-gradient(var(--tape-gray) 1px, transparent 1px);
+    background-size: 22px 22px;
+}
+
+.main {
+    position: relative;
+    width: 100%;
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: 8rem 1.5rem 5rem;
+}
+
+/* ---- type scale ---------------------------------------------------------- */
+/* Stitch splits family and size into separate utilities (font-headline-md +
+   text-xl), so family and size are separate here too. */
+.fDisplay,
+.fHeadline {
+    font-family: var(--font-kalam), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+}
+
+.fLabel {
+    font-family: var(--font-kalam), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    line-height: 1;
+}
+
+.fBody {
+    font-family: var(--font-patrick-hand), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 400;
+}
+
+/* The design fixes display at 64px and headline-lg at 48px. Its own config
+   carries a 36px `headline-lg-mobile`, so these clamp down rather than
+   overflow a phone. */
+.tDisplay {
+    font-size: clamp(2.5rem, 7.5vw, 4rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+.tHeadlineLg {
+    font-size: clamp(2.25rem, 5vw, 3rem);
+    line-height: 1.2;
+}
+
+/* ---- reconstructed sketchbook primitives --------------------------------- */
+.wobbly {
+    border: 2px solid var(--ink-black);
+    border-radius: var(--wobbly);
+}
+
+.wobblyAlt {
+    border: 2px solid var(--ink-black);
+    border-radius: var(--wobbly-alt);
+}
+
+.tape {
+    position: absolute;
+    top: -0.75rem;
+    left: 50%;
+    width: 100px;
+    height: 30px;
+    transform: translateX(-50%) rotate(-2deg);
+    background: var(--tape-gray);
+}
+
+.tapeLeft {
+    left: 2.5rem;
+    transform: rotate(-4deg);
+}
+
+.tapeRight {
+    left: auto;
+    right: 2.5rem;
+    transform: rotate(3deg);
+}
+
+/* ---- hero ---------------------------------------------------------------- */
+.hero {
+    position: relative;
+    margin-bottom: 6rem;
+}
+
+.heroCopy {
+    max-width: 42rem;
+    text-align: center;
+}
+
+.heroTitle {
+    margin-bottom: 1.5rem;
+    transform: rotate(-1deg);
+}
+
+.heroTitle em {
+    font-style: normal;
+    color: var(--marker-red);
+}
+
+.heroLede {
+    margin-bottom: 1rem;
+    font-size: 20px;
+    line-height: 1.625;
+    color: var(--on-surface-variant);
+}
+
+.pullQuote {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    font-style: italic;
+    color: var(--primary);
+    background: rgba(183, 20, 34, 0.05);
+    border: 2px solid rgba(183, 20, 34, 0.2);
+    border-radius: var(--wobbly-alt);
+}
+
+.heroNote {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: var(--ballpoint-blue);
+}
+
+.heroNote p {
+    font-size: 20px;
+    font-style: italic;
+}
+
+/* The polaroid is decorative and absolutely positioned outside the copy
+   column, so it only appears once there is room for it (lg and up). */
+.polaroid {
+    display: none;
+}
+
+.polaroidCaption {
+    text-align: center;
+    font-size: 18px;
+    color: var(--ballpoint-blue);
+}
+
+/* ---- section furniture --------------------------------------------------- */
+.section {
+    margin-bottom: 6rem;
+}
+
+.sectionTitle {
+    margin-bottom: 3rem;
+}
+
+.centered {
+    text-align: center;
+}
+
+.italic {
+    font-style: italic;
+}
+
+.underlineDashed {
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-decoration-color: var(--primary);
+}
+
+/* ---- compensation ladder ------------------------------------------------- */
+.ladder {
+    display: grid;
+    gap: 1rem;
+    max-width: 48rem;
+    margin: 0 auto;
+}
+
+.rankRow {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1rem;
+    background: #fff;
+    border: 2px solid var(--ink-black);
+    border-radius: var(--wobbly);
+    transition: box-shadow 150ms ease, transform 150ms ease;
+}
+
+.rankRow:hover {
+    box-shadow: 6px 6px 0 0 var(--ink-black);
+}
+
+.rankHours {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    font-size: 24px;
+    background: var(--paper-muted);
+    border: 2px solid var(--ink-black);
+}
+
+.rankBody {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.rankName {
+    font-size: 20px;
+}
+
+.rankPay {
+    font-size: 12px;
+    color: var(--on-surface-variant);
+}
+
+.rankTotal {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.rankTotal p:first-child {
+    font-size: 20px;
+}
+
+.rankTotalLabel {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.5;
+}
+
+/* Chief Pilot — the terminal rank, deliberately louder than the rest. */
+.rankRowChief {
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: var(--secondary-container);
+    border-radius: var(--wobbly-alt);
+    box-shadow: 8px 8px 0 0 var(--ink-black);
+    transform: scale(1.05);
+}
+
+.rankRowChief .rankHours {
+    width: 5rem;
+    height: 5rem;
+    font-size: 30px;
+    background: #fff;
+    border-width: 4px;
+}
+
+.rankRowChief .rankName {
+    font-size: 24px;
+    color: var(--on-secondary-container);
+    text-decoration: underline;
+}
+
+.rankRowChief .rankPay {
+    font-size: 14px;
+    color: rgba(6, 68, 135, 0.8);
+}
+
+.rankRowChief .rankTotal p:first-child {
+    font-size: 30px;
+    color: var(--on-secondary-container);
+}
+
+.rankRowChief .rankTotalLabel {
+    font-size: 12px;
+    color: var(--on-secondary-container);
+    opacity: 1;
+}
+
+/* ---- fleet & training ---------------------------------------------------- */
+.twoCol {
+    display: grid;
+    gap: 3rem;
+    align-items: start;
+}
+
+.card {
+    position: relative;
+    padding: 2rem;
+    background: #fff;
+    border: 2px solid var(--ink-black);
+    border-radius: var(--wobbly);
+    box-shadow: 8px 8px 0 0 var(--ink-black);
+}
+
+.cardTitle {
+    margin-bottom: 1rem;
+    font-size: 24px;
+    color: var(--primary);
+    text-decoration: underline;
+    text-decoration-style: dashed;
+}
+
+.checkList {
+    display: grid;
+    gap: 1rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.checkList li {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.checkList .icon {
+    color: var(--ballpoint-blue);
+    flex-shrink: 0;
+}
+
+.stack {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.fleetLocked {
+    padding: 1.5rem;
+    background: var(--secondary-fixed);
+    border: 2px solid var(--ink-black);
+    border-radius: var(--wobbly-alt);
+    box-shadow: 6px 6px 0 0 var(--ink-black);
+}
+
+.fleetLocked h4 {
+    margin-bottom: 0.5rem;
+    font-size: 20px;
+}
+
+.fleetLocked > p {
+    font-size: 14px;
+}
+
+.fleetTable {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    font-size: 12px;
+}
+
+.fleetTable > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid rgba(45, 45, 45, 0.1);
+}
+
+.fleetTable > div:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.fleetTable span:last-child {
+    color: var(--ballpoint-blue);
+}
+
+.chiefReward {
+    padding: 1.5rem;
+    background: var(--primary-fixed);
+    border: 2px solid var(--ink-black);
+    border-radius: var(--wobbly);
+    box-shadow: 6px 6px 0 0 var(--ink-black);
+}
+
+.chiefRewardInner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.chiefReward h4 {
+    font-size: 20px;
+}
+
+.chiefReward p {
+    font-size: 14px;
+}
+
+/* ---- global ops ---------------------------------------------------------- */
+.opsPanel {
+    position: relative;
+    padding: 2rem;
+    background: var(--paper-muted);
+    border: 2px solid var(--ink-black);
+    border-radius: var(--wobbly-alt);
+    box-shadow: 10px 10px 0 0 var(--ink-black);
+}
+
+.opsBadge {
+    position: absolute;
+    top: -1.5rem;
+    right: 2.5rem;
+    padding: 0.5rem 1rem;
+    color: #fff;
+    background: var(--marker-red);
+    border: 2px solid var(--ink-black);
+    border-radius: var(--wobbly);
+    transform: rotate(3deg);
+}
+
+.opsGrid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.opsCard {
+    padding: 1rem;
+    background: #fff;
+    border: 2px solid var(--ink-black);
+    box-shadow: 4px 4px 0 0 var(--ink-black);
+}
+
+.opsCard h5 {
+    font-size: 18px;
+    color: var(--ballpoint-blue);
+}
+
+.opsCard p {
+    margin-top: 0.5rem;
+    font-size: 12px;
+}
+
+.opsFooter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    font-style: italic;
+    color: var(--on-surface-variant);
+    border-top: 2px solid rgba(45, 45, 45, 0.1);
+}
+
+.opsFooter .icon {
+    font-size: 14px;
+    vertical-align: middle;
+}
+
+/* ---- simulation features ------------------------------------------------- */
+.featureGrid {
+    display: grid;
+    gap: 2rem;
+}
+
+.feature {
+    position: relative;
+    padding: 2rem;
+    background: #fff;
+    border: 2px solid var(--ink-black);
+    border-radius: var(--wobbly);
+    box-shadow: 6px 6px 0 0 var(--ink-black);
+}
+
+.featureAlt {
+    border-radius: var(--wobbly-alt);
+}
+
+.featureIcon {
+    display: block;
+    margin-bottom: 1rem;
+    font-size: 36px;
+}
+
+.feature h3 {
+    margin-bottom: 0.5rem;
+    font-size: 24px;
+}
+
+.featureBody {
+    margin-bottom: 1rem;
+    color: var(--on-surface-variant);
+}
+
+.featureSplit {
+    padding-top: 1rem;
+    border-top: 1px dashed var(--paper-muted);
+}
+
+.featureSplitTitle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--marker-red);
+}
+
+.featureSplitTitle .icon {
+    font-size: 14px;
+}
+
+.featureSplit p:last-child {
+    font-size: 14px;
+    font-style: italic;
+}
+
+.featureCallout {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    font-size: 12px;
+    font-style: italic;
+    background: var(--paper-muted);
+    border-radius: 0.25rem;
+}
+
+.featureCallout .icon {
+    font-size: 12px;
+}
+
+.featurePayout {
+    background: var(--secondary-fixed);
+    border-radius: var(--wobbly-alt);
+    box-shadow: 8px 8px 0 0 var(--ink-black);
+}
+
+.newBadge {
+    position: absolute;
+    top: -1rem;
+    right: -1rem;
+    z-index: 10;
+    padding: 0.5rem;
+    color: #fff;
+    background: var(--marker-red);
+    border: 2px solid #fff;
+    border-radius: var(--wobbly);
+    transform: rotate(12deg);
+}
+
+/* ---- divider ------------------------------------------------------------- */
+.divider {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 6rem;
+}
+
+.dividerRule {
+    position: relative;
+    width: 100%;
+    height: 1px;
+    border-bottom: 4px dotted rgba(45, 45, 45, 0.2);
+}
+
+.dividerIcon {
+    position: absolute;
+    left: 50%;
+    top: -1.5rem;
+    padding: 0 1rem;
+    font-size: 36px;
+    color: var(--marker-red);
+    background: var(--paper-bg);
+    transform: translateX(-50%) rotate(45deg);
+}
+
+/* ---- quality of life ----------------------------------------------------- */
+.qol {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+    margin-bottom: 6rem;
+}
+
+/* min-width:0 — grid items default to min-width:auto, which lets .qolCard's
+   fixed 20rem set the column's min-content and blow past .main's padding on
+   narrow phones. */
+.qolCopy {
+    order: 2;
+    min-width: 0;
+}
+
+.qolTitle {
+    margin-bottom: 1.5rem;
+}
+
+.qolList {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.qolItem {
+    display: flex;
+    gap: 1rem;
+}
+
+.qolItem h4 {
+    font-size: 20px;
+}
+
+.qolItem .icon {
+    font-size: 36px;
+    flex-shrink: 0;
+}
+
+.qolFigure {
+    order: 1;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+}
+
+.qolCard {
+    position: relative;
+    width: 20rem;
+    max-width: 100%;
+    padding: 1.5rem;
+    background: #fff;
+    border: 2px solid var(--ink-black);
+    border-radius: var(--wobbly-alt);
+    box-shadow: 12px 12px 0 0 var(--ink-black);
+    transform: rotate(2deg);
+}
+
+.qolPhoto {
+    height: 12rem;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    background: var(--paper-muted);
+    border: 2px solid var(--ink-black);
+}
+
+.qolPhoto img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.qolQuote {
+    margin-bottom: 0.5rem;
+    font-size: 14px;
+    font-style: italic;
+}
+
+.qolAttrib {
+    text-align: right;
+    font-size: 18px;
+    color: var(--primary);
+}
+
+/* ---- career highlights (sticky notes) ------------------------------------ */
+.notes {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+.note {
+    padding: 2rem;
+    background: var(--sticky-note);
+    border: 2px solid rgba(45, 45, 45, 0.1);
+    box-shadow: 4px 4px 0 0 var(--ink-black);
+}
+
+.note h4 {
+    margin-bottom: 0.75rem;
+    font-size: 20px;
+    text-decoration: underline;
+}
+
+.note p {
+    font-size: 14px;
+}
+
+.noteBlue h4 {
+    color: var(--ballpoint-blue);
+}
+
+.noteRed h4 {
+    color: var(--marker-red);
+}
+
+/* ---- closing ------------------------------------------------------------- */
+.closing {
+    position: relative;
+    padding: 5rem 0;
+    text-align: center;
+}
+
+.closingInner {
+    position: relative;
+    display: inline-block;
+}
+
+.closingTitle {
+    margin-bottom: 1rem;
+}
+
+.closingArrow {
+    display: none;
+}
+
+.closingLede {
+    max-width: 36rem;
+    margin: 0 auto;
+    font-size: 20px;
+    color: var(--on-surface-variant);
+}
+
+.closingLinks {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    margin-top: 3rem;
+}
+
+.closingLink {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.closingLink .icon {
+    font-size: 36px;
+}
+
+.closingLink:hover p {
+    text-decoration: underline;
+}
+
+/* ---- footer -------------------------------------------------------------- */
+/* The design asks for rounded-t-[15px_225px_15px_255px/255px_15px_225px_15px];
+   only the top corners take the wobble, so the bottom stays square. */
+.footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    width: 100%;
+    margin-top: 5rem;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: var(--paper-muted);
+    border-top: 4px solid var(--ink-black);
+    border-top-left-radius: 15px 255px;
+    border-top-right-radius: 225px 15px;
+}
+
+.footerBrand {
+    font-style: italic;
+    color: var(--ballpoint-blue);
+}
+
+.footerLinks {
+    display: flex;
+    gap: 2rem;
+}
+
+.footerLinks a {
+    color: var(--ink-black);
+    text-decoration: underline;
+    text-decoration-style: wavy;
+    transition: color 150ms ease;
+}
+
+.footerLinks a:hover {
+    color: var(--primary);
+}
+
+/* ---- icon font ----------------------------------------------------------- */
+.icon {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-feature-settings: "liga";
+    -webkit-font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+}
+
+/* text-4xl, for icons sitting inline in a centred flex row — no block
+   display or bottom margin, unlike .featureIcon. */
+.iconLg {
+    font-size: 36px;
+    flex-shrink: 0;
+}
+
+.iconBlue {
+    color: var(--ballpoint-blue);
+}
+
+.iconRed {
+    color: var(--primary);
+}
+
+.iconSecondary {
+    color: var(--secondary);
+}
+
+.iconOnSecondary {
+    color: var(--on-secondary-fixed);
+}
+
+/* ---- rotations ----------------------------------------------------------- */
+/* Sketchbook jitter. Flattened on small screens, where rotated full-bleed
+   cards otherwise clip against the viewport edge. */
+.rot1 { transform: rotate(1deg); }
+.rot2 { transform: rotate(2deg); }
+.rot3 { transform: rotate(3deg); }
+.rotN1 { transform: rotate(-1deg); }
+.rotN2 { transform: rotate(-2deg); }
+
+.rankHours.rot1,
+.rankHours.rot2,
+.rankHours.rot3,
+.rankHours.rotN1,
+.rankHours.rotN2 { flex-shrink: 0; }
+
+@media (max-width: 767px) {
+    .rankRow.rot1,
+    .rankRow.rot2,
+    .rankRow.rotN1,
+    .rankRow.rotN2,
+    .card.rot1,
+    .feature.rot1,
+    .feature.rotN1,
+    .note.rot1,
+    .note.rot2,
+    .note.rotN1,
+    .note.rotN2 {
+        transform: none;
+    }
+
+    .rankRowChief {
+        transform: none;
+    }
+}
+
+/* ---- responsive ---------------------------------------------------------- */
+@media (max-width: 639px) {
+    .main {
+        padding-top: 5rem;
+    }
+
+    .rankRow {
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
+
+    .rankRowChief {
+        gap: 0.75rem;
+        padding: 1rem;
+    }
+
+    .rankHours {
+        width: 3rem;
+        height: 3rem;
+        font-size: 18px;
+    }
+
+    .rankRowChief .rankHours {
+        width: 3.5rem;
+        height: 3.5rem;
+        font-size: 20px;
+    }
+
+    .rankRowChief .rankName {
+        font-size: 20px;
+    }
+
+    .rankRowChief .rankPay {
+        font-size: 12px;
+    }
+
+    .rankRowChief .rankTotal p:first-child {
+        font-size: 22px;
+    }
+
+    .rankRowChief .rankTotalLabel {
+        font-size: 10px;
+    }
+
+    /* -1rem would tuck the badge under the page's overflow clip on a
+       full-bleed card. */
+    .newBadge {
+        top: -0.75rem;
+        right: -0.25rem;
+    }
+
+    .closingLinks {
+        gap: 1.5rem;
+    }
+
+    .card,
+    .feature,
+    .opsPanel,
+    .qolCard {
+        padding: 1.5rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .heroCopy {
+        text-align: left;
+    }
+
+    .heroNote {
+        justify-content: flex-start;
+    }
+
+    .twoCol,
+    .featureGrid,
+    .qol {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .opsGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .notes {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .opsFooter {
+        flex-direction: row;
+    }
+
+    .qolCopy {
+        order: 1;
+    }
+
+    .qolFigure {
+        order: 2;
+    }
+
+    .closingArrow {
+        display: block;
+        position: absolute;
+        left: -5rem;
+        top: 0;
+        font-size: 60px;
+        color: var(--marker-red);
+        transform: rotate(-45deg);
+    }
+}
+
+@media (min-width: 1024px) {
+    .opsGrid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .polaroid {
+        display: block;
+        position: absolute;
+        right: -2.5rem;
+        top: 0;
+        width: 20rem;
+        height: 24rem;
+        padding: 1rem;
+        background: #fff;
+        border: 2px solid var(--ink-black);
+        border-radius: var(--wobbly);
+        box-shadow: 12px 12px 0 0 var(--ink-black);
+        transform: rotate(3deg);
+    }
+
+    .polaroidPhoto {
+        height: 16rem;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        border: 2px solid var(--ink-black);
+    }
+
+    .polaroidPhoto img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rankRow {
+        transition: none;
+    }
+}
