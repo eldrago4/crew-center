@@ -21,11 +21,14 @@ import NextImage from "next/image";
 import NextLink from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+// Rendered as columns in the desktop dropdown, and flattened for the mobile
+// menu — so an entry here reaches both.
 const MENU_LINKS = [
   [
     { label: "Routes", href: "/operations/routes" },
     { label: "Hubs", href: "/hubs" },
     { label: "Ranks", href: "/ranks" },
+    { label: "Career", href: "/career" },
   ],
   [
     { label: "Fleet", href: "/fleet" },

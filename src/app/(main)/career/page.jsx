@@ -485,11 +485,16 @@ export default function CareerPage() {
                             in ink and air. We&apos;ll see you in the skies, Captain.
                         </p>
                         <div className={styles.closingLinks}>
-                            <a className={styles.closingLink} href="/flying-manual">
+                            <a
+                                className={styles.closingLink}
+                                href="https://infiniteflight.com/guide"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
                                 <Icon name="book_5" className={styles.iconBlue} />
                                 <p className={styles.fLabel}>Open Manual</p>
                             </a>
-                            <a className={styles.closingLink} href="/crew/career">
+                            <a className={styles.closingLink} href="/apply">
                                 <Icon name="forum" className={styles.iconRed} />
                                 <p className={styles.fLabel}>Dispatch Center</p>
                             </a>
@@ -502,7 +507,9 @@ export default function CareerPage() {
                         INVACareer
                     </div>
                     <div className={`${styles.fLabel} ${styles.footerLinks}`}>
-                        <a href="#">Overview</a>
+                        {/* The design's placeholder was href="#"; pointed at the page
+                            itself, which is what "Overview" means here. */}
+                        <a href="/career">Overview</a>
                     </div>
                 </footer>
             </div>
