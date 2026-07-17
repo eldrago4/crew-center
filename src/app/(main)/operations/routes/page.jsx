@@ -155,7 +155,7 @@ export default function RoutesPage() {
                             <Box>
                                 <Text fontWeight="bold" color="white">Not sure where to start? Fly a Maharaja Trail.</Text>
                                 <Text mt={1} fontSize="sm" color="whiteAlpha.800" lineHeight="1.6">
-                                    Ten curated route collections — by region, era and mission — pulled straight from this network.
+                                    Fourteen hand-picked itineraries — chained mountain circuits, tech-stop long-hauls, a round-the-world A380 chase — built from this network.
                                 </Text>
                             </Box>
                         </HStack>
