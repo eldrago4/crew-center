@@ -2,6 +2,7 @@ import { Provider as ChakraProvider } from "@/components/ui/provider"
 import { Toaster, toaster } from "@/components/ui/toaster"
 import Navbar, { MobileNavMenu } from "@/components/NavBar";
 import Footer from "@/components/Footer"
+import { LightMode } from "@/components/ui/color-mode"
 
 const BASE = 'https://indianvirtual.site'
 const OG_IMAGE = `${BASE}/invaHomeBg.png`
@@ -70,38 +71,31 @@ const jsonLd = {
     ],
 }
 
-export default function RootLayout({ children }) {
+// Group layout for the public site — NOT a root layout. The single <html>/<body>
+// is rendered once by src/app/layout.jsx; this used to render its own pair too,
+// nesting them under the root's. Browsers silently drop the inner tags so pages
+// worked, but it was invalid and it's why this was misleadingly named RootLayout.
+// It now mirrors (crew)/crew/layout.jsx: providers and chrome only, no document
+// shell. The JSON-LD moves out of <head> into the body — Google reads it anywhere,
+// and it's the pattern Next documents for structured data in the App Router.
+export default function MainLayout({ children }) {
     return (
-        <html lang="en" suppressHydrationWarning>
-            <head>
-                <script
-                    type="application/ld+json"
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-                />
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `
-                        (function() {
-                          try {
-                            var theme = localStorage.getItem('chakra-ui-color-mode');
-                            if (theme === 'dark') {
-                              document.documentElement.classList.add('dark');
-                            }
-                          } catch (e) {}
-                        })();
-                      `,
-                    }}
-                />
-            </head>
-            <body>
-                <ChakraProvider>
+        <>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
+            <ChakraProvider>
+                {/* Pins the whole public site light, including on client-side
+                    navigation back from /crew, where the root theme script never re-runs. */}
+                <LightMode>
                     <Navbar />
                     <MobileNavMenu />
                     {children}
                     <Toaster />
                     <Footer />
-                </ChakraProvider>
-            </body>
-        </html>
+                </LightMode>
+            </ChakraProvider>
+        </>
     )
 }

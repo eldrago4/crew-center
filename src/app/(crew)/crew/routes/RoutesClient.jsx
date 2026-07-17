@@ -137,6 +137,7 @@ const aircraftList = [
   'A339',
   'A346',
   'A359',
+  'A35K',
   'A388',
   'Boeing 737-800',
   'Boeing 737-900',
@@ -181,6 +182,7 @@ const aircraftICAOCodes = {
   'A339': 'A339',
   'A346': 'A346',
   'A359': 'A359',
+  'A35K': 'A35K',
   'A388': 'A388',
   'Boeing 737-800': 'B738',
   'Boeing 737-900': 'B739',
@@ -210,7 +212,7 @@ const rankAircraftMap = {
   Rajdhiraj: [ "Boeing 787-9", "Boeing 787-10" ],
   Maharaja: [ "Boeing 777-200LR", "Boeing 777-200ER", "Boeing 777-300ER", "Boeing 747-400", "A346" ],
   Samrat: [ "A359", "Boeing 747-8" ],
-  Chhatrapati: [ "A388" ],
+  Chhatrapati: [ "A35K", "A388" ],
 };
 
 const ITEMS_PER_PAGE = 15;

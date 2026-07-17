@@ -2,53 +2,115 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Box, Button, Heading, Text, Icon, Link } from '@chakra-ui/react';
+import { Box, Button, Heading, Text, Icon, Link, VStack, HStack, Flex } from '@chakra-ui/react';
 import { MdCheckCircle, MdCancel } from 'react-icons/md';
 import { RiDiscordFill } from 'react-icons/ri';
 import { FaDiscord } from "react-icons/fa"
-import CallsignInput from './CallsignInput';
+import ApplicantCallsignInput from './apply/ApplicantCallsignInput';
+import { toCallsignDigits, isSelectableApplicantCallsign, APPLICANT_CALLSIGN_RANGE } from '@/lib/callsign';
 import { signIn } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import Cookies from 'js-cookie'
 
-export default function ResultsDisplay({ state, resetApplication, handleCallsignChange }) {
+const DISCORD_INVITE = 'https://discord.gg/SuYxKzhbHe';
+
+const AUTH_ERROR_MESSAGES = {
+    'callsign-taken': 'That callsign was claimed while you were linking Discord. Pick another number and try again.',
+    'callsign-reserved': `That callsign is reserved. Pick a number between ${APPLICANT_CALLSIGN_RANGE}.`,
+    'server': "We couldn't link your Discord account just then. Your test result is saved — please try again.",
+};
+
+// A numbered step that dims until it's the applicant's turn, so there is only ever
+// one obvious thing to do.
+function Step({ index, title, description, state, children }) {
+    const isDone = state === 'done';
+    const isActive = state === 'active';
+    const isWaiting = state === 'waiting';
+
+    return (
+        <Box
+            bg={isWaiting ? 'gray.50' : 'white'}
+            border="1px solid"
+            borderColor={isDone ? 'green.200' : isActive ? 'orange.200' : 'gray.200'}
+            rounded="2xl"
+            p={{ base: '5', md: '6' }}
+            opacity={isWaiting ? 0.6 : 1}
+            transition="all 0.2s"
+            textAlign="left"
+        >
+            <HStack gap="3" align="center" mb={children ? '4' : '0'}>
+                <Flex
+                    flexShrink="0"
+                    w="8"
+                    h="8"
+                    rounded="full"
+                    align="center"
+                    justify="center"
+                    fontWeight="bold"
+                    fontSize="sm"
+                    bg={isDone ? 'green.500' : isActive ? 'orange.500' : 'gray.300'}
+                    color="white"
+                >
+                    {isDone ? <Icon as={MdCheckCircle} w="5" h="5" /> : index}
+                </Flex>
+                <Box>
+                    <Text fontWeight="bold" color="gray.800">{title}</Text>
+                    {description && <Text fontSize="sm" color="gray.500">{description}</Text>}
+                </Box>
+            </HStack>
+            {children}
+        </Box>
+    );
+}
+
+export default function ResultsDisplay({ state, resetApplication, handleCallsignChange, requestDiscordLink, markDiscordLinked }) {
     const { status, data: session } = useSession()
-    const { testResult, callsign } = state;
-    const [ callsignStatus, setCallsignStatus ] = useState('idle'); // idle | checking | available | taken
-    const [ discordClicked, setDiscordClicked ] = useState(false);
+    const { testResult, callsign, discordLinked, linkPendingFor } = state;
+    const [ callsignStatus, setCallsignStatus ] = useState('idle'); // idle | checking | available | taken | error
     const [ pendingAuth, setPendingAuth ] = useState(false);
+    const [ authError, setAuthError ] = useState(null);
+
+    const fullCallsign = `INVA${callsign}`;
+    const ifcUsername = state.formData.ifcUsername;
+    const callsignReady = callsignStatus === 'available';
 
     const handleDiscordLogin = async () => {
         try {
             setPendingAuth(true)
-            const fullCallsign = `INVA${callsign.trim().toUpperCase()}`
             Cookies.set('applicant-callsign', fullCallsign, { path: '/' }) // Set cookie for applicants
             Cookies.set('applicant-ifcName', state.formData.ifcUsername, { path: '/' }) // Set IFC name cookie
             Cookies.remove('pending-callsign', { path: '/' }) // Remove any crew cookie to avoid conflict
-            const callbackUrl = '/api/applicant-auth/close'
-            const result = await signIn('discord', { callbackUrl, redirect: false })
-            if (result?.url) {
-                window.open(result.url, '_blank')
-            }
-            setPendingAuth(false)
+            requestDiscordLink(fullCallsign) // Marks this callsign as the one we're linking
+            // Redirects this tab rather than opening a popup: window.open after an
+            // awaited signIn() has lost the user gesture and gets blocked. Coming back
+            // is safe now that the passed screen is restored from localStorage.
+            await signIn('discord', { callbackUrl: '/apply' })
         } catch (error) {
             console.error('Auth error:', error)
             setPendingAuth(false)
         }
     };
 
+    // A link only counts if this flow asked for it and the session came back carrying
+    // that exact callsign. Matching on the session alone treated a login that already
+    // existed as proof — a crew member who is INVA011, typing 011, was told they were
+    // already in without ever touching Discord.
     useEffect(() => {
-        if (status === 'authenticated' && session?.user?.discordId) {
-            // Discord login successful, discordId is linked
-            console.log('Discord ID linked:', session.user.discordId);
-            // Perhaps show a success message or update UI
+        if (status !== 'authenticated' || discordLinked || !linkPendingFor) return;
+        if (session?.user?.callsign === linkPendingFor) {
+            markDiscordLinked();
         }
-    }, [ status, session ]);
+    }, [ status, session, linkPendingFor, discordLinked, markDiscordLinked ]);
 
     useEffect(() => {
-        if (callsign.length !== 3 || parseInt(callsign) <= 99) {
+        // Three digits that are out of range get told so, rather than silently sitting
+        // at 'idle' with a disabled button and no explanation.
+        if (!toCallsignDigits(callsign)) {
             setCallsignStatus('idle');
+            return;
+        }
+        if (!isSelectableApplicantCallsign(callsign)) {
+            setCallsignStatus('reserved');
             return;
         }
         setCallsignStatus('checking');
@@ -59,81 +121,145 @@ export default function ResultsDisplay({ state, resetApplication, handleCallsign
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ callsign }),
                 });
+                if (!res.ok) throw new Error('Callsign check failed');
                 const data = await res.json();
-                setCallsignStatus(data.valid ? 'taken' : 'available');
+                setCallsignStatus(data.available ? 'available' : 'taken');
             } catch {
-                setCallsignStatus('idle');
+                // Fail closed — an unanswered check leaves the Discord button disabled
+                // rather than waving through a number that may already be claimed.
+                setCallsignStatus('error');
             }
         }, 400);
         return () => clearTimeout(timer);
     }, [ callsign ]);
 
+    // Surfaced when the signIn callback bounces the applicant back here.
     useEffect(() => {
-        const handleMessage = (event) => {
-            if (event.data === 'auth-success') {
-                setDiscordClicked(true);
-            }
-        };
-        window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
-    }, []);
+        const params = new URLSearchParams(window.location.search);
+        const error = params.get('error');
+        if (!error) return;
+        setAuthError(error);
+        if (error === 'callsign-taken' || error === 'callsign-reserved') handleCallsignChange('');
+        const url = new URL(window.location.href);
+        url.searchParams.delete('error');
+        window.history.replaceState({}, '', url);
+    }, [ handleCallsignChange ]);
 
     if (!testResult) return null;
 
+    if (!testResult.passed) {
+        return (
+            <Box bg="whiteAlpha.900" p={{ base: '8', lg: '12' }} rounded="3xl" boxShadow="2xl" textAlign="center">
+                <Icon as={MdCancel} w="16" h="16" color="red.500" mx="auto" mb="4" />
+                <Heading as="h2" fontSize={{ base: '3xl', lg: '4xl' }} color="red.600" fontFamily="Playfair Display, serif">Unfortunately, you have failed.</Heading>
+                <Text fontSize="xl" color="gray.700" mt="2">Score: {testResult.score}/10</Text>
+                <Text fontSize="lg" color="gray.600" mb="6">You may try again in 24 hours.</Text>
+                <Button onClick={resetApplication} bg="gray.600" color="white" mt="4" _hover={{ bg: 'gray.700' }}>
+                    Go back to Home
+                </Button>
+            </Box>
+        );
+    }
+
+    // Passed, and already linked: nothing left but to get them into the server.
+    if (discordLinked) {
+        return (
+            <Box bg="whiteAlpha.900" p={{ base: '8', lg: '12' }} rounded="3xl" boxShadow="2xl" textAlign="center">
+                <Icon as={MdCheckCircle} w="16" h="16" color="green.500" mx="auto" mb="4" />
+                <Heading as="h2" fontSize={{ base: '3xl', lg: '4xl' }} color="green.600" fontFamily="Playfair Display, serif">
+                    You&apos;re in{ifcUsername ? `, ${ifcUsername}` : ''}!
+                </Heading>
+                <Text fontSize="lg" color="gray.700" mt="3" maxW="md" mx="auto">
+                    Your Discord is linked and we&apos;ve added you to our server. Head over to meet the crew — a staff member will take it from there.
+                </Text>
+                <Link
+                    href={DISCORD_INVITE}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    display="inline-flex"
+                    alignItems="center"
+                    gap="3"
+                    bg="#5865F2"
+                    color="white"
+                    px="8"
+                    py="4"
+                    mt="8"
+                    rounded="xl"
+                    fontWeight="bold"
+                    textDecoration="none"
+                    _hover={{ bg: '#4752C4' }}
+                >
+                    <Icon as={RiDiscordFill} w="6" h="6" />
+                    Open our Discord Server
+                </Link>
+                <Text fontSize="xs" color="gray.500" mt="4">
+                    Don&apos;t see the server in your list? Use the button above to join manually.
+                </Text>
+            </Box>
+        );
+    }
+
+    // Passed, not yet linked: two steps, one obvious action at a time.
     return (
-        <Box bg="whiteAlpha.900" p={{ base: '8', lg: '12' }} rounded="3xl" boxShadow="2xl" textAlign="center">
-            {testResult.passed ? (
-                <>
-                    <Icon as={MdCheckCircle} w="16" h="16" color="green.500" mx="auto" mb="4" />
-                    <Heading as="h2" fontSize={{ base: '3xl', lg: '4xl' }} color="green.600">Congratulations!</Heading>
-                    <Text fontSize="xl" color="gray.700" mt="2">Your application has been sent.</Text>
-                    <Text fontSize="lg" color="gray.600" mb="6">Score: {testResult.score}/10</Text>
-                    {!discordClicked ? (
-                        <>
-                            <Text color="gray.700" mb="4">Choose your callsign number (100–999) to get started.</Text>
-                            <CallsignInput value={callsign} onChange={handleCallsignChange} status={callsignStatus} label="Your Callsign" />
-                            {callsignStatus !== 'available' && (
-                                <Text fontSize="xs" color="gray.500" mb={2}>
-                                    {callsignStatus === 'taken' ? 'Pick a different number to continue.' : 'Confirm your callsign is available before linking Discord.'}
-                                </Text>
-                            )}
-                            <Button
-                                onClick={handleDiscordLogin}
-                                bg="#5865F2"
-                                color="white"
-                                _hover={{ bg: callsignStatus === 'available' ? "#4752C4" : "#5865F2" }}
-                                _active={{ bg: "#404EED" }}
-                                disabled={callsignStatus !== 'available'}
-                                isLoading={pendingAuth}
-                                loadingText="Connecting..."
-                                size="md"
-                                w="full"
-                                variant="solid"
-                                opacity={callsignStatus !== 'available' ? 0.5 : 1}
-                                cursor={callsignStatus !== 'available' ? 'not-allowed' : 'pointer'}
-                            ><FaDiscord /> Login with Discord</Button>
-                        </>
-                    ) : (
-                        <>
-                            <Text color="gray.700" mb="8">To continue, please join our Discord server.</Text>
-                            <Link href="https://discord.gg/SuYxKzhbHe" isExternal display="inline-flex" alignItems="center" gap="3" bg="#5865F2" color="white" px="8" py="4" rounded="xl" fontWeight="bold" _hover={{ bg: '#4752C4' }}>
-                                <Icon as={RiDiscordFill} w="6" h="6" />
-                                Join our Discord Server
-                            </Link>
-                        </>
-                    )}
-                </>
-            ) : (
-                <>
-                    <Icon as={MdCancel} w="16" h="16" color="red.500" mx="auto" mb="4" />
-                    <Heading as="h2" fontSize={{ base: '3xl', lg: '4xl' }} color="red.600">Unfortunately, you have failed.</Heading>
-                    <Text fontSize="xl" color="gray.700" mt="2">Score: {testResult.score}/10</Text>
-                    <Text fontSize="lg" color="gray.600" mb="6">You may try again in 24 hours.</Text>
-                </>
+        <Box bg="whiteAlpha.900" p={{ base: '6', md: '8', lg: '12' }} rounded="3xl" boxShadow="2xl">
+            <VStack gap="1" textAlign="center" mb="8">
+                <Icon as={MdCheckCircle} w="14" h="14" color="green.500" />
+                <Heading as="h2" fontSize={{ base: '2xl', lg: '3xl' }} color="green.600" fontFamily="Playfair Display, serif">
+                    You passed!
+                </Heading>
+                <Text color="gray.600">
+                    Score {testResult.score}/10 — two quick steps and you&apos;re done.
+                </Text>
+            </VStack>
+
+            {authError && (
+                <Box bg="red.50" border="1px solid" borderColor="red.200" color="red.700" px="4" py="3" rounded="lg" mb="5" fontSize="sm">
+                    {AUTH_ERROR_MESSAGES[ authError ] ?? AUTH_ERROR_MESSAGES.server}
+                </Box>
             )}
-            <Button onClick={resetApplication} bgGradient="linear(to-r, gray.500, gray.600)" color="white" mt="8" _hover={{ bgGradient: 'linear(to-r, gray.600, gray.700)' }}>
-                Go back to Home
-            </Button>
+
+            <VStack gap="4" align="stretch">
+                <Step
+                    index={1}
+                    title="Choose your callsign"
+                    description={`Any number from ${APPLICANT_CALLSIGN_RANGE} that isn't taken yet.`}
+                    state={callsignReady ? 'done' : 'active'}
+                >
+                    <ApplicantCallsignInput
+                        value={callsign}
+                        onChange={handleCallsignChange}
+                        status={callsignStatus}
+                    />
+                </Step>
+
+                <Step
+                    index={2}
+                    title="Link your Discord"
+                    description="We'll add you to our server automatically."
+                    state={callsignReady ? 'active' : 'waiting'}
+                >
+                    <Button
+                        onClick={handleDiscordLogin}
+                        bg="#5865F2"
+                        color="white"
+                        _hover={{ bg: callsignReady ? '#4752C4' : '#5865F2' }}
+                        _active={{ bg: '#404EED' }}
+                        disabled={!callsignReady}
+                        loading={pendingAuth}
+                        loadingText="Taking you to Discord…"
+                        size="lg"
+                        w="full"
+                        cursor={callsignReady ? 'pointer' : 'not-allowed'}
+                    >
+                        <FaDiscord /> Continue with Discord
+                    </Button>
+                    <Text fontSize="xs" color="gray.500" mt="3" textAlign="center">
+                        {callsignReady
+                            ? `You'll be flying as ${fullCallsign}. Discord will ask you to authorise, then bring you straight back here.`
+                            : 'Pick an available callsign above to unlock this step.'}
+                    </Text>
+                </Step>
+            </VStack>
         </Box>
     );
 }

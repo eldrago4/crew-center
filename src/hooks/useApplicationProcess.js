@@ -48,13 +48,61 @@ const initialState = {
     callsign: '',
     answers: {},
     testResult: null,
+    discordLinked: false,
+    linkPendingFor: null,
 };
+
+// A passed applicant still has to pick a callsign and join Discord, which can take
+// more than one sitting. Their progress is kept in localStorage so a refresh, a
+// closed tab, or a trip through the Discord OAuth window doesn't drop them back at
+// step 1. Only the post-pass screen is restored: the test itself draws a fresh set
+// of 10 questions on every load, so stored answers would no longer line up.
+// v2 deliberately abandons any v1 entry: those could hold discordLinked: true from
+// a bug where merely having a Discord session (a crew login, say) counted as the
+// applicant having linked, which skipped callsign selection entirely.
+const PROGRESS_KEY = 'inva-apply-progress-v2';
+const PROGRESS_TTL = 7 * 24 * 60 * 60 * 1000;
+
+// Written synchronously right before handing off to Discord, and the only thing that
+// makes a returning session count as a successful link. Without it, an unrelated
+// login already carrying the same callsign — a crew member who happens to be INVA011
+// typing 011 — reads as "already linked". Kept out of PROGRESS_KEY because that one
+// is saved from an effect, which is not guaranteed to flush before the redirect.
+const LINK_PENDING_KEY = 'inva-apply-link-pending';
+
+function loadProgress() {
+    try {
+        const raw = localStorage.getItem(PROGRESS_KEY);
+        if (!raw) return null;
+        const saved = JSON.parse(raw);
+        if (!saved?.testResult?.passed) return null;
+        if (Date.now() - saved.timestamp > PROGRESS_TTL) {
+            localStorage.removeItem(PROGRESS_KEY);
+            return null;
+        }
+        return {
+            step: 3,
+            formData: { ...initialState.formData, ...saved.formData },
+            callsign: saved.callsign ?? '',
+            testResult: saved.testResult,
+            discordLinked: Boolean(saved.discordLinked),
+        };
+    } catch {
+        return null;
+    }
+}
 
 // The reducer function manages all state transitions in a predictable way.
 function applicationReducer(state, action) {
     switch (action.type) {
         case 'CHECK_BLOCK_STATUS':
             return {...state, isBlocked: action.payload };
+        case 'RESTORE_PROGRESS':
+            return {...state, ...action.payload };
+        case 'DISCORD_LINK_REQUESTED':
+            return {...state, linkPendingFor: action.payload };
+        case 'DISCORD_LINKED':
+            return {...state, discordLinked: true, linkPendingFor: null };
         case 'UPDATE_FORM_FIELD':
             return {...state, formData: {...state.formData, [action.payload.field]: action.payload.value } };
         case 'UPDATE_CALLSIGN':
@@ -95,6 +143,38 @@ export function useApplicationProcess() {
             }
         }
     }, []);
+
+    // Restored after mount rather than in the reducer initialiser, so the server
+    // and first client render agree.
+    useEffect(() => {
+        const progress = loadProgress();
+        if (progress) {
+            dispatch({ type: 'RESTORE_PROGRESS', payload: progress });
+        }
+        try {
+            const pending = localStorage.getItem(LINK_PENDING_KEY);
+            if (pending) dispatch({ type: 'DISCORD_LINK_REQUESTED', payload: pending });
+        } catch {
+            // No pending link recoverable; the applicant can just press the button again.
+        }
+    }, []);
+
+    // Only a pass is written, which also keeps this from clobbering stored progress
+    // with the initial state on mount before the restore above lands.
+    useEffect(() => {
+        if (state.step !== 3 || !state.testResult?.passed) return;
+        try {
+            localStorage.setItem(PROGRESS_KEY, JSON.stringify({
+                timestamp: Date.now(),
+                formData: state.formData,
+                callsign: state.callsign,
+                testResult: state.testResult,
+                discordLinked: state.discordLinked,
+            }));
+        } catch {
+            // Storage full or blocked; the applicant just loses the resume-on-refresh safety net.
+        }
+    }, [state.step, state.testResult, state.formData, state.callsign, state.discordLinked]);
 
     const handleInputChange = useCallback((e) => {
         dispatch({ type: 'UPDATE_FORM_FIELD', payload: { field: e.target.name, value: e.target.value } });
@@ -155,8 +235,37 @@ export function useApplicationProcess() {
         }
     }, [state.answers, state.formData]);
 
-    const resetApplication = useCallback(() => dispatch({ type: 'RESET_APPLICATION' }), []);
+    // Called synchronously on the click, before signIn() navigates away — an effect
+    // might not flush in time.
+    const requestDiscordLink = useCallback((fullCallsign) => {
+        try {
+            localStorage.setItem(LINK_PENDING_KEY, fullCallsign);
+        } catch {
+            // Without the marker the applicant lands back on the callsign step and
+            // presses the button again, which is recoverable.
+        }
+        dispatch({ type: 'DISCORD_LINK_REQUESTED', payload: fullCallsign });
+    }, []);
+
+    const markDiscordLinked = useCallback(() => {
+        try {
+            localStorage.removeItem(LINK_PENDING_KEY);
+        } catch {
+            // Nothing to clean up if storage is unavailable.
+        }
+        dispatch({ type: 'DISCORD_LINKED' });
+    }, []);
+
+    const resetApplication = useCallback(() => {
+        try {
+            localStorage.removeItem(PROGRESS_KEY);
+            localStorage.removeItem(LINK_PENDING_KEY);
+        } catch {
+            // Nothing to clean up if storage is unavailable.
+        }
+        dispatch({ type: 'RESET_APPLICATION' });
+    }, []);
     const dismissError = useCallback(() => dispatch({ type: 'DISMISS_ERROR' }), []);
 
-    return { state, questions, handleInputChange, handleCallsignChange, handleAnswerChange, handleApplicationSubmit, handleTestSubmit, resetApplication, dismissError };
+    return { state, questions, handleInputChange, handleCallsignChange, handleAnswerChange, handleApplicationSubmit, handleTestSubmit, requestDiscordLink, markDiscordLinked, resetApplication, dismissError };
 }

@@ -62,7 +62,21 @@ const AIRCRAFT = [
     role: 'Long-Haul Flagship',
     featured: true,
     copy: 'The centrepiece of Air India\'s Tata era. The A350 is what long-haul ambitions look like when the accountants and engineers finally agree — a carbon-fibre widebody that burns less, climbs higher, and carries more. On routes where the old 777 once spent its fuel budget freely, the A350 makes the case quietly and in numbers.',
-    specs: { 'Range': '8,099 NM', 'Cruise': 'M 0.85', 'Ceiling': 'FL431', 'Passengers': '440', 'MTOW': '280,000 kg', 'Wingspan': '64.75 m', 'Engines': '2× RR Trent XWB' },
+    specs: { 'Range': '8,099 NM', 'Cruise': 'M 0.85', 'Ceiling': 'FL431', 'Passengers': '316', 'MTOW': '280,000 kg', 'Wingspan': '64.75 m', 'Engines': '2× RR Trent XWB' },
+  },
+  {
+    id: 'a350-1000',
+    name: 'Airbus A350-1000',
+    type: 'A350-1000',
+    code: 'A35K',
+    // Shares the -900's render: the two are near-identical in profile, and there is
+    // no -1000 livery artwork yet.
+    airline: 'air-india',
+    image: '/livery/air-india/a359-airindia.png',
+    role: 'Ultra-Long-Haul Flagship',
+    featured: true,
+    copy: 'The A350-900 stretched, and rethought where the stretch demanded it. The -1000 gives up a little ceiling and takes back a great deal of aeroplane: a six-wheel main bogie to carry forty tonnes more, a reworked wing trailing edge, and Trent XWB-97s pushing 97,000 lbs a side. Where the -900 opens a route, the -1000 is what you send once it fills.',
+    specs: { 'Range': '9,000 NM', 'Cruise': 'M 0.85', 'Ceiling': 'FL415', 'Passengers': '375–400', 'MTOW': '322,000 kg', 'Wingspan': '64.75 m', 'Engines': '2× RR Trent XWB-97' },
   },
   {
     id: 'b777-300er',
@@ -74,7 +88,7 @@ const AIRCRAFT = [
     role: 'High-Capacity Long-Haul',
     featured: true,
     copy: 'The world\'s most commercially successful widebody for a reason. The 777-300ER doesn\'t ask for compromise between range and capacity — it delivers both. GE90-115Bs on the pylons, 7,370 nautical miles of proven range. Some aircraft earn their reputation; the Triple Seven builds its over decades.',
-    specs: { 'Range': '7,370 NM', 'Cruise': 'M 0.84', 'Ceiling': 'FL431', 'Passengers': '503', 'MTOW': '351,500 kg', 'Wingspan': '64.80 m', 'Engines': '2× GE GE90-115B' },
+    specs: { 'Range': '7,370 NM', 'Cruise': 'M 0.84', 'Ceiling': 'FL431', 'Passengers': '345', 'MTOW': '351,500 kg', 'Wingspan': '64.80 m', 'Engines': '2× GE GE90-115B' },
   },
   {
     id: 'b787-8',
@@ -86,7 +100,7 @@ const AIRCRAFT = [
     role: 'Medium-Haul Widebody',
     featured: false,
     copy: 'Air India was among the 787\'s launch customers, and the Dreamliner has since defined the Tata-era medium-haul story. Higher cabin humidity, larger windows, and a cruise passengers notice — not because something is wrong, but because something is finally right.',
-    specs: { 'Range': '7,354 NM', 'Cruise': 'M 0.85', 'Ceiling': 'FL430', 'Passengers': '364', 'MTOW': '227,930 kg', 'Wingspan': '60.12 m', 'Engines': '2× GEnx-1B / Trent 1000' },
+    specs: { 'Range': '7,354 NM', 'Cruise': 'M 0.85', 'Ceiling': 'FL430', 'Passengers': '256', 'MTOW': '227,930 kg', 'Wingspan': '60.12 m', 'Engines': '2× GEnx-1B / Trent 1000' },
   },
   {
     id: 'b777-200lr',
@@ -98,7 +112,7 @@ const AIRCRAFT = [
     role: 'Ultra-Long-Haul',
     featured: false,
     copy: 'The LR suffix isn\'t marketing. Delhi to San Francisco. Delhi to Chicago. Routes most aircraft cannot fly non-stop, powered by the GE90-115Bs that hold the record for the most powerful turbofan ever certified for commercial service.',
-    specs: { 'Range': '4,968 NM', 'Cruise': 'M 0.84', 'Ceiling': 'FL431', 'Passengers': '441', 'MTOW': '347,500 kg', 'Wingspan': '64.80 m', 'Engines': '2× GE GE90-115B' },
+    specs: { 'Range': '4,968 NM', 'Cruise': 'M 0.84', 'Ceiling': 'FL431', 'Passengers': '288', 'MTOW': '347,500 kg', 'Wingspan': '64.80 m', 'Engines': '2× GE GE90-115B' },
   },
   {
     id: 'b747-400',
@@ -110,7 +124,7 @@ const AIRCRAFT = [
     role: 'Heritage Widebody',
     featured: false,
     copy: 'Few aircraft carry as much of Air India\'s identity as the 747. The Jumbo spent decades as the face of Indian aviation — Bombay and Delhi to London, New York, and beyond. On INVA it is a deliberate tribute to the era when four engines and an upper deck were the only way to cross an ocean.',
-    specs: { 'Range': '7,284 NM', 'Cruise': 'M 0.85', 'Ceiling': 'FL451', 'Passengers': '416', 'MTOW': '396,890 kg', 'Wingspan': '64.4 m', 'Engines': '4× P&W 4000 / GE CF6' },
+    specs: { 'Range': '7,284 NM', 'Cruise': 'M 0.85', 'Ceiling': 'FL451', 'Passengers': '423', 'MTOW': '396,890 kg', 'Wingspan': '64.4 m', 'Engines': '4× P&W 4000 / GE CF6' },
   },
   {
     id: 'a321-200',
@@ -122,7 +136,7 @@ const AIRCRAFT = [
     role: 'High-Density Narrowbody',
     featured: false,
     copy: 'When density matters more than range the A321 steps up. Air India\'s stretched narrowbody handles the high-load domestic trunks — Delhi–Mumbai, Delhi–Bengaluru — where seat count and schedule frequency drive the economics.',
-    specs: { 'Range': '3,202 NM', 'Cruise': 'M 0.78', 'Ceiling': 'FL410', 'Passengers': '239', 'MTOW': '93,800 kg', 'Wingspan': '35.8 m', 'Engines': '2× CFM56-5B / IAE V2500' },
+    specs: { 'Range': '3,202 NM', 'Cruise': 'M 0.78', 'Ceiling': 'FL410', 'Passengers': '182', 'MTOW': '93,800 kg', 'Wingspan': '35.8 m', 'Engines': '2× CFM56-5B / IAE V2500' },
   },
   {
     id: 'a320-ai',
@@ -133,8 +147,8 @@ const AIRCRAFT = [
     image: '/livery/air-india/a320-airindia.png',
     role: 'Domestic Workhorse',
     featured: false,
-    copy: 'The domestic network runs on this twin. The A320 connects metros and tier-2 cities with a consistency that larger metal cannot match — 175 seats, proven CFM56s, and four decades of operational reliability behind every departure.',
-    specs: { 'Range': '3,300 NM', 'Cruise': 'M 0.78', 'Ceiling': 'FL410', 'Passengers': '175', 'MTOW': '78,000 kg', 'Wingspan': '35.8 m', 'Engines': '2× CFM56-5B / IAE V2500' },
+    copy: 'The domestic network runs on this twin. The A320 connects metros and tier-2 cities with a consistency that larger metal cannot match — 168 seats across two cabins, proven CFM56s, and four decades of operational reliability behind every departure.',
+    specs: { 'Range': '3,300 NM', 'Cruise': 'M 0.78', 'Ceiling': 'FL410', 'Passengers': '168', 'MTOW': '78,000 kg', 'Wingspan': '35.8 m', 'Engines': '2× CFM56-5B / IAE V2500' },
   },
   {
     id: 'b737-max8',
@@ -146,7 +160,7 @@ const AIRCRAFT = [
     role: 'Next-Gen Narrowbody',
     featured: true,
     copy: 'The successor with a nuanced résumé and a better fuel bill. CFM LEAP-1B engines shave the burn by the percentages that determine survival in ultra-competitive short-haul markets. Air India Express\'s answer to the next decade — same narrow fuselage, meaningfully different economics.',
-    specs: { 'Range': '3,550 NM', 'Cruise': 'M 0.79', 'Ceiling': 'FL410', 'Passengers': '178', 'MTOW': '82,191 kg', 'Wingspan': '35.9 m', 'Engines': '2× CFM LEAP-1B27' },
+    specs: { 'Range': '3,550 NM', 'Cruise': 'M 0.79', 'Ceiling': 'FL410', 'Passengers': '176–186', 'MTOW': '82,191 kg', 'Wingspan': '35.9 m', 'Engines': '2× CFM LEAP-1B27' },
   },
   {
     id: 'b737-800',
@@ -170,7 +184,7 @@ const AIRCRAFT = [
     role: 'International Flagship',
     featured: true,
     copy: 'The aircraft Vistara ordered as its flag among flags. The 787-9 was the platform for its international expansion — London Heathrow, Frankfurt, Paris CDG. It flew just long enough to matter, before the merger completed in 2024. On INVA, the purple Dreamliner still climbs.',
-    specs: { 'Range': '7,635 NM', 'Cruise': 'M 0.85', 'Ceiling': 'FL430', 'Passengers': '364', 'MTOW': '254,011 kg', 'Wingspan': '60.12 m', 'Engines': '2× GEnx-1B / Trent 1000' },
+    specs: { 'Range': '7,635 NM', 'Cruise': 'M 0.85', 'Ceiling': 'FL430', 'Passengers': '296', 'MTOW': '254,011 kg', 'Wingspan': '60.12 m', 'Engines': '2× GEnx-1B / Trent 1000' },
   },
   {
     id: 'a320-vistara',

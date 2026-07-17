@@ -7,6 +7,7 @@ import { cache } from 'react'
 import db from './db/client'
 import { applicants, users } from './db/schema'
 import { eq } from 'drizzle-orm'
+import { isSelectableApplicantCallsign } from './lib/callsign'
 
 // Profile (rank/careerMode/ifcName/discordId) and staff permissions are cached
 // inside the JWT and only re-fetched after these TTLs, so most auth() calls do
@@ -113,15 +114,47 @@ const { handlers, signIn, signOut, auth: uncachedAuth, unstable_update } = NextA
       if (!callsign) return false;
 
       if (isApplicant) {
-        await db.insert(applicants).values({
-          id: callsign,
-          ifcName: ifcName,
-          discordId: account.providerAccountId,
-          passedAt: new Date(),
-        });
+        const applicantDiscordId = account.providerAccountId;
 
+        // The form and the availability API both refuse reserved numbers, but the
+        // callsign arrives here in a cookie the client sets, so this is the gate that
+        // actually holds.
+        if (!isSelectableApplicantCallsign(callsign)) {
+          console.warn(`[AUTH] Rejected reserved applicant callsign: ${callsign}`);
+          return '/apply?error=callsign-reserved';
+        }
+
+        // An unhandled insert here used to throw out of the callback, which sent the
+        // applicant to pages.error (/crew) with no way back. Re-authing with the same
+        // account is now a no-op, and the insert-then-read settles the race between
+        // two applicants claiming the same number at once.
         try {
-          await fetch(`https://discord.com/api/v10/guilds/${process.env.DISCORD_GUILD_ID}/members/${account.providerAccountId}`, {
+          await db.insert(applicants).values({
+            id: callsign,
+            ifcName: ifcName,
+            discordId: applicantDiscordId,
+            passedAt: new Date(),
+          }).onConflictDoNothing();
+
+          const [ row ] = await db
+            .select({ discordId: applicants.discordId })
+            .from(applicants)
+            .where(eq(applicants.id, callsign))
+            .limit(1);
+
+          if (!row || String(row.discordId) !== String(applicantDiscordId)) {
+            return '/apply?error=callsign-taken';
+          }
+        } catch (e) {
+          console.error('[AUTH] Failed to record applicant:', e);
+          return '/apply?error=server';
+        }
+
+        // Non-fatal: the applicant row is already saved, and the apply screen falls
+        // back to a plain invite link. 201 = added, 204 = already a member. fetch only
+        // rejects on network errors, so a rejected join needs an explicit status check.
+        try {
+          const res = await fetch(`https://discord.com/api/v10/guilds/${process.env.DISCORD_GUILD_ID}/members/${applicantDiscordId}`, {
             method: 'PUT',
             headers: {
               Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
@@ -129,12 +162,15 @@ const { handlers, signIn, signOut, auth: uncachedAuth, unstable_update } = NextA
             },
             body: JSON.stringify({ access_token: account.access_token }),
           });
+          if (!res.ok) {
+            console.error(`[AUTH] Guild join rejected for ${callsign} (${res.status}):`, await res.text());
+          }
         } catch (e) {
           console.error('[AUTH] Failed to add applicant to guild:', e);
         }
 
         user.callsign = callsign;
-        user.discordId = account.providerAccountId;
+        user.discordId = applicantDiscordId;
         user.isApplicant = true;
         return true;
       }
@@ -172,6 +208,11 @@ const { handlers, signIn, signOut, auth: uncachedAuth, unstable_update } = NextA
           delete token.redirectToIfcName;
         }
         if (user.discordId) token.discordId = user.discordId;
+        // signIn() flags applicants but this was never carried onto the token, so the
+        // guards below that read token.isApplicant never fired: every applicant paid
+        // for a users lookup that by definition finds nothing, plus a staff-permission
+        // fetch, on each refresh.
+        if (user.isApplicant) token.isApplicant = true;
         // Force a fresh fetch of profile/permissions on new sign-in
         delete token.profileRefreshedAt;
         delete token.permissionsRefreshedAt;
@@ -212,7 +253,18 @@ const { handlers, signIn, signOut, auth: uncachedAuth, unstable_update } = NextA
 
     async session({ session, token }) {
       if (token?.isApplicant) {
-        // Don't set user properties for applicants
+        // Applicants get only what the apply flow needs to recognise its own
+        // completed link, and no crew profile. redirectToIfcName is asserted rather
+        // than inherited: until now it came out true only as a side effect of the
+        // profile lookup above failing to find an applicant in `users`, and that
+        // accident is what keeps applicants out of /crew/dashboard, whose layout
+        // redirects on exactly this flag. Skipping the lookup without setting it
+        // would have walked applicants straight into the dashboard.
+        session.user.isApplicant = true;
+        session.user.callsign = token.callsign ?? null;
+        session.user.redirectToIfcName = true;
+        session.user.permissions = [];
+        if (token.discordId) session.user.discordId = token.discordId;
         return session;
       }
       if (token?.callsign) {

@@ -115,6 +115,11 @@ export default function CrewLoginPage() {
   }
 
   return (
+    // Dark-only, but enforced by the root layout's theme script rather than a
+    // DarkMode wrapper here: this page is only ever reached by a full page load
+    // (the navbar links to it with a plain target="_blank" anchor), so the script
+    // always runs and sets `dark` on <html> before paint. A wrapper would add a
+    // .chakra-theme scope for no token benefit.
     <Box position="relative" minH="100vh" bg="blackAlpha.700" color="white">
       <Box
         position="absolute"
