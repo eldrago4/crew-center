@@ -10,6 +10,7 @@ export const metadata = {
   alternates: { canonical: 'https://indianvirtual.site/operations/trails' },
 }
 
+import Image from 'next/image'
 import {
   FaCrown,
   FaMountain,
@@ -403,6 +404,7 @@ const TRAILS = [
 const STYLES = `
   .trails-hero { padding: 100px 24px 80px; }
   .trails-hero-heading { font-size: clamp(56px, 10vw, 120px); }
+  .trails-hero-wordmark { display: block; width: clamp(280px, 40vw, 480px); max-width: 100%; height: auto; margin-bottom: 10px; }
   .trails-hero-stats { display: flex; flex-wrap: wrap; gap: 0; }
   .trails-stat-item { padding-right: 40px; margin-right: 40px; margin-bottom: 16px; }
   .trails-stat-item:not(:last-child) { border-right: 1px solid rgba(255,255,255,0.1); }
@@ -426,6 +428,7 @@ const STYLES = `
   @media (max-width: 767px) {
     .trails-hero { padding: 72px 16px 52px; }
     .trails-hero-heading { font-size: clamp(44px, 14vw, 72px); }
+    .trails-hero-wordmark { width: clamp(220px, 62vw, 320px); }
     .trails-hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
     .trails-stat-item { padding-right: 0; margin-right: 0; border-right: none !important; padding-bottom: 20px; }
     .trails-stat-item:nth-child(odd) { padding-right: 20px; }
@@ -527,16 +530,21 @@ export default function TrailsPage() {
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="trails-hero" style={{ background: '#080D1A', position: 'relative', overflow: 'hidden' }}>
-        <div style={{
-          position: 'absolute', inset: 0,
-          backgroundImage: "url('/hero-blueprint.png')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          filter: 'invert(1) grayscale(1)',
-          mixBlendMode: 'screen',
-          opacity: 0.09,
-          pointerEvents: 'none',
-        }} />
+        {/* Maharaja backdrop. next/image serves an AVIF/WebP transform of the 2 MB
+            PNG, decoded once — and unlike the old blueprint layer there's no filter()
+            or mix-blend-mode here, both of which force a per-pixel recomposite of a
+            full-bleed element on every scroll frame. */}
+        <Image
+          src="/hero-maharaja-trails.png"
+          alt=""
+          aria-hidden="true"
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectFit: 'cover', objectPosition: 'center', opacity: 0.4, pointerEvents: 'none', userSelect: 'none' }}
+        />
+        {/* Dark wash so the white headline stays legible over the art. */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(8,13,26,0.55) 0%, rgba(8,13,26,0.78) 55%, rgba(8,13,26,0.92) 100%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: 600, height: 600, background: 'radial-gradient(circle, rgba(43,75,238,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: '-30%', right: '-5%', width: 500, height: 500, background: 'radial-gradient(circle, rgba(255,107,53,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
@@ -552,7 +560,17 @@ export default function TrailsPage() {
             fontWeight: 900, letterSpacing: '-0.05em', color: '#FFFFFF',
             lineHeight: 0.95, margin: '0 0 32px',
           }}>
-            MAHARAJA<br />
+            {/* Gold Vistaar wordmark stands in for the "MAHARAJA" line; served as an
+                optimized WebP/AVIF transform and sized responsively to sit over TRAILS. */}
+            <Image
+              className="trails-hero-wordmark"
+              src="/fonts/hero-vistaar.png"
+              alt="Vistaar"
+              width={677}
+              height={369}
+              priority
+              sizes="(max-width: 767px) 320px, 480px"
+            />
             <span style={{ color: 'transparent', WebkitTextStroke: '1.5px rgba(255,255,255,0.25)' }}>TRAILS</span>
           </h1>
 
@@ -591,13 +609,10 @@ export default function TrailsPage() {
 
       {/* ── Attribution ───────────────────────────────────────────────────── */}
       <section style={{ background: '#F1F5F9', borderTop: '1px solid #E2E8F0', padding: '24px 24px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <p style={{ fontSize: 12, color: '#94A3B8', margin: 0, lineHeight: 1.6 }}>
             Route data sourced live from the INVA network database; sequenced itineraries are verified leg-to-leg against it. Suggested departure times are curatorial, not scheduled data.
             INVA is not affiliated with Air India, Air India Express, Jet Airways, Vistara, Infinite Flight LLC, or any real-world carrier named above.
-          </p>
-          <p style={{ fontSize: 12, color: '#CBD5E1', margin: 0, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
-            INDIANVIRTUAL.SITE · 2026
           </p>
         </div>
       </section>
