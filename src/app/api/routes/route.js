@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import db from '@/db/client';
 import { routes } from '@/db/schema';
 import { sql, inArray } from 'drizzle-orm';
@@ -36,7 +37,14 @@ export async function GET() {
             }
         }
 
-        return NextResponse.json(cachedRoutes);
+        // Browser 10m; Cloudflare edge 12h + 1d serve-stale (CDN-Cache-Control passes
+        // through Vercel) — the route DB changes only on staff edits.
+        return NextResponse.json(cachedRoutes, {
+            headers: {
+                'Cache-Control': 'public, max-age=600',
+                'CDN-Cache-Control': 'public, max-age=43200, stale-while-revalidate=86400',
+            },
+        });
     } catch (error) {
         console.error('Error fetching routes:', error);
         return NextResponse.json(
@@ -75,6 +83,9 @@ export async function POST(request) {
         for (const route of insertedRoutes) {
             routesCache.set(route.flightNumber, route);
         }
+
+        // Bust the /crew/routes page's daily unstable_cache so the edit shows immediately
+        revalidateTag('routes');
 
         return NextResponse.json(insertedRoutes, { status: 201 });
     } catch (error) {
@@ -127,6 +138,7 @@ export async function DELETE(request) {
 
             // Remove from cache
             flightNumbers.forEach(fn => routesCache.delete(fn));
+            revalidateTag('routes');
 
             return NextResponse.json({ message: `${result.length} routes deleted successfully` });
         } else {
@@ -155,6 +167,7 @@ export async function DELETE(request) {
 
             // Remove from cache
             routesCache.delete(flightNumber);
+            revalidateTag('routes');
 
             return NextResponse.json({ message: 'Route deleted successfully' });
         }
@@ -214,6 +227,7 @@ export async function PATCH(request) {
 
         // Update cache with the updated route
         routesCache.set(flightNumber, result[ 0 ]);
+        revalidateTag('routes');
 
         return NextResponse.json(result[ 0 ]);
     } catch (error) {
