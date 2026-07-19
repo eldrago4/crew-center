@@ -53,13 +53,21 @@ src/llms-full.txt
 BOT
 live-api
 Career-Mode-Portal-final2
-inva-career-mode-firebase-adminsdk-fbsvc-b64515f527.json
+
+# Service-account keys. Matched by pattern, not by filename: the entry here used to
+# name a single key, so a second one issued later (Google puts a fresh hash in every
+# filename) was not ignored and could have been committed. Credentials reach the app
+# through FIREBASE_* env vars — no key file belongs in this repo.
+*firebase-adminsdk*.json
+*-serviceaccount*.json
+service-account*.json
 
 # Nested project folders — never part of this app build
 Career-Mode-Portal-final2-broken-*
 INVA_Flight_Tracker
-
 # cloudflare / opennext build output
 .open-next
 .wrangler
 .dev.vars
+
+src/.claude

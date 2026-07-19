@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
 import { DEFAULT_GOALS, GOALS_REDIS_KEY } from '../_defaultGoals';
-import { LOTUS_MEMBER_LIMIT, reconcileLotusMembers } from '../_lotus';
+import { LOTUS_MEMBER_LIMIT, getLotusMembers } from '../_lotus';
 
 export async function GET() {
   try {
@@ -14,7 +14,10 @@ export async function GET() {
       : DEFAULT_GOALS;
     const goalIds = goalDefs.map(g => g.id);
 
-    const lotus = await reconcileLotusMembers(redis);
+    // Read-only: this route has no auth check and is fetched by the crew chanda page,
+    // so reconciling here let any unauthenticated request drive Discord role DELETEs
+    // and Redis writes. The daily cron owns reconciliation.
+    const lotusMembers = await getLotusMembers(redis);
 
     const [ uniqueCount, legacyTotal, rawContribs, ...raised ] = await Promise.all([
       // new unique contributors set
@@ -46,10 +49,10 @@ export async function GET() {
       goalDefs,
       contributions,
       lotus: {
-        subscribers: lotus.members.length,
-        members: lotus.members,
+        subscribers: lotusMembers.length,
+        members: lotusMembers,
         limit: LOTUS_MEMBER_LIMIT,
-        slotsRemaining: Math.max(0, LOTUS_MEMBER_LIMIT - lotus.members.length),
+        slotsRemaining: Math.max(0, LOTUS_MEMBER_LIMIT - lotusMembers.length),
       },
     });
   } catch (err) {

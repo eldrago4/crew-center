@@ -16,7 +16,6 @@ import { signIn } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import CallsignInput from '@/components/CallsignInput'
-// import { getDummyData } from '@/app/shared/users'
 import Cookies from 'js-cookie'
 import { FaDiscord } from "react-icons/fa"
 import NextImage from "next/image"

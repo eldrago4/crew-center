@@ -131,9 +131,15 @@ export async function activateLotusMember({ discordId, ifcName, paymentId }) {
   return { ok: true, member, slotsRemaining: Math.max(0, LOTUS_MEMBER_LIMIT - members.length) };
 }
 
+// Read-only on purpose. This runs on every dashboard load, and it used to call
+// reconcileLotusMembers — which revokes Discord roles and rewrites the member list.
+// That made a page view a write: once the grace period ends, every pilot who opened
+// their dashboard raced every other one to DELETE the same roles over the Discord
+// API and rewrite the same Redis key. Reconciliation belongs on the daily cron
+// (see api/leaderboard/cron); here we only read.
 export async function getLotusStatus(discordId) {
   const redis = Redis.fromEnv();
-  const { members } = await reconcileLotusMembers(redis);
+  const members = await getLotusMembers(redis);
   const member = members.find(m => String(m.discordId) === String(discordId));
   const month = currentLotusMonth();
   const needsPayment = !!member && member.lastPaidMonth !== month && lotusGraceActive();

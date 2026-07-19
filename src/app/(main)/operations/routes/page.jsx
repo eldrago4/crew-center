@@ -10,8 +10,9 @@ export const metadata = {
     alternates: { canonical: 'https://indianvirtual.site/operations/routes' },
 }
 
-import { Box, Flex, Grid, Heading, HStack, Text, VStack } from '@chakra-ui/react'
-import { FaArrowTrendUp, FaGlobe, FaPlaneDeparture, FaRoute } from 'react-icons/fa6'
+import { Box, Flex, Grid, Heading, HStack, Link, Text, VStack } from '@chakra-ui/react'
+import { FaArrowTrendUp, FaCrown, FaGlobe, FaPlaneDeparture, FaRoute } from 'react-icons/fa6'
+import NextLink from 'next/link'
 
 const BLUE = '#2b4bee'
 const ORANGE = '#ff6b35'
@@ -138,6 +139,42 @@ export default function RoutesPage() {
                         </Box>
                     ))}
                 </Grid>
+
+                <Box
+                    mt={{ base: 6, md: 8 }}
+                    bg="linear-gradient(90.18deg, #2D37DB 0%, #8223F6 95.74%)"
+                    rounded="lg"
+                    p={{ base: 5, md: 6 }}
+                    shadow="md"
+                >
+                    <Flex align={{ base: 'start', md: 'center' }} justify="space-between" gap={4} direction={{ base: 'column', md: 'row' }}>
+                        <HStack gap={3} align="start">
+                            <Flex w="40px" h="40px" rounded="md" align="center" justify="center" bg="whiteAlpha.200" color="white" flexShrink={0}>
+                                <FaCrown />
+                            </Flex>
+                            <Box>
+                                <Text fontWeight="bold" color="white">Not sure where to start? Fly a Maharaja Trail.</Text>
+                                <Text mt={1} fontSize="sm" color="whiteAlpha.800" lineHeight="1.6">
+                                    Fourteen hand-picked itineraries — chained mountain circuits, tech-stop long-hauls, a round-the-world A380 chase — built from this network.
+                                </Text>
+                            </Box>
+                        </HStack>
+                        <Link
+                            asChild
+                            bg="white"
+                            color="purple.700"
+                            fontWeight="bold"
+                            fontSize="sm"
+                            px={5}
+                            py={2.5}
+                            rounded="full"
+                            flexShrink={0}
+                            _hover={{ bg: 'gray.100' }}
+                        >
+                            <NextLink href="/operations/trails">Explore Maharaja Trails</NextLink>
+                        </Link>
+                    </Flex>
+                </Box>
             </Box>
         </Box>
     )

@@ -17,7 +17,7 @@ import { FaUserGroup } from "react-icons/fa6";
 
 export default function Footer() {
     return (
-        <Box as="footer" position="relative" mt={24} w="full">
+        <Box as="footer" position="relative" w="full">
             <Box position="absolute" inset={0} bg="linear-gradient(to bottom right, #1A202C, #2D3748, #1A202C)" />
             <Box position="relative" zIndex={1} px={{ base: 4, lg: 8 }} py={16} color="white">
                 <Box maxW="7xl" mx="auto">

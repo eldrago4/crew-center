@@ -21,13 +21,25 @@ import { FaGlobe, FaUsers, FaDiscord, FaClipboardList, FaCalendarWeek, FaClock, 
 import { FaGlobeAsia } from "react-icons/fa"
 import CountUp from 'react-countup';
 
+// PIREPs Filed and Hours Flown are lifetime totals across both crew centre and
+// career mode. /api/stats can't supply them: its flat fields are crew centre only
+// and cover a single month (the previous one), so those headline figures used to
+// read as lifetime while showing about a month's worth.
+//
+// Snapshot taken 2026-07-17 — crew-centre lifetime (17,014 PIREPs / 167,049 h) plus
+// career mode at that date, counted from the Firestore `flights` collection
+// (3,710 flights / 10,919 h). These are static: refresh them by hand, or the figures
+// will drift low as pilots keep flying.
+const LIFETIME_PIREPS = 20724; // 17,014 crew centre + 3,710 career
+const LIFETIME_HOURS = 177968; // 167,049 crew centre + 10,919 career
+
 const BASE_STATS = [
-    { key: 'globalRoutes',   count: 2400,  label: 'Global Routes',    icon: <FaGlobe size="3rem" />,         colorPalette: 'blue',   gradient: 'linear-gradient(to right, #3182CE, #4299E1)' },
-    { key: 'activePilots',   count: null,  label: 'Active Pilots',    icon: <FaUsers size="3rem" />,         colorPalette: 'green',  gradient: 'linear-gradient(to right, #38A169, #48BB78)' },
-    { key: 'discordMembers', count: 160,   label: 'Discord Members',  icon: <FaDiscord size="3rem" />,       colorPalette: 'purple', gradient: 'linear-gradient(to right, #805AD5, #9F7AEA)' },
-    { key: 'totalPireps',    count: null,  label: 'PIREPs Filed',     icon: <FaClipboardList size="3rem" />, colorPalette: 'orange', gradient: 'linear-gradient(to right, #DD6B20, #ED8936)' },
-    { key: 'weeklyPireps',   count: null,  label: 'Weekly PIREPs',    icon: <FaCalendarWeek size="3rem" />, colorPalette: 'yellow', gradient: 'linear-gradient(to right, #D69E2E, #F6E05E)' },
-    { key: 'hoursFlown',     count: null,  label: 'Hours Flown',      icon: <FaClock size="3rem" />,         colorPalette: 'indigo', gradient: 'linear-gradient(to right, #5A67D8, #7F9CF5)' },
+    { key: 'globalRoutes', count: 2400, label: 'Global Routes', icon: <FaGlobe size="3rem" />, colorPalette: 'blue', gradient: 'linear-gradient(to right, #3182CE, #4299E1)' },
+    { key: 'activePilots', count: null, label: 'Active Pilots', icon: <FaUsers size="3rem" />, colorPalette: 'green', gradient: 'linear-gradient(to right, #38A169, #48BB78)' },
+    { key: 'discordMembers', count: 160, label: 'Discord Members', icon: <FaDiscord size="3rem" />, colorPalette: 'purple', gradient: 'linear-gradient(to right, #805AD5, #9F7AEA)' },
+    { key: 'totalPireps', count: LIFETIME_PIREPS, label: 'PIREPs Filed', icon: <FaClipboardList size="3rem" />, colorPalette: 'orange', gradient: 'linear-gradient(to right, #DD6B20, #ED8936)' },
+    { key: 'weeklyPireps', count: null, label: 'Weekly PIREPs', icon: <FaCalendarWeek size="3rem" />, colorPalette: 'yellow', gradient: 'linear-gradient(to right, #D69E2E, #F6E05E)' },
+    { key: 'hoursFlown', count: LIFETIME_HOURS, label: 'Hours Flown', icon: <FaClock size="3rem" />, colorPalette: 'indigo', gradient: 'linear-gradient(to right, #5A67D8, #7F9CF5)' },
 ];
 
 const helloLanguages = [
@@ -49,15 +61,18 @@ export default function TestPage() {
                 if (!data) return;
                 setStats(BASE_STATS.map(s => {
                     switch (s.key) {
+                        // Both of these are last month's activity, which is what they are
+                        // labelled as. totalPireps/hoursFlown are deliberately absent:
+                        // they hold lifetime figures, and the API's same-named fields
+                        // carry a single month's — assigning them here is what made the
+                        // headline numbers look far too small.
                         case 'activePilots': return { ...s, count: data.activePilots };
-                        case 'totalPireps':  return { ...s, count: data.totalPireps };
                         case 'weeklyPireps': return { ...s, count: data.avgWeeklyPireps };
-                        case 'hoursFlown':   return { ...s, count: data.hoursFlown };
-                        default:             return s;
+                        default: return s;
                     }
                 }));
             })
-            .catch(() => {});
+            .catch(() => { });
     }, []);
 
     useEffect(() => {

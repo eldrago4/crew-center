@@ -3,6 +3,7 @@ import db from '@/db/client';
 import { users } from '@/db/schema';
 import { sql } from 'drizzle-orm';
 import { Redis } from '@upstash/redis';
+import { reconcileLotusMembers } from '@/app/api/chanda/_lotus';
 
 const redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
@@ -35,10 +36,25 @@ export async function GET() {
         // Cache in Redis with 24 hour TTL (86400 seconds)
         await redis.set('leaderboard:top10', JSON.stringify(topPilots), { ex: 86400 });
 
+        // Lotus reconciliation piggybacks on this daily run rather than taking a cron
+        // slot of its own (Hobby allows two, and both are already spoken for). It used
+        // to run inside getLotusStatus, i.e. on every dashboard load, which turned a
+        // page view into Discord role DELETEs and Redis writes — and had every
+        // concurrent viewer racing to perform the same ones. Failures here must not
+        // fail the leaderboard, so it is caught separately.
+        let lotus = null;
+        try {
+            const result = await reconcileLotusMembers(redis);
+            lotus = { active: result.members.length, revoked: result.revoked.length };
+        } catch (error) {
+            console.error('Error reconciling lotus members:', error);
+        }
+
         return NextResponse.json({
             success: true,
             message: 'Leaderboard updated successfully',
-            count: topPilots.length
+            count: topPilots.length,
+            lotus
         });
     } catch (error) {
         console.error('Error updating leaderboard:', error);

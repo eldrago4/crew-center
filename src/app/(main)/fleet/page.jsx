@@ -600,7 +600,7 @@ export default function FleetPage() {
 
       {/* ── Attribution ───────────────────────────────────────────────────── */}
       <section style={{ background: '#F1F5F9', borderTop: '1px solid #E2E8F0', padding: '24px 24px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <p style={{ fontSize: 12, color: '#94A3B8', margin: 0, lineHeight: 1.6 }}>
             Specifications sourced from{' '}
             <a href="https://infiniteflight.com/fleet" target="_blank" rel="noopener noreferrer"
@@ -608,9 +608,6 @@ export default function FleetPage() {
               Infinite Flight Fleet
             </a>
             . INVA is not affiliated with Air India, Air India Express, Vistara, Infinite Flight LLC, or any real-world carrier.
-          </p>
-          <p style={{ fontSize: 12, color: '#CBD5E1', margin: 0, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
-            INDIANVIRTUAL.SITE · 2026
           </p>
         </div>
       </section>

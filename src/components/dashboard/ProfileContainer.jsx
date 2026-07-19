@@ -6,44 +6,47 @@ import SignupOrFileButton from './SignupOrFileButton'
 import db from '@/db/client'
 import { users, pireps, notams, crewcenter } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
+import { unstable_cache } from 'next/cache'
 import { getLotusStatus } from '@/app/api/chanda/_lotus'
 
 async function getUserData(callsign) {
   try {
-    // User details
-    const userDetails = await db
-      .select({
-        id: users.id,
-        ifcName: users.ifcName,
-        flightTime: users.flightTime,
-        badges: users.badges,
-        careerMode: users.careerMode,
-        rank: users.rank,
-        updatedAt: users.updatedAt
-      })
-      .from(users)
-      .where(eq(users.id, callsign))
-      .limit(1);
-
-    // PIREPs (latest 5)
-    const pirepDetails = await db
-      .select({
-        pirepId: pireps.pirepId,
-        flightNumber: pireps.flightNumber,
-        date: pireps.date,
-        flightTime: pireps.flightTime,
-        departureIcao: pireps.departureIcao,
-        arrivalIcao: pireps.arrivalIcao,
-        aircraft: pireps.aircraft,
-        multiplier: pireps.multiplier,
-        approved: pireps.valid,
-        comments: pireps.comments,
-        updatedAt: pireps.updatedAt
-      })
-      .from(pireps)
-      .where(eq(pireps.userId, callsign))
-      .orderBy(sql`${pireps.updatedAt} DESC`)
-      .limit(5);
+    // The two reads only depend on the callsign, not on each other, so they go out
+    // together rather than one after the other.
+    const [ userDetails, pirepDetails ] = await Promise.all([
+      db
+        .select({
+          id: users.id,
+          ifcName: users.ifcName,
+          flightTime: users.flightTime,
+          badges: users.badges,
+          careerMode: users.careerMode,
+          rank: users.rank,
+          updatedAt: users.updatedAt
+        })
+        .from(users)
+        .where(eq(users.id, callsign))
+        .limit(1),
+      // PIREPs (latest 5)
+      db
+        .select({
+          pirepId: pireps.pirepId,
+          flightNumber: pireps.flightNumber,
+          date: pireps.date,
+          flightTime: pireps.flightTime,
+          departureIcao: pireps.departureIcao,
+          arrivalIcao: pireps.arrivalIcao,
+          aircraft: pireps.aircraft,
+          multiplier: pireps.multiplier,
+          approved: pireps.valid,
+          comments: pireps.comments,
+          updatedAt: pireps.updatedAt
+        })
+        .from(pireps)
+        .where(eq(pireps.userId, callsign))
+        .orderBy(sql`${pireps.updatedAt} DESC`)
+        .limit(5),
+    ]);
 
     if (!userDetails || userDetails.length === 0) {
       return null;
@@ -59,38 +62,43 @@ async function getUserData(callsign) {
   }
 }
 
-async function getNotams() {
-  try {
-    // Get count of NOTAMs
-    const countResult = await db.select({ count: sql`count(*)` }).from(notams);
-    const notamCount = countResult[ 0 ]?.count || 0;
-    // Fetch all NOTAMs ordered by issued date (newest first)
-    const allNotams = await db.select().from(notams).orderBy(notams.issued);
-    return {
-      data: allNotams,
-      count: notamCount,
-      cached: notamCount > 0
-    };
-  } catch (error) {
-    console.error('Error fetching NOTAMs:', error);
-    return { data: [], count: 0, cached: false };
-  }
-}
+// NOTAMs and the promoted event are the same for every pilot, but the dashboard is
+// auth-gated and therefore dynamic, so each of these ran once per pilot per page
+// load. Caching them here collapses that to once per window for the whole crew.
+const getNotams = unstable_cache(
+  async () => {
+    try {
+      // A count(*) used to run alongside this purely to populate `count`/`cached`,
+      // which nothing downstream reads — the rows are the answer.
+      const allNotams = await db.select().from(notams).orderBy(notams.issued);
+      return { data: allNotams };
+    } catch (error) {
+      console.error('Error fetching NOTAMs:', error);
+      return { data: [] };
+    }
+  },
+  ['dashboard-notams'],
+  { revalidate: 300, tags: ['notams'] },
+);
 
-async function getPromotedEvent() {
-  try {
-    const result = await db.select().from(crewcenter).where(eq(crewcenter.module, 'events'));
-    if (result.length === 0) {
+const getPromotedEvent = unstable_cache(
+  async () => {
+    try {
+      const result = await db.select().from(crewcenter).where(eq(crewcenter.module, 'events'));
+      if (result.length === 0) {
+        return null;
+      }
+      const events = result[ 0 ].value;
+      const promotedEvent = events.find(event => event.promoted);
+      return promotedEvent || null;
+    } catch (error) {
+      console.error('Error fetching promoted event:', error);
       return null;
     }
-    const events = result[ 0 ].value;
-    const promotedEvent = events.find(event => event.promoted);
-    return promotedEvent || null;
-  } catch (error) {
-    console.error('Error fetching promoted event:', error);
-    return null;
-  }
-}
+  },
+  ['dashboard-promoted-event'],
+  { revalidate: 300, tags: ['events'] },
+);
 
 export default async function ProfileContainer({ user }) {
   if (!user) return null
