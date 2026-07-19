@@ -5,27 +5,18 @@ import { eq } from 'drizzle-orm';
 const cache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
 
-// Modules that should never be cached (always fetch fresh data)
-const NO_CACHE_MODULES = new Set([ 'multipliers', 'ifatcMultipliers' ]);
-
+// All crewcenter modules share the 5-minute cache — including multipliers and
+// ifatcMultipliers, which used to sit in a NO_CACHE_MODULES set and hit Postgres
+// on every single request. The filing page is prefetched/rendered far more often
+// than multipliers change; admin edits still land within 5 minutes (and instantly
+// on the instance that performed the edit, via invalidateCache in updateModuleValue).
 async function fetchModuleValue(moduleName, forceRefresh = false) {
-  console.log(`[CACHE] Checking cache for module: ${moduleName}, forceRefresh: ${forceRefresh}`);
-
-  // For multipliers and IFATC multipliers, always fetch fresh data
-  if (NO_CACHE_MODULES.has(moduleName)) {
-    console.log(`[CACHE] No-cache module ${moduleName}, fetching fresh data`);
-    return await fetchFromDatabase(moduleName);
-  }
-
   const now = Date.now();
   const cached = cache.get(moduleName);
 
   if (!forceRefresh && cached && (now - cached.timestamp < CACHE_TTL)) {
-    console.log(`[CACHE] Cache hit for ${moduleName}:`, cached.value);
     return cached.value;
   }
-
-  console.log(`[CACHE] Cache miss/stale for ${moduleName}, fetching from database`);
 
   try {
     return await fetchFromDatabase(moduleName);
@@ -46,13 +37,7 @@ async function fetchFromDatabase(moduleName) {
   // No need for JSON.parse here.
   const value = result[ 0 ].value;
 
-  // Only cache if it's not a no-cache module
-  if (!NO_CACHE_MODULES.has(moduleName)) {
-    cache.set(moduleName, { value: value, timestamp: Date.now() });
-    console.log(`[CACHE] Stored in cache for ${moduleName}:`, value);
-  } else {
-    console.log(`[CACHE] No-cache module ${moduleName}, data fetched but not cached:`, value);
-  }
+  cache.set(moduleName, { value: value, timestamp: Date.now() });
 
   return value;
 }
@@ -74,7 +59,6 @@ async function updateModuleValue(moduleName, newValue) {
 
     // Invalidate cache for the updated module to ensure fresh data on next fetch
     invalidateCache(moduleName);
-    console.log(`[CACHE] Module '${moduleName}' updated successfully.`);
   } catch (error) {
     console.error(`Error updating module '${moduleName}':`, error);
     throw error;
@@ -84,10 +68,8 @@ async function updateModuleValue(moduleName, newValue) {
 function invalidateCache(moduleName) {
   if (moduleName) {
     cache.delete(moduleName);
-    console.log(`[CACHE] Cache invalidated for module: ${moduleName}`);
   } else {
     cache.clear();
-    console.log('[CACHE] All module caches invalidated');
   }
 }
 

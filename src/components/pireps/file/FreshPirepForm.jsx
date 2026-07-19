@@ -10,7 +10,6 @@ export function FreshPirepForm({ userId, session, initialAircraft, initialOperat
     useEffect(() => {
         const refreshMultipliers = async () => {
             try {
-                console.log('[FRESH FORM] Fetching fresh multipliers...');
                 const response = await fetch('/api/crewcenter?moduleName=multipliers', {
                     cache: 'no-cache',
                     headers: {
@@ -22,22 +21,16 @@ export function FreshPirepForm({ userId, session, initialAircraft, initialOperat
 
                 if (response.ok) {
                     const freshMultipliers = await response.json();
-                    console.log('[FRESH FORM] Fresh multipliers received:', freshMultipliers);
                     setMultipliers(freshMultipliers);
                     setRefreshKey(prev => prev + 1); // Force component re-render
-                } else {
-                    console.error('[FRESH FORM] Failed to fetch fresh multipliers');
                 }
             } catch (error) {
-                console.error('[FRESH FORM] Error fetching multipliers:', error);
+                console.error('Error refreshing multipliers:', error);
             }
         };
 
         refreshMultipliers();
     }, [ initialMultipliers ]);
-
-    console.log('[FRESH FORM] Rendering with refreshKey:', refreshKey);
-    console.log('[FRESH FORM] Using multipliers:', multipliers);
 
     return (
         <div key={refreshKey}>
