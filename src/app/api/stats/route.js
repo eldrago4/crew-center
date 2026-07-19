@@ -285,7 +285,10 @@ function respondWithStats(payload, format) {
     if (format === 'json') {
         return NextResponse.json(payload.json, {
             headers: {
-                'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400',
+                'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+            // Cloudflare-only TTL (Vercel passes CDN-Cache-Control through untouched):
+            // monthly aggregates — hold at the edge for 30d, serve stale for 7d while refreshing.
+            'CDN-Cache-Control': 'public, max-age=2592000, stale-while-revalidate=604800',
             },
         })
     }
@@ -293,7 +296,10 @@ function respondWithStats(payload, format) {
     return new Response(payload.text, {
         headers: {
             'Content-Type': 'text/plain; charset=utf-8',
-            'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400',
+            'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+            // Cloudflare-only TTL (Vercel passes CDN-Cache-Control through untouched):
+            // monthly aggregates — hold at the edge for 30d, serve stale for 7d while refreshing.
+            'CDN-Cache-Control': 'public, max-age=2592000, stale-while-revalidate=604800',
         },
     })
 }

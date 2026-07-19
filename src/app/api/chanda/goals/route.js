@@ -10,10 +10,20 @@ export async function GET() {
     const goals = raw
       ? (typeof raw === 'string' ? JSON.parse(raw) : raw)
       : DEFAULT_GOALS;
-    return NextResponse.json(goals);
+    // Browser 5m; Cloudflare edge 1d + 1d serve-stale (CDN-Cache-Control passes
+    // through Vercel) — goal config changes only on staff edits.
+    return NextResponse.json(goals, {
+      headers: {
+        'Cache-Control': 'public, max-age=300',
+        'CDN-Cache-Control': 'public, max-age=86400, stale-while-revalidate=86400',
+      },
+    });
   } catch (err) {
     console.error('[chanda/goals GET]', err);
-    return NextResponse.json(DEFAULT_GOALS);
+    // Fallback defaults from a Redis failure must never be pinned at the edge.
+    return NextResponse.json(DEFAULT_GOALS, {
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 }
 

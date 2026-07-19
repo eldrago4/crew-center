@@ -135,7 +135,11 @@ export async function GET() {
     const cached = await redis.get(CACHE_KEY)
     if (cached) {
       return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached, {
-        headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=180' },
+        headers: {
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+        // Cloudflare edge TTL (passed through by Vercel): 3h fresh, 6h serve-stale.
+        'CDN-Cache-Control': 'public, max-age=10800, stale-while-revalidate=21600',
+      },
       })
     }
   } catch (error) {
@@ -151,7 +155,11 @@ export async function GET() {
     }
 
     return NextResponse.json(payload, {
-      headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=180' },
+      headers: {
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+        // Cloudflare edge TTL (passed through by Vercel): 3h fresh, 6h serve-stale.
+        'CDN-Cache-Control': 'public, max-age=10800, stale-while-revalidate=21600',
+      },
     })
   } catch (error) {
     console.error('Events summary error:', error)

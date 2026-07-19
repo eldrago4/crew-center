@@ -41,7 +41,11 @@ export async function GET(request) {
           status: 200,
           headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': 'public, max-age=60, stale-while-revalidate=180'
+            'Cache-Control': 'public, max-age=60, stale-while-revalidate=180',
+            // Cloudflare edge TTL (passed through by Vercel): 10m fresh, 1h serve-stale.
+            // Kept short because multipliers gate live event bonuses; cache key includes
+            // the query string, so each ?module= variant is cached separately.
+            'CDN-Cache-Control': 'public, max-age=600, stale-while-revalidate=3600'
           },
         });
       }
@@ -79,7 +83,11 @@ export async function GET(request) {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=60, stale-while-revalidate=180'
+        'Cache-Control': 'public, max-age=60, stale-while-revalidate=180',
+            // Cloudflare edge TTL (passed through by Vercel): 10m fresh, 1h serve-stale.
+            // Kept short because multipliers gate live event bonuses; cache key includes
+            // the query string, so each ?module= variant is cached separately.
+            'CDN-Cache-Control': 'public, max-age=600, stale-while-revalidate=3600'
       },
     });
   } catch (error) {

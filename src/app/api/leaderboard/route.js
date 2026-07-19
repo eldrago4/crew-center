@@ -49,11 +49,19 @@ export async function GET() {
   try {
     const cachedData = await redis.get(CACHE_KEY);
 
+    // Browser 5m; Cloudflare edge 1d fresh + 1d serve-stale (CDN-Cache-Control is
+    // passed through by Vercel). The data only changes via the daily midnight cron,
+    // so a day-old edge copy matches the data's real cadence.
+    const CACHE_HEADERS = {
+      'Cache-Control': 'public, max-age=300',
+      'CDN-Cache-Control': 'public, max-age=86400, stale-while-revalidate=86400',
+    };
+
     // Cache hit — return it (parse if stored as a JSON string)
     if (cachedData) {
       try {
         const leaderboard = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
-        return NextResponse.json({ data: leaderboard });
+        return NextResponse.json({ data: leaderboard }, { headers: CACHE_HEADERS });
       } catch (parseError) {
         console.warn('Invalid cached leaderboard, recomputing:', parseError);
         // fall through to recompute below
@@ -62,7 +70,7 @@ export async function GET() {
 
     // Cache miss (or corrupt) — compute on demand and re-cache
     const leaderboard = await computeAndCacheLeaderboard();
-    return NextResponse.json({ data: leaderboard });
+    return NextResponse.json({ data: leaderboard }, { headers: CACHE_HEADERS });
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
     return NextResponse.json(
