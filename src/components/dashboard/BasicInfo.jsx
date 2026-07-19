@@ -559,10 +559,14 @@ export default function BasicInfo({ ifcName, image, flightTime, rank, badgePaylo
 
 
 
-  // Lotus badge5 can be derived directly from Lotus status endpoint as well.
-  // This avoids relying on /api/crewcenter?module=badges for Lotus membership.
-  const [ lotusStatus, setLotusStatus ] = useState(null)
+  // Lotus badge5 gating. ProfileContainer already computes getLotusStatus() on the
+  // server and passes it down — the /api/chanda/lotus/status route returns that exact
+  // same object, so re-fetching it here was a duplicate auth'd invocation on every
+  // dashboard view. Use the prop; only fall back to the client fetch when the server
+  // couldn't provide it (no discordId, or its .catch(() => null) fired).
+  const [ lotusStatus, setLotusStatus ] = useState(lotusStatusFromParent ?? null)
   useEffect(() => {
+    if (lotusStatusFromParent != null) return
     const loadLotus = async () => {
       try {
         const res = await fetch('/api/chanda/lotus/status', { cache: 'no-store' })
@@ -574,7 +578,7 @@ export default function BasicInfo({ ifcName, image, flightTime, rank, badgePaylo
       }
     }
     loadLotus()
-  }, [])
+  }, [ lotusStatusFromParent ])
 
   // Normalised user identity — badges only show for a valid user.
   const normalizedUserName = ifcName ? String(ifcName).trim().toLowerCase() : ''
