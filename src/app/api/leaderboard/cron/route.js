@@ -5,10 +5,14 @@ import { sql } from 'drizzle-orm';
 import { Redis } from '@upstash/redis';
 import { reconcileLotusMembers } from '@/app/api/chanda/_lotus';
 
-const redis = new Redis({
+let _redis = null
+function getRedis() {
+  if (!_redis) _redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+})
+  return _redis
+}
 
 export async function GET() {
     try {
@@ -34,7 +38,7 @@ export async function GET() {
         }));
 
         // Cache in Redis with 24 hour TTL (86400 seconds)
-        await redis.set('leaderboard:top10', JSON.stringify(topPilots), { ex: 86400 });
+        await getRedis().set('leaderboard:top10', JSON.stringify(topPilots), { ex: 86400 });
 
         // Lotus reconciliation piggybacks on this daily run rather than taking a cron
         // slot of its own (Hobby allows two, and both are already spoken for). It used
@@ -44,7 +48,7 @@ export async function GET() {
         // fail the leaderboard, so it is caught separately.
         let lotus = null;
         try {
-            const result = await reconcileLotusMembers(redis);
+            const result = await reconcileLotusMembers(getRedis());
             lotus = { active: result.members.length, revoked: result.revoked.length };
         } catch (error) {
             console.error('Error reconciling lotus members:', error);

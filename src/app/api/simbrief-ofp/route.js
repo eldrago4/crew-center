@@ -4,7 +4,11 @@ import { Redis } from '@upstash/redis'
 
 export const dynamic = 'force-dynamic'
 
-const redis = Redis.fromEnv()
+let _redis = null
+function getRedis() {
+  if (!_redis) _redis = Redis.fromEnv()
+  return _redis
+}
 const EXISTS_TTL_SECONDS = 10 * 60
 const MISSING_TTL_SECONDS = 12
 const OFP_TTL_SECONDS = 24 * 60 * 60
@@ -43,7 +47,7 @@ export async function GET(request) {
 
     if (check) {
         try {
-            const cached = await redis.get(existsCacheKey)
+            const cached = await getRedis().get(existsCacheKey)
             if (cached !== null && cached !== undefined) {
                 return NextResponse.json({ exists: cached === true || cached === 'true' }, {
                     headers: { 'Cache-Control': 'private, max-age=10' },
@@ -56,7 +60,7 @@ export async function GET(request) {
         // HEAD check — just tell client if OFP exists yet
         const res = await fetch(xmlUrl, { method: 'HEAD' })
         try {
-            await redis.set(existsCacheKey, res.ok, { ex: res.ok ? EXISTS_TTL_SECONDS : MISSING_TTL_SECONDS })
+            await getRedis().set(existsCacheKey, res.ok, { ex: res.ok ? EXISTS_TTL_SECONDS : MISSING_TTL_SECONDS })
         } catch (error) {
             console.warn('SimBrief OFP exists cache write failed:', error)
         }
@@ -67,7 +71,7 @@ export async function GET(request) {
 
     try {
         try {
-            const cached = await redis.get(dataCacheKey)
+            const cached = await getRedis().get(dataCacheKey)
             if (cached) {
                 return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached, {
                     headers: { 'Cache-Control': 'private, max-age=300' },
@@ -106,8 +110,8 @@ export async function GET(request) {
 
         try {
             await Promise.all([
-                redis.set(dataCacheKey, payload, { ex: OFP_TTL_SECONDS }),
-                redis.set(existsCacheKey, true, { ex: EXISTS_TTL_SECONDS }),
+                getRedis().set(dataCacheKey, payload, { ex: OFP_TTL_SECONDS }),
+                getRedis().set(existsCacheKey, true, { ex: EXISTS_TTL_SECONDS }),
             ])
         } catch (error) {
             console.warn('SimBrief OFP cache write failed:', error)

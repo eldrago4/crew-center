@@ -7,7 +7,11 @@ import { Redis } from '@upstash/redis'
 
 export const dynamic = 'force-dynamic'
 
-const redis = Redis.fromEnv()
+let _redis = null
+function getRedis() {
+  if (!_redis) _redis = Redis.fromEnv()
+  return _redis
+}
 const CACHE_TTL_SECONDS = 10 * 60
 
 // Notifications feature removed.
@@ -22,7 +26,7 @@ export async function GET() {
 
     const cacheKey = `notifications:${session.user.callsign}`
     try {
-        const cached = await redis.get(cacheKey)
+        const cached = await getRedis().get(cacheKey)
         if (cached) {
             return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached, {
                 headers: { 'Cache-Control': 'private, max-age=120' },
@@ -48,7 +52,7 @@ export async function GET() {
 
 
     try {
-        await redis.set(cacheKey, payload, { ex: CACHE_TTL_SECONDS })
+        await getRedis().set(cacheKey, payload, { ex: CACHE_TTL_SECONDS })
     } catch (error) {
         console.warn('Notifications Redis cache write failed:', error)
     }

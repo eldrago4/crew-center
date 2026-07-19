@@ -3,7 +3,11 @@ import { Redis } from '@upstash/redis'
 
 const GUILD_ID = process.env.DISCORD_GUILD_ID
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN
-const redis = Redis.fromEnv()
+let _redis = null
+function getRedis() {
+  if (!_redis) _redis = Redis.fromEnv()
+  return _redis
+}
 
 // 5-minute cache — events change more often than monthly stats
 const cache = { data: null, expiresAt: 0 }
@@ -16,7 +20,7 @@ export async function GET() {
     }
 
     try {
-        const cached = await redis.get(CACHE_KEY)
+        const cached = await getRedis().get(CACHE_KEY)
         if (cached) {
             const data = typeof cached === 'string' ? JSON.parse(cached) : cached
             cache.data = data
@@ -48,7 +52,7 @@ export async function GET() {
         cache.expiresAt = Date.now() + CACHE_TTL
 
         try {
-            await redis.set(CACHE_KEY, events, { ex: CACHE_TTL / 1000 })
+            await getRedis().set(CACHE_KEY, events, { ex: CACHE_TTL / 1000 })
         } catch (error) {
             console.warn('Discord events Redis cache write failed:', error)
         }
