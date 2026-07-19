@@ -21,6 +21,22 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { MdCloudDownload } from 'react-icons/md';
 import { toaster } from '@/components/ui/toaster';
+import { matchTrailCode, TRAIL_MULTIPLIER } from '@/app/shared/trails';
+
+// Builds the trail-progress line appended to the PIREP success message when the
+// comments referenced a Maharaja Trail code. Returns '' when no trail was matched.
+function trailMessage(trail) {
+    if (!trail) return '';
+    if (trail.newLeg) {
+        return `\n\n🛤️ ${trail.name}\nLeg ${trail.completed} of ${trail.total} logged!`
+            + (trail.multiplierApplied ? `\n${trail.multiplier}× multiplier applied!` : '')
+            + (trail.complete ? '\n🎉 Trail complete!' : '');
+    }
+    if (trail.complete) {
+        return `\n\n🛤️ ${trail.name} is already complete (${trail.total}/${trail.total}).`;
+    }
+    return `\n\n🛤️ ${trail.name}: this flight was already counted (${trail.completed}/${trail.total}).`;
+}
 
 // The component receives pre-fetched data and the session object as props from its parent Server Component.
 export function PirepForm({ userId, session, initialAircraft, initialOperators, initialMultipliers, initialIfatcMultipliers, cacheTimestamp }) {
@@ -292,7 +308,8 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                 });
 
                 if (response.ok) {
-                    alert('Flight PIREP submitted successfully!');
+                    const result = await response.json().catch(() => ({}));
+                    alert('Flight PIREP submitted successfully!' + trailMessage(result?.trail));
                     // Reset form fields
                     setFlightDate(today);
                     setFlightNumber('');
@@ -350,7 +367,8 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                 });
 
                 if (response.ok) {
-                    alert('PIREP submitted successfully!');
+                    const result = await response.json().catch(() => ({}));
+                    alert('PIREP submitted successfully!' + trailMessage(result?.trail));
                     setIfatcDate(today);
                     setAirportIcao('');
                     setIfatcTime({ open: '', close: '' });
@@ -368,6 +386,11 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
             setSubmitting(false);
         }
     };
+
+    // Live-detect a Maharaja Trail code in the flight comments so we can flag the
+    // bonus next to the multiplier field. Purely informational — the server is what
+    // actually applies (and caps) the multiplier on submit.
+    const detectedTrail = matchTrailCode(comments);
 
     return (
         <Tabs.Root variant="enclosed" fitted defaultValue="flight" colorPalette="purple">
@@ -590,6 +613,11 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                                         </Select.Positioner>
                                     </Portal>
                                 </Select.Root>
+                                {detectedTrail && (
+                                    <Text mt={1.5} fontSize="xs" fontWeight="600" color="#511D4B">
+                                        🛤️ {detectedTrail.name} · {TRAIL_MULTIPLIER}× trail bonus applies
+                                    </Text>
+                                )}
                             </Field.Root>
                             <Field.Root>
                                 <Field.Label>Pilot Remarks</Field.Label>

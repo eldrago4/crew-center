@@ -1,8 +1,50 @@
 import { NextResponse } from "next/server";
+import { Redis } from "@upstash/redis";
 import db from "@/db/client";
 import { pireps, users } from "@/db/schema";
 import { eq, sql, isNull, ilike } from "drizzle-orm";
 import { requireUser, requireStaff, isStaff } from "@/lib/apiAuth";
+import { matchTrailCode, TRAIL_MULTIPLIER } from "@/app/shared/trails";
+
+// Lazily constructed and memoized across warm invocations. Built inside the guarded
+// helper (never at module scope) so that a missing/invalid Upstash env can't throw at
+// import time and take PIREP submission down with it.
+let _redis = null;
+function getRedis() {
+  if (!_redis) {
+    _redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+  return _redis;
+}
+
+// Credits a Maharaja Trail leg when a pilot's comments contain a trail code.
+// Progress is a Redis SET of PIREP ids per pilot+trail, which gives us two guarantees
+// for free: SADD dedupes (re-filing the same PIREP can't double-count), and we stop
+// adding once the set reaches the trail's leg count — so the multiplier can never be
+// claimed more times than the trail has legs. Costs 1 command when the trail is already
+// complete, 2 otherwise, and 0 when there's no code. Never throws: on any failure it
+// returns null and the PIREP submission carries on untouched.
+async function creditTrailLeg({ comments, userId, pirepId }) {
+  const trail = matchTrailCode(comments);
+  if (!trail) return null;
+  try {
+    const redis = getRedis();
+    const key = `trail:${trail.slug}:${userId}`;
+    const current = await redis.scard(key);
+    if (current >= trail.legs) {
+      return { slug: trail.slug, code: trail.code, name: trail.name, completed: trail.legs, total: trail.legs, newLeg: false, complete: true };
+    }
+    const added = await redis.sadd(key, String(pirepId));
+    const completed = Math.min(current + (added ? 1 : 0), trail.legs);
+    return { slug: trail.slug, code: trail.code, name: trail.name, completed, total: trail.legs, newLeg: added === 1, complete: completed >= trail.legs };
+  } catch (err) {
+    console.error("Trail leg credit failed (non-fatal):", err);
+    return null;
+  }
+}
 
 export async function GET(request) {
   try {
@@ -188,6 +230,37 @@ export async function POST(request) {
       .set({ lastActive: new Date().toISOString() })
       .where(eq(users.id, userId));
 
+    // If the comments reference a Maharaja Trail code, credit a leg (deduped + capped).
+    // Fully isolated: a Redis hiccup here must never fail an otherwise-valid PIREP.
+    let trailResult = null;
+    try {
+      const p = insertedPireps[ 0 ];
+      trailResult = await creditTrailLeg({
+        comments: p.comments,
+        userId: p.userId,
+        pirepId: p.pirepId,
+      });
+      // Only a leg that actually counted (within the cap, not a duplicate) earns the
+      // trail bonus — so the multiplier can never be farmed past the trail's leg count.
+      // We take the max with any multiplier already on the PIREP so a higher event
+      // multiplier is never downgraded.
+      if (trailResult?.newLeg) {
+        const currentMult = p.multiplier ? parseFloat(p.multiplier) : 1;
+        const appliedMult = Math.max(currentMult, TRAIL_MULTIPLIER);
+        if (appliedMult > currentMult) {
+          await db
+            .update(pireps)
+            .set({ multiplier: String(appliedMult) })
+            .where(eq(pireps.pirepId, p.pirepId));
+          p.multiplier = String(appliedMult);
+        }
+        trailResult.multiplier = appliedMult;
+        trailResult.multiplierApplied = appliedMult > currentMult;
+      }
+    } catch (trailErr) {
+      console.error("Trail crediting error (non-fatal):", trailErr);
+    }
+
     // Send Discord webhook (awaited so serverless runtime doesn't kill it)
     try {
       const inserted = insertedPireps[ 0 ];
@@ -227,6 +300,10 @@ export async function POST(request) {
         FR: "FR.png",
         GA: "GA.png",
         HU: "HU.png",
+        // IFATC sessions file under flightNumber "IFATC". Mapping it here gives their
+        // embeds the IFATC badge thumbnail, the same way codeshare flights get an
+        // airline badge. Safe as a startsWith() prefix — no real callsign begins "IFATC".
+        IFATC: "IFATC.png",
         IX: "IX.png",
         KE: "KE.png",
         KQ: "KQ.png",
@@ -333,12 +410,27 @@ export async function POST(request) {
           },
         ];
 
+      // Surface trail progress right on the PIREP embed when a leg was referenced.
+      if (trailResult && !isIFATC) {
+        const suffix = trailResult.complete
+          ? " · ✅ Trail complete"
+          : trailResult.newLeg
+            ? ""
+            : " · already counted";
+        const multLine = trailResult.newLeg ? `\n${trailResult.multiplier}× multiplier applied` : "";
+        fields.push({
+          name: "🛤️ Maharaja Trail",
+          value: `**${trailResult.name}** \`${trailResult.code}\`\nLeg ${trailResult.completed}/${trailResult.total}${suffix}${multLine}`,
+          inline: false,
+        });
+      }
+
       const embed = {
         title: `PIREP #${inserted.pirepId}`,
         description: isIFATC
           ? "**IFATC PIREP**"
           : null,
-        color: isIFATC ? 0x1abc9c : 0x1abc9c,
+        color: isIFATC ? 0x1abc9c : 0x511d4b,
         fields,
         timestamp: new Date(inserted.updatedAt || Date.now()).toISOString(),
       };
@@ -401,7 +493,7 @@ export async function POST(request) {
     }
 
     return NextResponse.json(
-      { message: "PIREP submitted successfully", pirep: insertedPireps[ 0 ] },
+      { message: "PIREP submitted successfully", pirep: insertedPireps[ 0 ], trail: trailResult || undefined },
       { status: 201 }, // 201 Created status
     );
   } catch (error) {

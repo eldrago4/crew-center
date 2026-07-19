@@ -1,7 +1,7 @@
 import db from '@/db/client';
 import { notams } from '@/db/schema';
 import { auth } from '@/auth';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 function isStaff(session) {
@@ -37,17 +37,20 @@ function normalizeNotamPayload(body) {
 
 export async function GET() {
     try {
-        // Get count of NOTAMs in table
-        const countResult = await db.select({ count: sql`count(*)` }).from(notams);
-        const notamCount = countResult[ 0 ]?.count || 0;
-
-        // Fetch all NOTAMs ordered by issued date (newest first)
+        // The rows are the count — a separate count(*) was doubling the work for a
+        // number this same query already answers.
         const allNotams = await db.select().from(notams).orderBy(notams.issued);
 
         return Response.json({
             data: allNotams,
-            count: notamCount,
-            cached: notamCount > 0 
+            count: allNotams.length,
+            cached: allNotams.length > 0
+        }, {
+            // NOTAMs are identical for every caller and change rarely, so let the edge
+            // answer repeat requests instead of waking the database for each one.
+            headers: {
+                'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+            },
         });
     } catch (error) {
         console.error('Error fetching NOTAMs:', error);

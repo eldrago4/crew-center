@@ -1,10 +1,10 @@
 export const metadata = {
   title: 'Maharaja Trails — Indian Virtual',
-  description: 'Maharaja Trails: thirty-seven hand-picked flight itineraries across the Air India Group network on Infinite Flight — chained mountain circuits, tech-stop long-hauls, a round-the-world A380 chase, cargo relays, and more, each with real legs and a suggested flight plan.',
+  description: 'Maharaja Trails: forty hand-picked flight itineraries across the Air India Group network on Infinite Flight — chained mountain circuits, tech-stop long-hauls, a round-the-world A380 chase, cargo relays, and more, each with real legs and a suggested flight plan.',
   keywords: ['Indian Virtual trails', 'Air India virtual routes', 'Infinite Flight themed routes', 'INVA route collections', 'virtual airline flight itinerary'],
   openGraph: {
     title: 'Maharaja Trails | Indian Virtual',
-    description: 'Thirty-seven hand-picked route itineraries across the Air India Group network — real chained legs, suggested departure times, and a story behind every one.',
+    description: 'Forty hand-picked route itineraries across the Air India Group network — real chained legs, suggested departure times, and a story behind every one.',
     url: 'https://indianvirtual.site/operations/trails',
   },
   alternates: { canonical: 'https://indianvirtual.site/operations/trails' },
@@ -91,12 +91,12 @@ export default function TrailsPage() {
           </h1>
 
           <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.55)', lineHeight: 1.75, maxWidth: 640, margin: '0 0 52px' }}>
-            2,294 routes across 380-plus airports is a route database. These thirty-seven trails are what happens when you go through it by hand. Ten are chained itineraries — one leg&apos;s arrival airport is the next leg&apos;s departure, verified against the live network, with a suggested flight plan and departure times. The rest are hand-picked highlight reels: the routes that don&apos;t just fill a map, but tell you something about the network they&apos;re on.
+            2,294 routes across 380-plus airports is a route database. These forty trails are what happens when you go through it by hand. Ten are chained itineraries — one leg&apos;s arrival airport is the next leg&apos;s departure, verified against the live network, with a suggested flight plan and departure times. The rest are hand-picked highlight reels: the routes that don&apos;t just fill a map, but tell you something about the network they&apos;re on.
           </p>
 
           <div className="trails-hero-stats" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 32 }}>
             {[
-              { value: '37', label: 'Trails' },
+              { value: '40', label: 'Trails' },
               { value: '10', label: 'Chained Itineraries' },
               { value: '3', label: 'A380 Sectors' },
               { value: '51h', label: 'Longest Trail Block Time' },

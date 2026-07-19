@@ -2,11 +2,58 @@
 
 import { useState, useRef } from 'react'
 import { TRAILS, TYPES, ICAO, aircraftBadges } from './trailsData'
+import { TRAIL_META, TRAIL_MULTIPLIER } from '@/app/shared/trails'
 
 // City → "City (ICAO)" for leg rows, when we have the code.
 function withIcao(city) {
   const code = ICAO[city]
   return code ? `${city} (${code})` : city
+}
+
+// Click-to-copy trail code. Teletype/mono styling, a touch bolder — the pilot pastes
+// this exact code into their PIREP comments to have the flight counted as a trail leg.
+// Keyed by code at the call site so it remounts (and the "Copied" state resets) when
+// a different trail is selected.
+function CopyableCode({ trail }) {
+  const meta = TRAIL_META[trail.id]
+  const [copied, setCopied] = useState(false)
+  if (!meta) return null
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(meta.code)
+    } catch {
+      // Older/insecure-context fallback.
+      const ta = document.createElement('textarea')
+      ta.value = meta.code
+      ta.style.position = 'fixed'; ta.style.opacity = '0'
+      document.body.appendChild(ta); ta.select()
+      try { document.execCommand('copy') } catch { /* no-op */ }
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1600)
+  }
+
+  return (
+    <div className="trd-block trd-code-block">
+      <button
+        type="button"
+        onClick={copy}
+        className="trd-code"
+        style={{ color: trail.color }}
+        aria-label={`Copy trail code ${meta.code}`}
+        title="Click to copy"
+      >
+        <span className="trd-code-hash" style={copied ? { opacity: 1 } : undefined}>{copied ? '✓' : '#'}</span>
+        <span className="trd-code-value">{meta.code}</span>
+      </button>
+      <div className="trd-mult">
+        <div className="trd-mult-value" style={{ color: trail.color }}>{TRAIL_MULTIPLIER}x</div>
+        <div className="trd-mult-label">Multiplier</div>
+      </div>
+    </div>
+  )
 }
 
 const GROUPED = TYPES.map(t => ({
@@ -71,6 +118,8 @@ function DetailPane({ trail }) {
 
       <h2 className="trd-detail-name">{trail.name}</h2>
       <p className="trd-detail-tag" style={{ color: trail.color }}>{trail.tagline}</p>
+
+      <CopyableCode key={trail.id} trail={trail} />
 
       <div className="trd-detail-aircraft">
         <span className="trd-label">Aircraft</span>
@@ -239,6 +288,32 @@ const STYLES = `
     margin: 20px 0 6px; line-height: 1.05; text-wrap: balance;
   }
   .trd-detail-tag { font-size: 15px; font-weight: 600; font-style: italic; margin: 0; line-height: 1.4; }
+
+  .trd-code-block {
+    margin-top: 16px; display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .trd-mult { text-align: right; line-height: 1; }
+  .trd-mult-value {
+    font-size: 26px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  }
+  .trd-mult-label {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
+    color: #94A3B8; margin-top: 3px;
+  }
+  .trd-code {
+    display: inline-flex; align-items: baseline; gap: 6px; cursor: pointer;
+    background: none; border: none; padding: 0; color: inherit;
+    font-family: 'SF Mono', 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, 'Courier New', monospace;
+  }
+  .trd-code-hash { font-size: 18px; font-weight: 500; opacity: 0.4; transition: opacity .15s ease; }
+  .trd-code-value {
+    font-size: 21px; font-weight: 800; letter-spacing: 0.14em;
+    text-decoration: underline dashed currentColor;
+    text-underline-offset: 5px; text-decoration-thickness: 1.5px;
+    transition: text-underline-offset .15s ease;
+  }
+  .trd-code:hover .trd-code-value { text-underline-offset: 7px; }
 
   .trd-detail-aircraft { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; row-gap: 8px; margin-top: 18px; }
   .trd-ac-badge { font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: 6px; }
