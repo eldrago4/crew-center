@@ -1,6 +1,13 @@
 import { Redis } from '@upstash/redis';
 
-const redis = Redis.fromEnv();
+// Lazy so Redis.fromEnv() reads UPSTASH_* at first use (request time) rather than at
+// module load. On Cloudflare Workers (OpenNext) env isn't populated at isolate init, so
+// a top-level fromEnv() throws "Unable to find environment variable". No-op on Vercel.
+let _redis = null;
+function getRedis() {
+  if (!_redis) _redis = Redis.fromEnv();
+  return _redis;
+}
 
 let cachedStaff = null;
 let cachedStaffAt = 0;
@@ -11,7 +18,7 @@ export async function getStaff() {
     return cachedStaff;
   }
   try {
-    const data = await redis.json.get('staff');
+    const data = await getRedis().json.get('staff');
     cachedStaff = data;
     cachedStaffAt = Date.now();
     return data;
@@ -28,7 +35,7 @@ export async function updateStaff(jsonData) {
       throw new Error('updateStaff function should only be called on the server');
     }
 
-    await redis.json.set('staff', '$', jsonData);
+    await getRedis().json.set('staff', '$', jsonData);
 
     cachedStaff = null;
 
