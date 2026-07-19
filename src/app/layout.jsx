@@ -17,6 +17,22 @@ export default function RootLayout({ children }) {
         // differs from the client. Without this, React throws hydration error #418.
         <html lang="en" className={horizon.variable} suppressHydrationWarning>
             <head>
+                {/* Parse-time base paint. The script below decides light/dark before
+                    first paint, but the page still flashed white on /crew/*: nothing
+                    painted a dark background until Chakra's CSS-in-JS streamed in and
+                    applied, so the browser-default white showed first and sections then
+                    flipped dark one style-chunk at a time (DashNav even animates its
+                    background, turning the flip into a visible fade). Giving <html>
+                    itself the theme background — plus color-scheme, so scrollbars and
+                    native controls match — makes the very first pixel the right color. */}
+                <style
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            html { background: #fff; color-scheme: light; }
+                            html.dark { background: #111; color-scheme: dark; }
+                        `,
+                    }}
+                />
                 {/* A raw inline script, not next/script: with strategy="beforeInteractive"
                     Next never emitted a real tag here, it only serialised this into the RSC
                     payload and ran it after hydration. That put it *after* the (main)
