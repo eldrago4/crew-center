@@ -425,12 +425,21 @@ export async function POST(request) {
         });
       }
 
+      // Embed accent: green for IFATC sessions, deep plum ONLY when the PIREP was
+      // recognised as a Maharaja Trail leg (trail code in comments), teal for every
+      // ordinary flight PIREP.
+      const embedColor = isIFATC
+        ? 0x2ecc71
+        : trailResult
+          ? 0x511d4b
+          : 0x1abc9c;
+
       const embed = {
         title: `PIREP #${inserted.pirepId}`,
         description: isIFATC
           ? "**IFATC PIREP**"
           : null,
-        color: isIFATC ? 0x1abc9c : 0x511d4b,
+        color: embedColor,
         fields,
         timestamp: new Date(inserted.updatedAt || Date.now()).toISOString(),
       };
