@@ -3,6 +3,35 @@ import { auth } from '@/auth'
 import db from '@/db/client'
 import { users } from '@/db/schema'
 import { eq } from 'drizzle-orm'
+import { Redis } from '@upstash/redis'
+
+// The IF liveries catalog is global and changes ~monthly, but it was re-fetched
+// (thousands of rows) on every ACARS import just to resolve one flight's liveryId.
+// Cache it in Redis for 24h. Lazy client (never at module scope) per the codebase's
+// Workers-safe pattern.
+let _redis = null
+function getRedis() {
+    if (!_redis) _redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN })
+    return _redis
+}
+const LIVERIES_CACHE_KEY = 'if:liveries:v1'
+const LIVERIES_TTL_SECONDS = 86400
+
+async function getLiveries(apiKey, ifFetch) {
+    try {
+        const cached = await getRedis().get(LIVERIES_CACHE_KEY)
+        if (Array.isArray(cached) && cached.length) return cached
+    } catch (e) {
+        console.warn('Liveries cache read failed:', e)
+    }
+    const result = await ifFetch(`${IF_BASE}/aircraft/liveries?apikey=${apiKey}`)
+    const liveries = Array.isArray(result) ? result : []
+    if (liveries.length) {
+        try { await getRedis().set(LIVERIES_CACHE_KEY, liveries, { ex: LIVERIES_TTL_SECONDS }) }
+        catch (e) { console.warn('Liveries cache write failed:', e) }
+    }
+    return liveries
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -147,11 +176,10 @@ export async function GET() {
             return NextResponse.json({ error: 'User not found in Infinite Flight' }, { status: 404 })
         }
 
-        const [ flightsList, liveryResult ] = await Promise.all([
+        const [ flightsList, liveries ] = await Promise.all([
             ifFetch(`${IF_BASE}/users/${ifUser.userId}/flights?page=1&apikey=${apiKey}`),
-            ifFetch(`${IF_BASE}/aircraft/liveries?apikey=${apiKey}`),
+            getLiveries(apiKey, ifFetch),
         ])
-        const liveries = Array.isArray(liveryResult) ? liveryResult : []
 
         const flight = flightsList?.data?.find(f =>
             f.server === 'Expert' &&
