@@ -13,7 +13,7 @@ import {
   Circle,
 } from '@chakra-ui/react';
 import { useState, useEffect, useRef } from 'react';
-import NextLink from 'next/link';
+import NoPrefetchLink from '@/components/NoPrefetchLink';
 import {
   FiUser, FiBookOpen, FiFilePlus, FiMap, FiBriefcase, FiTrendingUp,
   FiCalendar, FiStar, FiAward, FiGlobe, FiBook, FiDatabase, FiTruck,
@@ -165,15 +165,10 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
       {buttons.map(({ label, href, disabled }, idx) => {
         return (
           <Box key={idx} position="relative" display="flex" width="100%">
-            {/* prefetch={false}: sidebar links are always in-viewport and every crew
-                route is dynamic (auth cookie), so Next's ~30s dynamic prefetch cache
-                had these links re-prefetching on loop — ~1.1K server invocations each
-                per 12h on pireps/file and plan/simbrief. One RTT on click is cheaper. */}
             <Button
               {...desktopButtonProps}
-              as={href && !disabled ? (isExternalHref(href) ? "a" : NextLink) : "button"}
+              as={href && !disabled ? (isExternalHref(href) ? "a" : NoPrefetchLink) : "button"}
               href={href}
-              {...(href && !disabled && !isExternalHref(href) ? { prefetch: false } : {})}
               {...(disabled ? { disabled: true } : {})}
               flex={1}
             >
@@ -218,9 +213,8 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
             <Box
               key={idx}
               position="relative"
-              as={!disabled && !isExternalHref(href) ? NextLink : "a"}
+              as={!disabled && !isExternalHref(href) ? NoPrefetchLink : "a"}
               href={!disabled ? href : undefined}
-              {...(!disabled && !isExternalHref(href) ? { prefetch: false } : {})}
               _hover={{ textDecoration: 'none' }}
               onClick={(e) => { if (disabled) e.preventDefault(); }}
               aria-disabled={disabled}
