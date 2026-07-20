@@ -2,41 +2,111 @@
 
 // Root error boundary for any page/segment that doesn't define its own. Renders
 // inside the root layout only (not the (main)/(crew) group layouts), so it stays
-// cheap and dependency-free. global-error.jsx handles failures of the root layout
-// itself; this handles everything below it.
+// cheap and dependency-free (no Chakra, no Tailwind runtime). global-error.jsx
+// handles failures of the root layout itself; this handles everything below it.
+
+const css = `
+  .err-root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* 20% above center: shrink the centering region from the bottom so the block's
+       midpoint lands ~30vh from the top instead of 50vh. Degrades to a scroll (not a
+       clip) on short viewports. */
+    padding: 24px 20px 40vh;
+    box-sizing: border-box;
+    background: #f8f9ff;
+    color: #0d1c2e;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    text-align: center;
+  }
+  .err-graphic { width: clamp(180px, 42vw, 260px); height: auto; margin-bottom: 32px; user-select: none; }
+  .err-text { max-width: 512px; }
+  .err-title {
+    font-family: 'Hanken Grotesk', system-ui, sans-serif;
+    font-weight: 700; letter-spacing: -0.02em; color: #000000;
+    font-size: 32px; line-height: 40px;
+    margin: 0 0 16px;
+  }
+  .err-body {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 400; font-size: 18px; line-height: 28px; color: #45464d;
+    margin: 0;
+  }
+  .err-cta {
+    margin-top: 40px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  }
+  .err-btn {
+    font-family: 'Hanken Grotesk', system-ui, sans-serif;
+    font-weight: 600; font-size: 16px; line-height: 24px;
+    padding: 12px 32px; border-radius: 8px; cursor: pointer;
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+    width: 100%;
+  }
+  .err-btn-primary {
+    background: #000000; color: #ffffff; border: none;
+  }
+  .err-btn-primary:hover { background: #006591; }
+  .err-btn-secondary {
+    background: transparent; color: #000000; border: 1px solid #000000;
+    text-decoration: none; display: inline-block;
+  }
+  .err-btn-secondary:hover { background: #eff4ff; border-color: #006591; color: #006591; }
+  .err-code {
+    margin-top: 64px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-weight: 500; font-size: 13px; line-height: 16px; letter-spacing: 0.05em;
+    color: #76777d; background: #d5e3fc;
+    padding: 4px 12px; border-radius: 999px;
+    display: inline-block;
+  }
+
+  @media (min-width: 640px) {
+    .err-cta { flex-direction: row; gap: 24px; }
+    .err-btn { width: auto; }
+  }
+  @media (min-width: 768px) {
+    .err-root { padding-left: 64px; padding-right: 64px; }
+    .err-title { font-size: 48px; line-height: 56px; }
+  }
+`
+
 export default function Error({ error, reset }) {
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: '18px',
-      background: '#0b1020', color: '#e5e7eb', textAlign: 'center', padding: '24px',
-      fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-    }}>
-      <div style={{ fontSize: '13px', letterSpacing: '0.35em', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 700 }}>
-        Indian Virtual
-      </div>
-      <div style={{ fontSize: '56px', lineHeight: 1 }}>✈️</div>
-      <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>
-        Something went wrong
-      </h1>
-      <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, maxWidth: '400px', lineHeight: 1.7 }}>
-        We hit unexpected turbulence loading this page. Try again — if it keeps
-        happening, let a staff member know.
-      </p>
-      <div style={{ display: 'flex', gap: '10px', marginTop: '4px', flexWrap: 'wrap', justifyContent: 'center' }}>
-        <button onClick={() => reset()} style={{
-          background: '#2b4bee', color: '#fff', padding: '11px 22px', borderRadius: '999px',
-          fontSize: '14px', fontWeight: 700, border: 'none', cursor: 'pointer',
-        }}>
-          Try again
-        </button>
-        <a href="/" style={{
-          border: '1px solid #334155', color: '#e5e7eb', padding: '11px 22px', borderRadius: '999px',
-          fontSize: '14px', fontWeight: 700, textDecoration: 'none',
-        }}>
-          Back home
-        </a>
-      </div>
-    </div>
+    <>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap"
+      />
+      <style>{css}</style>
+
+      <main className="err-root">
+        <img className="err-graphic" src="/error/500.png" alt="" aria-hidden="true" />
+
+        <div className="err-text">
+          <h1 className="err-title">Signal Lost.</h1>
+          <p className="err-body">
+            We&apos;ve lost connection with our flight systems. Our technicians are
+            recalibrating the instruments.
+          </p>
+        </div>
+
+        <div className="err-cta">
+          <button className="err-btn err-btn-primary" onClick={() => reset()}>
+            Retry Flight
+          </button>
+          <a className="err-btn err-btn-secondary" href="/">
+            Contact Dispatch
+          </a>
+        </div>
+
+        <span className="err-code">Error Code: 500</span>
+      </main>
+    </>
   )
 }
