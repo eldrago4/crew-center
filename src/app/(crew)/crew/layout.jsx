@@ -5,13 +5,11 @@ export const metadata = {
 
 import { Providers } from "@/components/CrewProviders"
 import { Box } from '@chakra-ui/react'
-import { auth } from '@/auth'
 
-export default async function RootLayout({ children }) {
-  const session = await auth();
-  const callsign = session?.user?.id || "000"
-  const isAdmin = session?.user?.permissions?.length > 0 || false;
-
+// No auth() here: it used to fetch the session and derive callsign/isAdmin that the
+// JSX never used. Gating is done by each section's own layout (dashboard/plan/admin/
+// …), and CrewProviders already resolves the session once to seed SessionProvider.
+export default function RootLayout({ children }) {
   return (
     <Providers>
       <Box minH="100vh" bg="bg.default">
