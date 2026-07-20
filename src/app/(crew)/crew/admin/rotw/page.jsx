@@ -12,33 +12,25 @@ import { desc } from 'drizzle-orm';
 
 export default async function FleetDatabasePage() {
 
-    let initialFleetData = '';
-    try {
-        initialFleetData = await fetchFleetModule('multipliers');
-    } catch (error) {
-        console.error("Error fetching initial multipliers data on server:", error);
-        initialFleetData = 'Error loading multipliers data.';
-    }
+    // The three reads are independent — run them in parallel (allSettled keeps each
+    // one's own fallback if it fails), instead of three serial round trips.
+    const [ fleetRes, eventsRes, notamsRes ] = await Promise.allSettled([
+        fetchFleetModule('multipliers'),
+        fetchModuleValue('events'),
+        db.select().from(notams).orderBy(desc(notams.issued)),
+    ]);
 
+    let initialFleetData = 'Error loading multipliers data.';
+    if (fleetRes.status === 'fulfilled') initialFleetData = fleetRes.value;
+    else console.error("Error fetching initial multipliers data on server:", fleetRes.reason);
 
     let initialEventsData = [];
-    try {
-        initialEventsData = await fetchModuleValue('events');
-        // Ensure it's an array, if not, set to empty array
-        initialEventsData = Array.isArray(initialEventsData) ? initialEventsData : [];
-        console.log("Initial events data fetched:", initialEventsData.length, "events");
-    } catch (error) {
-        console.error("Error fetching initial events data on server:", error);
-        initialEventsData = [];
-    }
+    if (eventsRes.status === 'fulfilled') initialEventsData = Array.isArray(eventsRes.value) ? eventsRes.value : [];
+    else console.error("Error fetching initial events data on server:", eventsRes.reason);
 
     let initialNotamsData = [];
-    try {
-        initialNotamsData = await db.select().from(notams).orderBy(desc(notams.issued));
-    } catch (error) {
-        console.error("Error fetching initial NOTAMs data on server:", error);
-        initialNotamsData = [];
-    }
+    if (notamsRes.status === 'fulfilled') initialNotamsData = notamsRes.value;
+    else console.error("Error fetching initial NOTAMs data on server:", notamsRes.reason);
 
     return (
         <Box p={{ base: 4, md: 6 }} minH="100vh">
