@@ -15,16 +15,28 @@ import { Box } from '@chakra-ui/react'
 // runtime data, so the whole crew tree must sit under a Suspense boundary — this one
 // covers all of it. The shell (this fallback) prerenders and is served instantly
 // while the session-dependent UI streams in. The fallback renders OUTSIDE
-// ChakraProvider (it IS the fallback for it), so it uses plain inline styles.
+// ChakraProvider (it IS the fallback for it), so it styles itself with plain CSS
+// keyed off the `dark` class the root layout's parse-time script sets before paint
+// — the one prerendered shell serves both themes (no hardcoded dark: a light-mode
+// pilot must not get a dark flash before content streams in).
 function CrewShellFallback() {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d1117' }}>
-      <div aria-label="Loading" style={{
-        width: 36, height: 36, borderRadius: '50%',
-        border: '3px solid rgba(255,255,255,0.15)', borderTopColor: '#89ceff',
-        animation: 'crewspin 0.8s linear infinite',
-      }} />
-      <style>{'@keyframes crewspin { to { transform: rotate(360deg) } }'}</style>
+    <div className="crew-shell-fallback">
+      <div className="crew-shell-spinner" aria-label="Loading" />
+      <style>{`
+        .crew-shell-fallback {
+          min-height: 100vh; display: flex; align-items: center; justify-content: center;
+          background: #fff;
+        }
+        .crew-shell-spinner {
+          width: 36px; height: 36px; border-radius: 50%;
+          border: 3px solid rgba(0,0,0,0.12); border-top-color: #006591;
+          animation: crewspin 0.8s linear infinite;
+        }
+        html.dark .crew-shell-fallback { background: #111; }
+        html.dark .crew-shell-spinner { border-color: rgba(255,255,255,0.15); border-top-color: #89ceff; }
+        @keyframes crewspin { to { transform: rotate(360deg) } }
+      `}</style>
     </div>
   )
 }
