@@ -86,6 +86,22 @@ const css = `
     .err-root { padding-left: 64px; padding-right: 64px; }
     .err-title { font-size: 48px; line-height: 56px; }
   }
+
+  /* Dark theme — same CSS-only swap as not-found.jsx, keyed off the \`dark\` class
+     the root layout's parse-time script (and the color-mode provider on soft
+     navigations) puts on <html>. A crew pilot in dark mode who hits a crash
+     shouldn't be flashbanged with a light page. 500.webp has real alpha, so the
+     one graphic works on both backgrounds. */
+  html.dark .err-root { background: #000000; color: #e5e7eb; }
+  html.dark .err-title { color: #ffffff; }
+  html.dark .err-body { color: #a3a3ad; }
+  html.dark .err-btn-primary { background: #ffffff; color: #000000; }
+  html.dark .err-btn-primary:hover { background: #d5e3fc; }
+  html.dark .err-btn-secondary { color: #ffffff; border-color: #ffffff; }
+  html.dark .err-btn-secondary:hover { background: rgba(213,227,252,0.12); border-color: #89ceff; color: #89ceff; }
+  html.dark .err-code { color: #a3a3ad; background: #1c2333; }
+  html.dark .err-home { color: #767c8c; }
+  html.dark .err-home:hover { color: #89ceff; }
 `
 
 export default function Error({ error, reset }) {
