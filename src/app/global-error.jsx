@@ -3,6 +3,12 @@
 // Catches errors thrown by the ROOT layout itself. It replaces the entire document,
 // so it must render its own <html>/<body> and cannot rely on any provider, font, or
 // CSS from the app. Kept fully self-contained with inline styles.
+
+// Same Discord DM used by the "Need help?" apply-flow contact card
+// (src/components/apply/NeedHelp.jsx) — kept as a literal so this page has zero
+// component/import dependencies (it must survive even if the rest of the app is broken).
+const REPORT_ISSUE_URL = 'https://discord.com/users/433143285847031838'
+
 export default function GlobalError({ error, reset }) {
   return (
     <html lang="en">
@@ -28,6 +34,14 @@ export default function GlobalError({ error, reset }) {
           }}>
             Reload
           </button>
+          <a
+            href={REPORT_ISSUE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: '13px', color: '#94a3b8', textDecoration: 'none', marginTop: '4px' }}
+          >
+            Report this issue on Discord →
+          </a>
         </div>
       </body>
     </html>

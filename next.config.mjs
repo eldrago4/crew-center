@@ -30,6 +30,14 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // Was src/app/flying-manual/route.js — a whole function invocation per hit
+      // just to 307 to the external manual. Config redirects are handled by the
+      // routing layer with no function involved.
+      {
+        source: '/flying-manual',
+        destination: 'https://zeff005.github.io/Flying-Manual/',
+        permanent: false,
+      },
     ];
   },
   async headers() {

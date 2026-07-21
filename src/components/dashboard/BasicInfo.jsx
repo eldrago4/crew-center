@@ -421,11 +421,11 @@ function BadgeIcon({ badge, ifcName, season, size = 120 }) {
 //   badge2 (Officers Association) | badge3 (Employees coin)
 // badge4 (Senior Pilot) is kept last (not part of the 4-badge layout).
 const BADGE_DEFINITIONS = [
-  { id: 'badge1', label: 'AIH Ace', description: '15+ approved AIH flights', image: '/badges/badge1.png', hasBack: false, isCombinedDoubleSided: false },
-  { id: 'badge5', label: 'Lotus Privé', description: 'Lotus Privé member badge', image: '/badges/lotus.png', hasBack: false, isCombinedDoubleSided: false },
-  { id: 'badge2', label: 'IX Veteran', description: '20+ approved IX flights', image: '/badges/badge2.png', hasBack: false, isCombinedDoubleSided: false },
-  { id: 'badge3', label: 'Career Power', description: '40+ hours in career mode', image: '/badges/badge3.png', hasBack: true, isCombinedDoubleSided: true },
-  { id: 'badge4', label: 'Senior Pilot', description: 'Rank above junior first officer', image: '/badges/badge4a.png', backImage: '/badges/badge4b.png', hasBack: true, isCombinedDoubleSided: false }
+  { id: 'badge1', label: 'AIH Ace', description: '15+ approved AIH flights', image: '/badges/badge1.webp', hasBack: false, isCombinedDoubleSided: false },
+  { id: 'badge5', label: 'Lotus Privé', description: 'Lotus Privé member badge', image: '/badges/lotus.webp', hasBack: false, isCombinedDoubleSided: false },
+  { id: 'badge2', label: 'IX Veteran', description: '20+ approved IX flights', image: '/badges/badge2.webp', hasBack: false, isCombinedDoubleSided: false },
+  { id: 'badge3', label: 'Career Power', description: '40+ hours in career mode', image: '/badges/badge3.webp', hasBack: true, isCombinedDoubleSided: true },
+  { id: 'badge4', label: 'Senior Pilot', description: 'Rank above junior first officer', image: '/badges/badge4a.webp', backImage: '/badges/badge4b.webp', hasBack: true, isCombinedDoubleSided: false }
 ]
 
 

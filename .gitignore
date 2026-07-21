@@ -66,3 +66,5 @@ service-account*.json
 Career-Mode-Portal-final2-broken-*
 INVA_Flight_Tracker
 src/.claude
+# next-agents-md
+.next-docs/

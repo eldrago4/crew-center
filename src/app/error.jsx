@@ -5,6 +5,11 @@
 // cheap and dependency-free (no Chakra, no Tailwind runtime). global-error.jsx
 // handles failures of the root layout itself; this handles everything below it.
 
+// Same Discord DM used by the "Need help?" apply-flow contact card
+// (src/components/apply/NeedHelp.jsx) — kept as a literal so this page has zero
+// component/import dependencies.
+const REPORT_ISSUE_URL = 'https://discord.com/users/433143285847031838'
+
 const css = `
   .err-root {
     min-height: 100vh;
@@ -22,7 +27,9 @@ const css = `
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     text-align: center;
   }
-  .err-graphic { width: clamp(180px, 42vw, 260px); height: auto; margin-bottom: 32px; user-select: none; }
+  /* 500.webp is a wide (~2:1) transparent illustration, not a small icon — sized to
+     match the scale of the 404 page's hero graphics. */
+  .err-graphic { width: clamp(320px, 78vw, 760px); height: auto; margin-bottom: 32px; user-select: none; }
   .err-text { max-width: 512px; }
   .err-title {
     font-family: 'Hanken Grotesk', system-ui, sans-serif;
@@ -63,6 +70,13 @@ const css = `
     padding: 4px 12px; border-radius: 999px;
     display: inline-block;
   }
+  .err-home {
+    margin-top: 20px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px; color: #76777d; text-decoration: none;
+    display: block;
+  }
+  .err-home:hover { color: #006591; text-decoration: underline; }
 
   @media (min-width: 640px) {
     .err-cta { flex-direction: row; gap: 24px; }
@@ -86,7 +100,7 @@ export default function Error({ error, reset }) {
       <style>{css}</style>
 
       <main className="err-root">
-        <img className="err-graphic" src="/error/500.png" alt="" aria-hidden="true" />
+        <img className="err-graphic" src="/error/500.webp" alt="" aria-hidden="true" />
 
         <div className="err-text">
           <h1 className="err-title">Signal Lost.</h1>
@@ -100,10 +114,17 @@ export default function Error({ error, reset }) {
           <button className="err-btn err-btn-primary" onClick={() => reset()}>
             Retry Flight
           </button>
-          <a className="err-btn err-btn-secondary" href="/">
+          <a
+            className="err-btn err-btn-secondary"
+            href={REPORT_ISSUE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Contact Dispatch
           </a>
         </div>
+
+        <a className="err-home" href="/">Back to Home Base</a>
 
         <span className="err-code">Error Code: 500</span>
       </main>
