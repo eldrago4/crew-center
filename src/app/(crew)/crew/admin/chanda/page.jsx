@@ -5,7 +5,7 @@ import {
   Box, Flex, Text, HStack, Grid, VStack,
   Badge, Separator, Spinner, Input, Textarea,
 } from '@chakra-ui/react';
-import { FiPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiSend, FiRefreshCw } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiSend, FiRefreshCw, FiArrowUpRight, FiCreditCard } from 'react-icons/fi';
 import { ICON_MAP } from '../../chanda/_iconMap';
 
 const ICON_OPTIONS = Object.keys(ICON_MAP);
@@ -406,6 +406,268 @@ function ManualContributeSection({ goals, showToast }) {
   );
 }
 
+// ── Expenses / Treasury section ───────────────────────────────────────────────
+// Withdrawals debit chanda:goal:${id}:raised directly (the same counter the public
+// /crew/chanda progress bars read), so "balance" is always just that one number —
+// pilots never see the ledger, only the goal amount moving. Styled like a bank
+// statement: monospace amounts, a masked reference number, debit rows in rose.
+
+const MONO_FONT = "'JetBrains Mono', ui-monospace, monospace";
+
+function GoalBalanceStrip({ goals, goalsRaised }) {
+  const total = goals.reduce((sum, g) => sum + (goalsRaised[ g.id ] || 0), 0);
+
+  return (
+    <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(auto-fit, minmax(180px, 1fr))' }} gap={3}>
+      <Box
+        borderRadius="xl" p={4} position="relative" overflow="hidden"
+        bg="linear-gradient(135deg, #0b1220, #131c2e)"
+        border="1px solid" borderColor="whiteAlpha.100"
+      >
+        <HStack gap={2} mb={2}>
+          <FiCreditCard size={14} color="#94a3b8" />
+          <Text fontSize="10px" fontWeight="700" color="gray.400" textTransform="uppercase" letterSpacing="wider">
+            Treasury Total
+          </Text>
+        </HStack>
+        <Text fontFamily={MONO_FONT} fontWeight="700" fontSize="2xl" color="white">
+          ₹{total.toLocaleString('en-IN')}
+        </Text>
+        <Text fontSize="11px" color="gray.500" mt={1}>Across {goals.length} account{goals.length === 1 ? '' : 's'}</Text>
+      </Box>
+
+      {goals.map(g => {
+        const balance = goalsRaised[ g.id ] || 0;
+        return (
+          <Box
+            key={g.id}
+            borderRadius="xl" p={4} position="relative" overflow="hidden"
+            bg={{ base: 'white', _dark: '#111827' }}
+            border="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+            borderLeft="3px solid" borderLeftColor={g.color}
+          >
+            <HStack justify="space-between" mb={2}>
+              <Text fontSize="10px" fontWeight="700" color={{ base: 'gray.500', _dark: 'gray.400' }} textTransform="uppercase" letterSpacing="wider" isTruncated>
+                {g.label}
+              </Text>
+              <Badge fontSize="9px" px={1.5} py={0} borderRadius="full" bg={`${g.color}15`} color={g.color}>
+                {g.id}
+              </Badge>
+            </HStack>
+            <Text fontFamily={MONO_FONT} fontWeight="700" fontSize="xl" color={{ base: 'gray.900', _dark: 'white' }}>
+              ₹{balance.toLocaleString('en-IN')}
+            </Text>
+            <Text fontSize="11px" color={{ base: 'gray.500', _dark: 'gray.500' }} mt={1}>
+              Available balance
+            </Text>
+          </Box>
+        );
+      })}
+    </Grid>
+  );
+}
+
+function WithdrawFundsForm({ goals, goalsRaised, onWithdraw, showToast }) {
+  const [ form, setForm ] = useState({ goalId: goals[ 0 ]?.id || '', amount: '', purpose: '', payee: '', notes: '' });
+  const [ submitting, setSub ] = useState(false);
+
+  useEffect(() => {
+    if (!form.goalId && goals[ 0 ]) setForm(f => ({ ...f, goalId: goals[ 0 ].id }));
+  }, [ goals, form.goalId ]);
+
+  const upd = (k, v) => setForm(f => ({ ...f, [ k ]: v }));
+
+  const selectedGoal = goals.find(g => g.id === form.goalId);
+  const currentBalance = goalsRaised[ form.goalId ] || 0;
+  const amountNum = Number(form.amount) || 0;
+  const balanceAfter = currentBalance - amountNum;
+  const overdraft = amountNum > 0 && amountNum > currentBalance;
+
+  const submit = async () => {
+    if (!form.goalId || !form.purpose.trim() || amountNum < 1) {
+      showToast('Fill in the goal, amount and purpose.', false); return;
+    }
+    if (overdraft) { showToast('Amount exceeds the available balance.', false); return; }
+    setSub(true);
+    const ok = await onWithdraw({
+      goalId: form.goalId, amountRupees: amountNum,
+      purpose: form.purpose, payee: form.payee, notes: form.notes,
+    });
+    if (ok) setForm({ goalId: form.goalId, amount: '', purpose: '', payee: '', notes: '' });
+    setSub(false);
+  };
+
+  return (
+    <Card style={{ background: 'linear-gradient(135deg, #1a0d0d 0%, #1a1010 100%)', border: '1px solid rgba(244,63,94,0.18)' }}>
+      <HStack mb={5} gap={3}>
+        <Flex w="36px" h="36px" borderRadius="10px" align="center" justify="center" flexShrink={0}
+          bg="rgba(244,63,94,0.12)" border="1px solid rgba(244,63,94,0.25)">
+          <FiArrowUpRight size={16} color="#fb7185" />
+        </Flex>
+        <Box>
+          <Text fontSize="lg" fontWeight="800" color="white">Record a Withdrawal</Text>
+          <Text fontSize="sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            Debits a goal's balance for money actually spent — renewals, hosting invoices, server bills.
+          </Text>
+        </Box>
+      </HStack>
+
+      <Grid templateColumns={{ base: '1fr', md: '1.1fr 1fr' }} gap={4} mb={4}>
+        <Field label="Withdraw From">
+          <Box as="select" value={form.goalId} onChange={e => upd('goalId', e.target.value)}
+            style={{
+              width: '100%', padding: '9px 10px', borderRadius: 8, fontSize: 13, cursor: 'pointer',
+              background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(244,63,94,0.2)', color: 'rgba(255,255,255,0.85)',
+            }}>
+            {goals.map(g => (
+              <option key={g.id} value={g.id} style={{ color: '#000' }}>
+                {g.label} — ₹{(goalsRaised[ g.id ] || 0).toLocaleString('en-IN')} available
+              </option>
+            ))}
+          </Box>
+        </Field>
+        <Field label="Amount (₹)">
+          <Input
+            value={form.amount} onChange={e => upd('amount', e.target.value)} type="number" placeholder="0"
+            size="lg" fontFamily={MONO_FONT} fontWeight="700" fontSize="xl"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: `1.5px solid ${overdraft ? '#f43f5e' : 'rgba(244,63,94,0.2)'}`,
+              color: overdraft ? '#fb7185' : 'rgba(255,255,255,0.9)', borderRadius: 8,
+            }}
+          />
+          <Text fontSize="11px" mt={1} fontFamily={MONO_FONT} color={overdraft ? '#fb7185' : 'rgba(255,255,255,0.35)'}>
+            {selectedGoal
+              ? overdraft
+                ? `Exceeds available balance of ₹${currentBalance.toLocaleString('en-IN')}`
+                : `Balance after: ₹${balanceAfter.toLocaleString('en-IN')}`
+              : ' '}
+          </Text>
+        </Field>
+      </Grid>
+
+      <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} mb={4}>
+        <Field label="Purpose / Line Item *">
+          <Input
+            value={form.purpose} onChange={e => upd('purpose', e.target.value)} placeholder="Domain renewal — GoDaddy"
+            size="sm" borderRadius="lg"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(244,63,94,0.2)', color: 'rgba(255,255,255,0.85)' }}
+          />
+        </Field>
+        <Field label="Paid To (optional)">
+          <Input
+            value={form.payee} onChange={e => upd('payee', e.target.value)} placeholder="Vendor / payee name"
+            size="sm" borderRadius="lg"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(244,63,94,0.2)', color: 'rgba(255,255,255,0.85)' }}
+          />
+        </Field>
+      </Grid>
+
+      <Field label="Notes (optional)">
+        <Textarea
+          value={form.notes} onChange={e => upd('notes', e.target.value)} rows={2} placeholder="Invoice number, reference, context..."
+          size="sm" borderRadius="lg"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(244,63,94,0.2)', color: 'rgba(255,255,255,0.85)' }}
+        />
+      </Field>
+
+      <HStack mt={5} justify="flex-end">
+        <Btn
+          onClick={submit} loading={submitting}
+          disabled={!form.goalId || !form.purpose.trim() || amountNum < 1 || overdraft}
+          style={{
+            background: 'linear-gradient(135deg, #be123c, #f43f5e)', color: 'white',
+            padding: '10px 20px', borderRadius: 10, fontWeight: 700, fontSize: 14,
+            display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', border: 'none',
+          }}
+        >
+          <FiArrowUpRight size={14} /> Withdraw Funds
+        </Btn>
+      </HStack>
+    </Card>
+  );
+}
+
+function ExpensesLedgerTable({ expenses, goalsById, onReverse }) {
+  if (!expenses?.length) {
+    return (
+      <Card>
+        <SectionTitle>Withdrawal Ledger</SectionTitle>
+        <Text fontSize="sm" color={{ base: 'gray.500', _dark: 'gray.500' }}>No withdrawals recorded yet.</Text>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <SectionTitle>Withdrawal Ledger</SectionTitle>
+      <Box overflowX="auto">
+        <Box as="table" width="100%" borderCollapse="collapse" minWidth="820px">
+          <Box as="thead">
+            <Box as="tr" bg={{ base: 'gray.100', _dark: 'whiteAlpha.100' }}>
+              {[ 'Date', 'Account', 'Purpose', 'Paid To', 'Recorded By', 'Ref', 'Amount', '' ].map((label) => (
+                <Box
+                  key={label} as="th" textAlign={label === 'Amount' ? 'right' : 'left'}
+                  py={3} px={4} fontSize="xs" fontWeight="700"
+                  color={{ base: 'gray.600', _dark: 'gray.400' }}
+                  textTransform="uppercase" letterSpacing="wide"
+                  borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                >
+                  {label}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+          <Box as="tbody">
+            {expenses.map((item, idx) => {
+              const goal = goalsById[ item.goalId ];
+              const timestamp = item.time ? new Date(item.time) : null;
+              const ref = item.expenseId ? `••••${item.expenseId.slice(-4)}` : '—';
+              return (
+                <Box
+                  key={`${item.expenseId || idx}-${idx}`} as="tr"
+                  _hover={{ bg: { base: 'gray.50', _dark: '#1a1414' } }}
+                  borderLeft="3px solid" borderLeftColor={goal?.color || 'gray.400'}
+                >
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} fontSize="sm" whiteSpace="nowrap">
+                    {timestamp ? timestamp.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown'}
+                  </Box>
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} fontSize="sm">
+                    {goal?.label || item.goalId}
+                  </Box>
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} fontSize="sm" maxW="220px">
+                    <Text isTruncated title={item.notes || item.purpose}>{item.purpose}</Text>
+                    {item.notes && (
+                      <Text fontSize="11px" color={{ base: 'gray.500', _dark: 'gray.500' }} isTruncated>{item.notes}</Text>
+                    )}
+                  </Box>
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} fontSize="sm" color={{ base: 'gray.600', _dark: 'gray.400' }}>
+                    {item.payee || '—'}
+                  </Box>
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} fontSize="sm">
+                    {item.addedBy || '—'}
+                  </Box>
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} fontFamily={MONO_FONT} fontSize="xs" color={{ base: 'gray.400', _dark: 'gray.600' }}>
+                    {ref}
+                  </Box>
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }} textAlign="right" fontFamily={MONO_FONT} fontWeight="700" fontSize="sm" color="#fb7185" whiteSpace="nowrap">
+                    −₹{Number(item.amount || 0).toLocaleString('en-IN')}
+                  </Box>
+                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                    <Btn variant="danger" size="sm" onClick={() => onReverse?.(item.expenseId)}>
+                      Reverse
+                    </Btn>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
+      </Box>
+    </Card>
+  );
+}
+
 // ── Lotus Privé section ────────────────────────────────────────────────────────
 
 function LotusAdminSection({ showToast, subscribers }) {
@@ -518,6 +780,7 @@ function LotusAdminSection({ showToast, subscribers }) {
 export default function ChandaAdminPage() {
   const [ goals, setGoals ] = useState([]);
   const [ stats, setStats ] = useState({ contributors: 0, lotus: { subscribers: 0 } });
+  const [ expenses, setExpenses ] = useState([]);
   const [ loading, setLoad ] = useState(true);
   const [ toast, setToast ] = useState(null);
 
@@ -533,6 +796,19 @@ export default function ChandaAdminPage() {
       const data = await res.json();
       setStats(data);
       setGoals(data.goalDefs ?? []);
+    } catch {
+      // ignore refresh errors
+    }
+  }, []);
+
+  // Separate, staff-only endpoint — the withdrawal ledger (payee/notes/who-recorded)
+  // is never exposed on the public stats route pilots' /crew/chanda page reads.
+  const refreshExpenses = useCallback(async () => {
+    try {
+      const res = await fetch('/api/chanda/expenses');
+      if (!res.ok) return;
+      const data = await res.json();
+      setExpenses(data.expenses ?? []);
     } catch {
       // ignore refresh errors
     }
@@ -557,9 +833,50 @@ export default function ChandaAdminPage() {
     }
   }, [ refreshStats, showToast ]);
 
+  const handleWithdraw = useCallback(async ({ goalId, amountRupees, purpose, payee, notes }) => {
+    try {
+      const res = await fetch('/api/chanda/expenses', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goalId, amountRupees, purpose, payee, notes }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast(`Withdrew ₹${Number(amountRupees).toLocaleString('en-IN')} from ${goalId}.`);
+        await Promise.all([ refreshStats(), refreshExpenses() ]);
+        return true;
+      }
+      showToast(data.error || 'Withdrawal failed.', false);
+      return false;
+    } catch {
+      showToast('Network error.', false);
+      return false;
+    }
+  }, [ refreshStats, refreshExpenses, showToast ]);
+
+  const handleReverseExpense = useCallback(async (expenseId) => {
+    if (!expenseId || !confirm('Reverse this withdrawal and restore the funds to the goal?')) return;
+    try {
+      const res = await fetch('/api/chanda/expenses', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expenseId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast('Withdrawal reversed — funds restored.');
+        await Promise.all([ refreshStats(), refreshExpenses() ]);
+      } else {
+        showToast(data.error || 'Reverse failed.', false);
+      }
+    } catch {
+      showToast('Reverse failed.', false);
+    }
+  }, [ refreshStats, refreshExpenses, showToast ]);
+
   useEffect(() => {
-    refreshStats().finally(() => setLoad(false));
-  }, [ refreshStats ]);
+    Promise.all([ refreshStats(), refreshExpenses() ]).finally(() => setLoad(false));
+  }, [ refreshStats, refreshExpenses ]);
+
+  const goalsById = Object.fromEntries(goals.map(g => [ g.id, g ]));
 
   return (
     <Box maxW="960px" mx="auto" px={{ base: 4, md: 6 }} py={{ base: 6, md: 10 }}>
@@ -605,6 +922,11 @@ export default function ChandaAdminPage() {
           <GoalsSection goals={goals} onGoalsChange={setGoals} showToast={showToast} />
           <ManualContributeSection goals={goals} showToast={showToast} />
           <ContributionsTable contributions={stats.contributions} onReverse={handleReversePayment} />
+
+          <GoalBalanceStrip goals={goals} goalsRaised={stats.goals || {}} />
+          <WithdrawFundsForm goals={goals} goalsRaised={stats.goals || {}} onWithdraw={handleWithdraw} showToast={showToast} />
+          <ExpensesLedgerTable expenses={expenses} goalsById={goalsById} onReverse={handleReverseExpense} />
+
           <LotusAdminSection showToast={showToast} subscribers={stats.lotus?.subscribers ?? 0} />
         </VStack>
       )}
