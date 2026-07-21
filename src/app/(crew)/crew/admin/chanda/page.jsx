@@ -5,7 +5,7 @@ import {
   Box, Flex, Text, HStack, Grid, VStack,
   Badge, Separator, Spinner, Input, Textarea,
 } from '@chakra-ui/react';
-import { FiPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiSend, FiRefreshCw, FiArrowUpRight, FiCreditCard } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiSend, FiRefreshCw, FiArrowUpRight, FiCreditCard, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { ICON_MAP } from '../../chanda/_iconMap';
 
 const ICON_OPTIONS = Object.keys(ICON_MAP);
@@ -84,71 +84,156 @@ function SectionTitle({ children }) {
   );
 }
 
+// ── Pagination (shared by the contributions and expenses tables) ──────────────
+
+function PagePill({ n, active, onClick }) {
+  return (
+    <Box
+      as="button" onClick={onClick}
+      minW="28px" h="28px" borderRadius="8px" fontSize="12px" fontWeight="700"
+      display="flex" alignItems="center" justifyContent="center" cursor="pointer"
+      bg={active ? 'linear-gradient(to right, #6366f1, #8b5cf6)' : 'transparent'}
+      color={active ? 'white' : { base: 'gray.600', _dark: 'gray.400' }}
+      _hover={active ? {} : { bg: { base: 'gray.100', _dark: 'whiteAlpha.100' } }}
+    >
+      {n}
+    </Box>
+  );
+}
+
+function Pager({ page, totalPages, onPageChange, from, to, total, noun = 'items' }) {
+  if (totalPages <= 1) return null;
+
+  const maxVisible = 5;
+  let start = Math.max(1, page - Math.floor(maxVisible / 2));
+  const end = Math.min(totalPages, start + maxVisible - 1);
+  start = Math.max(1, end - maxVisible + 1);
+  const pages = [];
+  for (let i = start; i <= end; i++) pages.push(i);
+
+  return (
+    <Flex justify="space-between" align="center" mt={4} pt={4} flexWrap="wrap" gap={3}
+      borderTop="1px solid" borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.100' }}>
+      <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.500' }}>
+        Showing <b>{from}–{to}</b> of <b>{total}</b> {noun}
+      </Text>
+      <HStack gap={1}>
+        <Btn variant="ghost" size="sm" onClick={() => onPageChange(page - 1)} disabled={page === 1}>
+          <FiChevronLeft size={13} />
+        </Btn>
+        {start > 1 && (
+          <>
+            <PagePill n={1} active={false} onClick={() => onPageChange(1)} />
+            {start > 2 && <Text px={1} fontSize="xs" color={{ base: 'gray.400', _dark: 'gray.600' }}>…</Text>}
+          </>
+        )}
+        {pages.map(n => (
+          <PagePill key={n} n={n} active={n === page} onClick={() => onPageChange(n)} />
+        ))}
+        {end < totalPages && (
+          <>
+            {end < totalPages - 1 && <Text px={1} fontSize="xs" color={{ base: 'gray.400', _dark: 'gray.600' }}>…</Text>}
+            <PagePill n={totalPages} active={false} onClick={() => onPageChange(totalPages)} />
+          </>
+        )}
+        <Btn variant="ghost" size="sm" onClick={() => onPageChange(page + 1)} disabled={page === totalPages}>
+          <FiChevronRight size={13} />
+        </Btn>
+      </HStack>
+    </Flex>
+  );
+}
+
+const CONTRIBUTIONS_PAGE_SIZE = 10;
+
 function ContributionsTable({ contributions, onReverse }) {
-  if (!contributions?.length) return null;
+  const [ page, setPage ] = useState(1);
+  const total = contributions?.length || 0;
+  const totalPages = Math.max(1, Math.ceil(total / CONTRIBUTIONS_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * CONTRIBUTIONS_PAGE_SIZE;
+  const pageItems = (contributions || []).slice(start, start + CONTRIBUTIONS_PAGE_SIZE);
 
   return (
     <Card>
-      <SectionTitle>Recent payments</SectionTitle>
-      <Box overflowX="auto">
-        <Box as="table" width="100%" borderCollapse="collapse" minWidth="680px">
-          <Box as="thead">
-            <Box as="tr" bg={{ base: 'gray.100', _dark: 'whiteAlpha.100' }}>
-              {[ 'Pilot', 'Goal', 'Amount', 'Source', 'Date', 'Actions' ].map((label) => (
-                <Box
-                  key={label}
-                  as="th"
-                  textAlign="left"
-                  py={3}
-                  px={4}
-                  fontSize="xs"
-                  fontWeight="700"
-                  color={{ base: 'gray.600', _dark: 'gray.400' }}
-                  textTransform="uppercase"
-                  letterSpacing="wide"
-                  borderBottom="1px solid"
-                  borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
-                >
-                  {label}
+      <Flex justify="space-between" align="center" mb={5}>
+        <SectionTitle>All Contributions</SectionTitle>
+        <Badge fontSize="11px" fontWeight="700" px={2.5} py={1} borderRadius="full"
+          bg={{ base: 'gray.100', _dark: 'whiteAlpha.100' }} color={{ base: 'gray.600', _dark: 'gray.400' }}>
+          {total} total
+        </Badge>
+      </Flex>
+
+      {total === 0 ? (
+        <Text fontSize="sm" color={{ base: 'gray.500', _dark: 'gray.500' }}>No contributions recorded yet.</Text>
+      ) : (
+        <>
+          <Box overflowX="auto">
+            <Box as="table" width="100%" borderCollapse="collapse" minWidth="680px">
+              <Box as="thead">
+                <Box as="tr" bg={{ base: 'gray.100', _dark: 'whiteAlpha.100' }}>
+                  {[ 'Pilot', 'Goal', 'Amount', 'Source', 'Date', 'Actions' ].map((label) => (
+                    <Box
+                      key={label}
+                      as="th"
+                      textAlign="left"
+                      py={3}
+                      px={4}
+                      fontSize="xs"
+                      fontWeight="700"
+                      color={{ base: 'gray.600', _dark: 'gray.400' }}
+                      textTransform="uppercase"
+                      letterSpacing="wide"
+                      borderBottom="1px solid"
+                      borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+                    >
+                      {label}
+                    </Box>
+                  ))}
                 </Box>
-              ))}
+              </Box>
+              <Box as="tbody">
+                {pageItems.map((item, idx) => {
+                  const timestamp = item.time ? new Date(item.time) : null;
+                  return (
+                    <Box
+                      key={`${item.paymentId || idx}-${idx}`}
+                      as="tr"
+                      _hover={{ bg: { base: 'gray.50', _dark: '#1a2332' } }}
+                    >
+                      <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                        {item.ifcName || 'Anonymous'}
+                      </Box>
+                      <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                        {item.goalId === 'all' ? 'All Goals' : item.goalId}
+                      </Box>
+                      <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                        ₹{Number(item.amount || 0).toLocaleString('en-IN')}
+                      </Box>
+                      <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                        {item.paymentId?.startsWith('manual_') ? 'Manual admin' : 'UPI'}
+                      </Box>
+                      <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                        {timestamp ? timestamp.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown'}
+                      </Box>
+                      <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
+                        <Btn variant="danger" size="sm" onClick={() => onReverse?.(item.paymentId)}>
+                          Reverse
+                        </Btn>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Box>
             </Box>
           </Box>
-          <Box as="tbody">
-            {contributions.map((item, idx) => {
-              const timestamp = item.time ? new Date(item.time) : null;
-              return (
-                <Box
-                  key={`${item.paymentId || idx}-${idx}`}
-                  as="tr"
-                  _hover={{ bg: { base: 'gray.50', _dark: '#1a2332' } }}
-                >
-                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
-                    {item.ifcName || 'Anonymous'}
-                  </Box>
-                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
-                    {item.goalId === 'all' ? 'All Goals' : item.goalId}
-                  </Box>
-                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
-                    ₹{Number(item.amount || 0).toLocaleString('en-IN')}
-                  </Box>
-                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
-                    {item.paymentId?.startsWith('manual_') ? 'Manual admin' : 'UPI'}
-                  </Box>
-                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
-                    {timestamp ? timestamp.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown'}
-                  </Box>
-                  <Box as="td" py={3} px={4} borderBottom="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}>
-                    <Btn variant="danger" size="sm" onClick={() => onReverse?.(item.paymentId)}>
-                      Reverse
-                    </Btn>
-                  </Box>
-                </Box>
-              );
-            })}
-          </Box>
-        </Box>
-      </Box>
+
+          <Pager
+            page={safePage} totalPages={totalPages} onPageChange={setPage}
+            from={start + 1} to={start + pageItems.length} total={total} noun="contributions"
+          />
+        </>
+      )}
     </Card>
   );
 }
@@ -588,8 +673,17 @@ function WithdrawFundsForm({ goals, goalsRaised, onWithdraw, showToast }) {
   );
 }
 
+const EXPENSES_PAGE_SIZE = 10;
+
 function ExpensesLedgerTable({ expenses, goalsById, onReverse }) {
-  if (!expenses?.length) {
+  const [ page, setPage ] = useState(1);
+  const total = expenses?.length || 0;
+  const totalPages = Math.max(1, Math.ceil(total / EXPENSES_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * EXPENSES_PAGE_SIZE;
+  const pageItems = (expenses || []).slice(start, start + EXPENSES_PAGE_SIZE);
+
+  if (total === 0) {
     return (
       <Card>
         <SectionTitle>Withdrawal Ledger</SectionTitle>
@@ -600,7 +694,13 @@ function ExpensesLedgerTable({ expenses, goalsById, onReverse }) {
 
   return (
     <Card>
-      <SectionTitle>Withdrawal Ledger</SectionTitle>
+      <Flex justify="space-between" align="center" mb={5}>
+        <SectionTitle>Withdrawal Ledger</SectionTitle>
+        <Badge fontSize="11px" fontWeight="700" px={2.5} py={1} borderRadius="full"
+          bg="rgba(244,63,94,0.1)" color="#fb7185">
+          {total} total
+        </Badge>
+      </Flex>
       <Box overflowX="auto">
         <Box as="table" width="100%" borderCollapse="collapse" minWidth="820px">
           <Box as="thead">
@@ -619,7 +719,7 @@ function ExpensesLedgerTable({ expenses, goalsById, onReverse }) {
             </Box>
           </Box>
           <Box as="tbody">
-            {expenses.map((item, idx) => {
+            {pageItems.map((item, idx) => {
               const goal = goalsById[ item.goalId ];
               const timestamp = item.time ? new Date(item.time) : null;
               const ref = item.expenseId ? `••••${item.expenseId.slice(-4)}` : '—';
@@ -664,6 +764,11 @@ function ExpensesLedgerTable({ expenses, goalsById, onReverse }) {
           </Box>
         </Box>
       </Box>
+
+      <Pager
+        page={safePage} totalPages={totalPages} onPageChange={setPage}
+        from={start + 1} to={start + pageItems.length} total={total} noun="withdrawals"
+      />
     </Card>
   );
 }
