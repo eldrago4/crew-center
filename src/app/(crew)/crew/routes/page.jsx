@@ -1,62 +1,65 @@
 import { Box } from "@chakra-ui/react";
-import { unstable_cache } from "next/cache";
+import { connection } from "next/server";
+import { cacheLife, cacheTag } from "next/cache";
 import db from "@/db/client";
 import { routes } from "@/db/schema";
 import { count } from "drizzle-orm";
 import RoutesClient from "./RoutesClient";
 
-// The route-segment `revalidate = 86400` this page used to rely on was silently
-// defeated: the parent layout's auth() (cookies) forces the segment dynamic, so the
-// full routes-table select + count ran on EVERY request. unstable_cache works inside
-// dynamic renders (same pattern as admin/statistics/queries.js), cutting the
-// full-table scan to once a day per deployment. Staff edits bust it instantly via
-// revalidateTag('routes') in /api/routes mutations.
+// Cache Components: the routes table is shared, per-user-free data reached at
+// request time (the layout's auth() keeps the segment dynamic), so it uses
+// 'use cache: remote' — the platform-backed cache shared across instances, the
+// successor to the unstable_cache this page used before. 'days' ≈ revalidate 1d,
+// which matches the old revalidate: 86400. Staff edits still bust it instantly
+// via revalidateTag('routes') in the /api/routes mutations.
 //
 // The try/catch fallbacks deliberately live OUTSIDE the cached functions: a cached
 // function that swallows an error and returns [] would pin that empty result in the
 // cache for a day. A thrown error is never cached, so the next request retries.
 
-export const revalidate = 86400;
+async function getRoutesData() {
+  'use cache: remote'
+  cacheLife('days')
+  cacheTag('routes')
 
-const getRoutesData = unstable_cache(
-  async () => {
-    const allRoutes = await db
-      .select({
-        flightNumber: routes.flightNumber,
-        departureIcao: routes.departureIcao,
-        arrivalIcao: routes.arrivalIcao,
-        flightTime: routes.flightTime,
-        aircraft: routes.aircraft,
-      })
-      .from(routes)
+  const allRoutes = await db
+    .select({
+      flightNumber: routes.flightNumber,
+      departureIcao: routes.departureIcao,
+      arrivalIcao: routes.arrivalIcao,
+      flightTime: routes.flightTime,
+      aircraft: routes.aircraft,
+    })
+    .from(routes)
 
-    return allRoutes.map(route => {
-      const [ hours, minutes ] = route.flightTime ? route.flightTime.split(':').map(Number) : [ 0, 0 ];
+  return allRoutes.map(route => {
+    const [ hours, minutes ] = route.flightTime ? route.flightTime.split(':').map(Number) : [ 0, 0 ];
 
-      return {
-        flight_number: route.flightNumber,
-        departure_icao: route.departureIcao,
-        arrival_icao: route.arrivalIcao,
-        flight_time_hours: hours,
-        flight_time_minutes: minutes,
-        aircraft_names: route.aircraft,
-      };
-    });
-  },
-  [ 'crew-routes-data' ],
-  { revalidate: 86400, tags: [ 'routes' ] },
-);
+    return {
+      flight_number: route.flightNumber,
+      departure_icao: route.departureIcao,
+      arrival_icao: route.arrivalIcao,
+      flight_time_hours: hours,
+      flight_time_minutes: minutes,
+      aircraft_names: route.aircraft,
+    };
+  });
+}
 
-const getRoutesCount = unstable_cache(
-  async () => {
-    const result = await db.select({ value: count() }).from(routes);
-    return (result[ 0 ]?.value || 0).toString();
-  },
-  [ 'crew-routes-count' ],
-  { revalidate: 86400, tags: [ 'routes' ] },
-);
+async function getRoutesCount() {
+  'use cache: remote'
+  cacheLife('days')
+  cacheTag('routes')
+
+  const result = await db.select({ value: count() }).from(routes);
+  return (result[ 0 ]?.value || 0).toString();
+}
 
 export default async function RoutesPage() {
+  // Cached-read-only page below the auth-gated routes layout: connection() keeps
+  // it request-time instead of executing the cached reads at build (which would
+  // demand a live DB on every deploy for content the shell can't serve anyway).
+  await connection();
 
   let routesData, cacheVersion;
   try {

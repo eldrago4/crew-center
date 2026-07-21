@@ -1,7 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, connection } from 'next/server';
 import { fetchFleetModule } from '@/app/(crew)/crew/pireps/file/fleetModule';
 
 export async function GET() {
+  // Cached-read-only handler: without connection() it would be prerendered at
+  // build (executing the cached read against the build-time DB). Request-time
+  // matches today's behavior; Cloudflare's edge absorbs the traffic via the
+  // CDN-Cache-Control below.
+  await connection();
   try {
     const aircraftOptions = await fetchFleetModule('fleet');
     // Browser 1h; Cloudflare edge 1d + 1d serve-stale (CDN-Cache-Control passes

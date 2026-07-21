@@ -66,4 +66,3 @@ export async function DELETE(req) {
   }
 }
 
-export const dynamic = 'force-dynamic';

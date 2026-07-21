@@ -9,6 +9,18 @@ Merging is *not* a plain fast‑forward: a handful of files must keep their
 Cloudflare versions, and — more subtly — the Workers runtime has an environment
 model that breaks common Node/Vercel patterns. Read this before every merge.
 
+> **⚠️ Cache Components (2026‑07‑22):** the `cache-components` branch (headed to
+> `main`) enables `cacheComponents: true` in `next.config.mjs` and uses
+> `'use cache' / 'use cache: remote'` + `cacheLife`/`cacheTag` instead of
+> `unstable_cache`. **Do not merge that into `cloudflare` until
+> `@opennextjs/cloudflare` explicitly supports Cache Components / PPR** — check
+> their release notes first. Until then, either hold the merge or, during
+> conflict resolution, keep `cacheComponents` out of this branch's
+> `next.config.mjs` and be aware the `use cache` directives need the flag to
+> compile. `'use cache: remote'` additionally needs a cache handler (on Vercel
+> the platform provides it; on Workers it would have to be wired to KV/R2 via
+> `cacheHandlers`).
+
 ---
 
 ## TL;DR — the merge procedure

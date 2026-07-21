@@ -6,7 +6,7 @@ import SignupOrFileButton from './SignupOrFileButton'
 import db from '@/db/client'
 import { users, pireps, notams, crewcenter } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
-import { unstable_cache } from 'next/cache'
+import { cacheLife, cacheTag } from 'next/cache'
 import { getLotusStatus } from '@/app/api/chanda/_lotus'
 
 async function getUserData(callsign) {
@@ -64,41 +64,50 @@ async function getUserData(callsign) {
 
 // NOTAMs and the promoted event are the same for every pilot, but the dashboard is
 // auth-gated and therefore dynamic, so each of these ran once per pilot per page
-// load. Caching them here collapses that to once per window for the whole crew.
-const getNotams = unstable_cache(
-  async () => {
-    try {
-      // A count(*) used to run alongside this purely to populate `count`/`cached`,
-      // which nothing downstream reads — the rows are the answer.
-      const allNotams = await db.select().from(notams).orderBy(notams.issued);
-      return { data: allNotams };
-    } catch (error) {
-      console.error('Error fetching NOTAMs:', error);
-      return { data: [] };
-    }
-  },
-  ['dashboard-notams'],
-  { revalidate: 300, tags: ['notams'] },
-);
+// load. 'use cache: remote' (the durable platform cache shared across instances —
+// successor to the unstable_cache used before) collapses that to once per window
+// for the whole crew. Error fallbacks live OUTSIDE the cached scope so a transient
+// DB failure is never pinned for the whole window — a thrown error is not cached.
+async function getNotamsCached() {
+  'use cache: remote'
+  cacheLife({ revalidate: 300, expire: 3600 })
+  cacheTag('notams')
+  // A count(*) used to run alongside this purely to populate `count`/`cached`,
+  // which nothing downstream reads — the rows are the answer.
+  const allNotams = await db.select().from(notams).orderBy(notams.issued);
+  return { data: allNotams };
+}
 
-const getPromotedEvent = unstable_cache(
-  async () => {
-    try {
-      const result = await db.select().from(crewcenter).where(eq(crewcenter.module, 'events'));
-      if (result.length === 0) {
-        return null;
-      }
-      const events = result[ 0 ].value;
-      const promotedEvent = events.find(event => event.promoted);
-      return promotedEvent || null;
-    } catch (error) {
-      console.error('Error fetching promoted event:', error);
-      return null;
-    }
-  },
-  ['dashboard-promoted-event'],
-  { revalidate: 300, tags: ['events'] },
-);
+async function getNotams() {
+  try {
+    return await getNotamsCached();
+  } catch (error) {
+    console.error('Error fetching NOTAMs:', error);
+    return { data: [] };
+  }
+}
+
+async function getPromotedEventCached() {
+  'use cache: remote'
+  cacheLife({ revalidate: 300, expire: 3600 })
+  cacheTag('events')
+  const result = await db.select().from(crewcenter).where(eq(crewcenter.module, 'events'));
+  if (result.length === 0) {
+    return null;
+  }
+  const events = result[ 0 ].value;
+  const promotedEvent = events.find(event => event.promoted);
+  return promotedEvent || null;
+}
+
+async function getPromotedEvent() {
+  try {
+    return await getPromotedEventCached();
+  } catch (error) {
+    console.error('Error fetching promoted event:', error);
+    return null;
+  }
+}
 
 export default async function ProfileContainer({ user }) {
   if (!user) return null

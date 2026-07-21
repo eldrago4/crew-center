@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { updateModuleValue, fetchModuleValue } from '@/app/(crew)/crew/pireps/file/fleetModule'
+import { updateModuleValue, fetchModuleValueFresh } from '@/app/(crew)/crew/pireps/file/fleetModule'
 import db from '@/db/client.js'
 import { crewcenter } from '@/db/schema'
 import { eq } from 'drizzle-orm'
@@ -34,7 +34,7 @@ export async function POST(request) {
 
   let all = {}
   try {
-    all = (await fetchModuleValue(MODULE)) || {}
+    all = (await fetchModuleValueFresh(MODULE)) || {}
   } catch { /* first write — start empty */ }
 
   all[eventId] = {

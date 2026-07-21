@@ -8,4 +8,3 @@ export async function POST(req) {
   );
 }
 
-export const dynamic = 'force-dynamic';

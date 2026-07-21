@@ -12,8 +12,17 @@ const IMMUTABLE_ASSET = [
 ];
 
 const nextConfig = {
+  // Cache Components (Next 16): everything is dynamic unless marked with
+  // 'use cache'; PPR serves a prerendered shell while dynamic parts stream.
+  // Segment configs (dynamic/revalidate/fetchCache) are replaced by
+  // 'use cache' + cacheLife/cacheTag — see .next-docs migrating-to-cache-components.
+  cacheComponents: true,
   experimental: {
     optimizePackageImports: [ "@chakra-ui/react" ],
+    // Dynamic pages bail out of build-time prerendering by design (uncached DB
+    // reads abort the attempt); without this, their catch-block console.errors
+    // spam every build with HANGING_PROMISE_REJECTION noise.
+    hideLogsAfterAbort: true,
   },
   images: {
     remotePatterns: [

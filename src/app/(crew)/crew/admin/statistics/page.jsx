@@ -1,5 +1,6 @@
 import { Box } from '@chakra-ui/react';
 import StatisticsClient from './StatisticsClient';
+import { connection } from 'next/server';
 import {
     getStatsWeek,
     getNeonWeek,
@@ -25,6 +26,10 @@ const EMPTY_NEON_WEEK = { flights: 0, hours: 0, callsigns: [] };
 
 export default async function StatisticsPage() {
     // Staff-only access is already enforced by the admin layout.
+    // connection(): the page starts from new Date() (forbidden before request data
+    // under Cache Components) and reads only cached queries, which would otherwise
+    // run at build time. Request-time is what this page has always been.
+    await connection();
     const week = getStatsWeek();
     const prior = previousWeek(week);
     const from = earliestNeeded(week);

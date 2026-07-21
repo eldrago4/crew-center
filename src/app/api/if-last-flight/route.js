@@ -33,7 +33,6 @@ async function getLiveries(apiKey, ifFetch) {
     return liveries
 }
 
-export const dynamic = 'force-dynamic'
 
 const IF_BASE = 'https://api.infiniteflight.com/public/v2'
 

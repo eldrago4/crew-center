@@ -1,32 +1,30 @@
+import { cacheLife, cacheTag, revalidateTag } from 'next/cache';
 import db from '@/db/client';
 import { crewcenter } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-const cache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
-
-// All crewcenter modules share the 5-minute cache — including multipliers and
-// ifatcMultipliers, which used to sit in a NO_CACHE_MODULES set and hit Postgres
-// on every single request. The filing page is prefetched/rendered far more often
-// than multipliers change; admin edits still land within 5 minutes (and instantly
-// on the instance that performed the edit, via invalidateCache in updateModuleValue).
-async function fetchModuleValue(moduleName, forceRefresh = false) {
-  const now = Date.now();
-  const cached = cache.get(moduleName);
-
-  if (!forceRefresh && cached && (now - cached.timestamp < CACHE_TTL)) {
-    return cached.value;
-  }
-
-  try {
-    return await fetchFromDatabase(moduleName);
-  } catch (error) {
-    console.error(`Error fetching module '${moduleName}':`, error);
-    throw error;
-  }
+// All crewcenter module reads share one 5-minute cache — including multipliers and
+// ifatcMultipliers, which used to sit in a NO_CACHE_MODULES set and hit Postgres on
+// every single request. Under Cache Components this is 'use cache: remote' (the
+// durable platform cache shared across instances) instead of the old per-instance
+// Map + Date.now() TTL — which also violated the new "no Date.now() before request
+// data" rule and broke the /crew/admin/fleet build. Admin edits now land instantly
+// EVERYWHERE: updateModuleValue revalidates the module's tag, where the old Map
+// delete only refreshed the instance that performed the edit.
+//
+// A thrown DB error is never cached, so failures aren't pinned for the window —
+// callers keep their own fallbacks.
+async function fetchModuleValue(moduleName) {
+  'use cache: remote'
+  cacheLife({ revalidate: 300, expire: 3600 })
+  cacheTag(`crewcenter-${moduleName}`)
+  return fetchModuleValueFresh(moduleName);
 }
 
-async function fetchFromDatabase(moduleName) {
+// Uncached read, straight from Postgres. Use this for read-modify-write flows
+// (gate-allocations, gate-briefing): reading a possibly-minutes-stale value and
+// writing it back would silently clobber concurrent edits.
+async function fetchModuleValueFresh(moduleName) {
   const result = await db.select().from(crewcenter).where(eq(crewcenter.module, moduleName));
 
   if (result.length === 0) {
@@ -35,15 +33,11 @@ async function fetchFromDatabase(moduleName) {
 
   // Drizzle ORM with jsonb() type should already return a parsed JavaScript object/array.
   // No need for JSON.parse here.
-  const value = result[ 0 ].value;
-
-  cache.set(moduleName, { value: value, timestamp: Date.now() });
-
-  return value;
+  return result[ 0 ].value;
 }
 
-async function fetchFleetModule(module, forceRefresh = false) {
-  const data = await fetchModuleValue(module, forceRefresh);
+async function fetchFleetModule(module) {
+  const data = await fetchModuleValue(module);
   // For 'fleet', data is already in { label, value } format
   return data;
 }
@@ -57,25 +51,19 @@ async function updateModuleValue(moduleName, newValue) {
         set: { value: newValue }
       });
 
-    // Invalidate cache for the updated module to ensure fresh data on next fetch
-    invalidateCache(moduleName);
+    // Expire the cached read everywhere so the edit shows on the next request.
+    // All writers are route handlers, where revalidateTag is the sanctioned API
+    // (updateTag is Server-Action-only).
+    revalidateTag(`crewcenter-${moduleName}`);
   } catch (error) {
     console.error(`Error updating module '${moduleName}':`, error);
     throw error;
   }
 }
 
-function invalidateCache(moduleName) {
-  if (moduleName) {
-    cache.delete(moduleName);
-  } else {
-    cache.clear();
-  }
-}
-
 export {
   fetchModuleValue,
+  fetchModuleValueFresh,
   fetchFleetModule,
-  updateModuleValue,
-  invalidateCache
+  updateModuleValue
 };

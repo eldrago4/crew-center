@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { Redis } from '@upstash/redis'
 
-export const dynamic = 'force-dynamic'
 
 const redis = Redis.fromEnv()
 const EXISTS_TTL_SECONDS = 10 * 60

@@ -1,24 +1,29 @@
-import { NextResponse } from 'next/server';
-import { revalidateTag, unstable_cache } from 'next/cache';
+import { NextResponse, connection } from 'next/server';
+import { revalidateTag, cacheLife, cacheTag } from 'next/cache';
 import db from '@/db/client';
 import { routes } from '@/db/schema';
 import { sql, inArray } from 'drizzle-orm';
 import { requireStaff } from '@/lib/apiAuth';
 
-// One cached full-table read, tagged 'routes'. Replaces a module-scope Map that had no
-// TTL or eviction: revalidateTag('routes') couldn't reach it, so a warm lambda served
-// permanently stale routes (a correctness bug), and every request first ran a full
-// flight-number scan of ~2294 rows before consulting it (two full passes when cold).
-// unstable_cache survives across instances/deploys and is busted instantly by the
-// revalidateTag('routes') calls in the mutations below.
-const getAllRoutes = unstable_cache(
-    async () => db.select().from(routes),
-    [ 'api-all-routes' ],
-    { revalidate: 86400, tags: [ 'routes' ] },
-);
+// One cached full-table read, tagged 'routes' ('use cache: remote' — the durable
+// platform cache shared across instances, successor to the unstable_cache used
+// before). 'days' ≈ revalidate 1d; busted instantly by the revalidateTag('routes')
+// calls in the mutations below.
+async function getAllRoutes() {
+    'use cache: remote'
+    cacheLife('days')
+    cacheTag('routes')
+    return db.select().from(routes)
+}
 
 // GET all routes
 export async function GET() {
+    // Everything this handler reads is cached, so under Cache Components it would
+    // otherwise be prerendered at build time — baking build-DB state (or a baked 500
+    // if the DB blips during a deploy) into the static output. connection() keeps it
+    // request-time, exactly like today; Cloudflare's edge still absorbs the traffic
+    // via the CDN-Cache-Control below.
+    await connection();
     try {
         const allRoutes = await getAllRoutes();
         // Browser 10m; Cloudflare edge 12h + 1d serve-stale (CDN-Cache-Control passes

@@ -5,7 +5,6 @@ import DatabaseViewer from '@/components/admin/DatabaseViewer';
 import { getStaff } from '@/app/shared/users';
 import { auth } from '@/auth';
 
-export const dynamic = 'force-dynamic';
 
 export default async function FleetDatabasePage() {
     const session = await auth();

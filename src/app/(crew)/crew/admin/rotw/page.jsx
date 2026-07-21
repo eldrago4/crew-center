@@ -6,11 +6,17 @@ import EventsManager from '@/components/admin/EventsManager';
 import NotamsManager from '@/components/admin/NotamsManager';
 import { fetchFleetModule, fetchModuleValue } from '../../pireps/file/fleetModule';
 import db from '@/db/client';
+import { connection } from 'next/server';
 import { notams } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 
 
 export default async function FleetDatabasePage() {
+    // Cached-read + DB page below the auth-gated admin layout: connection() keeps
+    // it request-time instead of executing the cached reads at build (a thrown
+    // error inside a build-executed 'use cache' scope fails the whole build, even
+    // though allSettled would swallow it at request time).
+    await connection();
 
     // The three reads are independent — run them in parallel (allSettled keeps each
     // one's own fallback if it fails), instead of three serial round trips.

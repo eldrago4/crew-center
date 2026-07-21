@@ -1,5 +1,5 @@
 import 'server-only';
-import { unstable_cache } from 'next/cache';
+import { cacheLife, cacheTag } from 'next/cache';
 import admin from 'firebase-admin';
 import db from '@/db/client';
 import { db as fireDb } from '@/lib/firebase';
@@ -14,9 +14,11 @@ import { AKASHARATHA_HOURS } from './constants';
 const RAW_SECONDS = sql`COALESCE(SUM(EXTRACT(EPOCH FROM p."flightTime")), 0)`;
 
 // Stats change only when a PIREP or career flight is approved, so they are cached
-// rather than recomputed per request. Firestore bills per document read, which makes
-// the cache a cost control here and not just a latency one.
-const CACHE = { revalidate: 600, tags: ['pireps'] };
+// rather than recomputed per request ('use cache: remote' — the durable platform
+// cache shared across instances, successor to the unstable_cache used before).
+// Firestore bills per document read, which makes the cache a cost control here and
+// not just a latency one.
+const STATS_CACHE_LIFE = { revalidate: 600, expire: 3600 };
 
 // A pilot can fly both crew-centre and career, and career-mode users are created with
 // callsign = the crew-centre users.id (see api/career-accept), so the callsign is the
@@ -53,8 +55,11 @@ function round1(n) {
 // Returns the pilot ids rather than a count: "pilots flying" has to be deduplicated
 // against the career-mode set, and two COUNT(DISTINCT)s can't be added together
 // without double-counting anyone who flew on both.
-export const getNeonWeek = unstable_cache(
-    async (start, end) => {
+export async function getNeonWeek(start, end) {
+    'use cache: remote'
+    cacheLife(STATS_CACHE_LIFE)
+    cacheTag('pireps')
+    {
         const totals = await db.execute(sql`
             SELECT COUNT(*)::int AS "flights", ${RAW_SECONDS}::float8 AS "seconds"
             FROM pireps p
@@ -71,13 +76,14 @@ export const getNeonWeek = unstable_cache(
             hours: round1((Number(t.seconds) || 0) / 3600),
             callsigns: (pilots.rows ?? pilots).map((r) => normaliseCallsign(r.callsign)),
         };
-    },
-    ['admin-stats-neon-week'],
-    CACHE,
-);
+    }
+}
 
-export const getNeonWeekPilots = unstable_cache(
-    async (start, end) => {
+export async function getNeonWeekPilots(start, end) {
+    'use cache: remote'
+    cacheLife(STATS_CACHE_LIFE)
+    cacheTag('pireps')
+    {
         const rows = await db.execute(sql`
             SELECT u."ifcName" AS "ifcName",
                    u.id AS "callsign",
@@ -94,15 +100,16 @@ export const getNeonWeekPilots = unstable_cache(
             flights: Number(r.flights) || 0,
             hours: round1((Number(r.seconds) || 0) / 3600),
         }));
-    },
-    ['admin-stats-neon-week-pilots'],
-    CACHE,
-);
+    }
+}
 
 // Buckets by day, so the same rows can be folded into weeks or months without a
 // second trip to the database.
-export const getNeonDaily = unstable_cache(
-    async (fromDate) => {
+export async function getNeonDaily(fromDate) {
+    'use cache: remote'
+    cacheLife(STATS_CACHE_LIFE)
+    cacheTag('pireps')
+    {
         const rows = await db.execute(sql`
             SELECT p.date::text AS "day",
                    COUNT(*)::int AS "flights",
@@ -117,13 +124,14 @@ export const getNeonDaily = unstable_cache(
             flights: Number(r.flights) || 0,
             hours: round1((Number(r.seconds) || 0) / 3600),
         }));
-    },
-    ['admin-stats-neon-daily'],
-    CACHE,
-);
+    }
+}
 
-export const getAkasharathaClub = unstable_cache(
-    async () => {
+export async function getAkasharathaClub() {
+    'use cache: remote'
+    cacheLife(STATS_CACHE_LIFE)
+    cacheTag('pireps')
+    {
         const rows = await db.execute(sql`
             SELECT u."ifcName" AS "ifcName",
                    u.id AS "callsign",
@@ -137,10 +145,8 @@ export const getAkasharathaClub = unstable_cache(
             callsign: normaliseCallsign(r.callsign),
             hours: round1((Number(r.seconds) || 0) / 3600),
         }));
-    },
-    ['admin-stats-akasharatha-club'],
-    CACHE,
-);
+    }
+}
 
 // ── Career mode (Firestore) ──────────────────────────────────────────────────
 
@@ -149,8 +155,11 @@ export const getAkasharathaClub = unstable_cache(
 // once per cache window and reusing the rows costs a fraction of a query per panel.
 // `flights` (not `pireps`) is the approved-flight collection — the same one
 // /api/stats reads — and flightTime there is already a number of hours.
-export const getCareerFlights = unstable_cache(
-    async (fromDate) => {
+export async function getCareerFlights(fromDate) {
+    'use cache: remote'
+    cacheLife(STATS_CACHE_LIFE)
+    cacheTag('pireps')
+    {
         const snap = await fireDb
             .collection('flights')
             .where('approvedAt', '>=', admin.firestore.Timestamp.fromDate(new Date(`${fromDate}T00:00:00Z`)))
@@ -170,10 +179,8 @@ export const getCareerFlights = unstable_cache(
             });
         });
         return out;
-    },
-    ['admin-stats-career-flights'],
-    CACHE,
-);
+    }
+}
 
 // ── Folding ──────────────────────────────────────────────────────────────────
 

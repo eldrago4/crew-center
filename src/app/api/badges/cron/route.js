@@ -4,8 +4,6 @@ import db from '@/db/client'
 import { db as fireDb } from '@/lib/firebase'
 
 // firebase-admin (Firestore) requires the Node.js runtime, not Edge.
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
 // Scans the whole career-mode users collection; allow headroom.
 // (Hobby caps at 60s; raise to 300 on Pro if the collection grows large.)
 export const maxDuration = 60

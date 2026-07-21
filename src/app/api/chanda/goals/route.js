@@ -50,4 +50,3 @@ export async function PUT(req) {
   }
 }
 
-export const dynamic = 'force-dynamic';

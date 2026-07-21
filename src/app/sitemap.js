@@ -1,6 +1,14 @@
 const BASE = 'https://indianvirtual.site'
 
-export default function sitemap() {
+import { cacheLife } from 'next/cache'
+
+// 'use cache' + max: without it, the per-entry `new Date()` counts as request-time
+// data under Cache Components and turned the sitemap into a billed function
+// invocation per crawler hit. Cached, it prerenders at build — lastModified becomes
+// the deploy date, which is also more honest than "the moment you asked".
+export default async function sitemap() {
+    'use cache'
+    cacheLife('max')
     return [
         {
             url: BASE,
