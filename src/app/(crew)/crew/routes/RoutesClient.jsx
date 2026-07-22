@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import NextLink from "next/link";
+import NoPrefetchLink from "@/components/NoPrefetchLink";
 import { useSession } from "next-auth/react";
 import {
   VStack,
@@ -739,7 +739,7 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
                   </HStack>
                   <HStack spacing={2} pt={2}>
                     <Button
-                      as={NextLink}
+                      as={NoPrefetchLink}
                       href={`/crew/pireps/file?flightNumber=${encodeURIComponent(route.flight_number)}&departureIcao=${route.departure_icao}&arrivalIcao=${route.arrival_icao}&aircraft=${encodeURIComponent(route.aircraft_names.split(',')[ 0 ]?.trim() || '')}`}
                       size="sm"
                       colorPalette="blue"
@@ -749,7 +749,7 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
                       File
                     </Button>
                     <Button
-                      as={NextLink}
+                      as={NoPrefetchLink}
                       href={fplLink}
                       size="sm"
                       colorPalette="purple"

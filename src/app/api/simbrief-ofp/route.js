@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { Redis } from '@upstash/redis'
 
-export const dynamic = 'force-dynamic'
 
 let _redis = null
 function getRedis() {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button, Link, HStack, Icon } from '@chakra-ui/react'
-import NextLink from 'next/link'
+import NoPrefetchLink from '@/components/NoPrefetchLink';
 import { TbCheck } from 'react-icons/tb'
 
 export default function SignupOrFileButton({ pushbackIso, flightNumber = '', departureIcao = '', arrivalIcao = '', aircraft = '', signupUrl, isParticipating = false }) {
@@ -42,7 +42,7 @@ export default function SignupOrFileButton({ pushbackIso, flightNumber = '', dep
                     {isParticipating ? 'Participating' : 'Sign Up'}
                 </Button>
             ) : (
-                <Button as={NextLink} href={fileUrl} colorPalette="green" variant="solid" size="md" rounded="full">
+                <Button as={NoPrefetchLink} href={fileUrl} colorPalette="green" variant="solid" size="md" rounded="full">
                     File Pirep
                 </Button>
             )}

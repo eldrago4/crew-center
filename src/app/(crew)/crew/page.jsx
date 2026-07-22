@@ -73,7 +73,21 @@ export default function CrewLoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ callsign: fullCallsign })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      // A DB/backend failure returns 500 with { valid:false, error }. Without this
+      // res.ok check that used to render as "Callsign Not Found", making every
+      // outage look like the pilot typed a wrong number — the exact symptom that
+      // hid the Workers login bug. Surface backend failures as their own thing.
+      if (!res.ok) {
+        console.error('[validate-callsign] backend error', res.status, data?.error);
+        toaster.create({
+          title: 'Service Unavailable',
+          description: "We couldn't reach our records right now. Please try again in a moment.",
+          type: 'error',
+          duration: 4000,
+        });
+        return;
+      }
       if (data.valid) {
         setValid(true);
       } else {

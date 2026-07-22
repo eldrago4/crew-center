@@ -71,3 +71,5 @@ INVA_Flight_Tracker
 .dev.vars
 
 src/.claude
+# next-agents-md
+.next-docs/

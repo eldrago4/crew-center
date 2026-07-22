@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import crypto from 'crypto'
 
-export const dynamic = 'force-dynamic'
 
 const AVOID_FIRS = 'OPLR,OPKR,LLLL,OSTT,EGRON,BIVIN,PASTA,PG,BIREX,IDEBA,SK,RK,MERUN'
 

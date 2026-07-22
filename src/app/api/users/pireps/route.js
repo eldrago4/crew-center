@@ -46,6 +46,24 @@ async function creditTrailLeg({ comments, userId, pirepId }) {
   }
 }
 
+// Columns returned for the personal-logbook path. Explicit list instead of
+// `select()` so we never ship every column (e.g. large free-text) of ~17k rows.
+const PIREP_COLUMNS = {
+  pirepId: pireps.pirepId,
+  flightNumber: pireps.flightNumber,
+  date: pireps.date,
+  flightTime: pireps.flightTime,
+  departureIcao: pireps.departureIcao,
+  arrivalIcao: pireps.arrivalIcao,
+  operator: pireps.operator,
+  aircraft: pireps.aircraft,
+  multiplier: pireps.multiplier,
+  comments: pireps.comments,
+  valid: pireps.valid,
+  updatedAt: pireps.updatedAt,
+  userId: pireps.userId,
+};
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -60,23 +78,18 @@ export async function GET(request) {
     // Check if we should include user data (only when valid param is provided and no userId)
     const includeUserData = !userId && valid !== null && valid !== undefined;
 
+    // Auth: this route was open to the world (it imports requireUser/requireStaff but
+    // only used them in POST), letting anyone page the entire ~17k-row PIREP table.
+    // The cross-user admin view (includeUserData → joins ifcName across all pilots)
+    // requires staff; the personal logbook requires any signed-in pilot.
+    const { error } = includeUserData ? await requireStaff() : await requireUser();
+    if (error) return error;
+
     if (includeUserData) {
       // Include user data when only valid param is passed
       query = db
         .select({
-          pirepId: pireps.pirepId,
-          flightNumber: pireps.flightNumber,
-          date: pireps.date,
-          flightTime: pireps.flightTime,
-          departureIcao: pireps.departureIcao,
-          arrivalIcao: pireps.arrivalIcao,
-          operator: pireps.operator,
-          aircraft: pireps.aircraft,
-          multiplier: pireps.multiplier,
-          comments: pireps.comments,
-          valid: pireps.valid,
-          updatedAt: pireps.updatedAt,
-          userId: pireps.userId,
+          ...PIREP_COLUMNS,
           user: {
             id: users.id,
             ifcName: users.ifcName,
@@ -91,8 +104,8 @@ export async function GET(request) {
         .from(pireps)
         .leftJoin(users, eq(pireps.userId, users.id));
     } else {
-      // Standard query without user data
-      query = db.select().from(pireps);
+      // Standard query without user data — explicit columns, not select()
+      query = db.select(PIREP_COLUMNS).from(pireps);
       countQuery = db.select({ count: sql`count(*)` }).from(pireps);
     }
 
@@ -128,23 +141,29 @@ export async function GET(request) {
       countQuery = countQuery.where(whereClause);
     }
 
-    // Get total count for pagination
-    const countResult = await countQuery;
-    const total = Number(countResult[ 0 ]?.count || 0);
-
-    // Fetch paginated pireps
-    const pirepList = await query
+    const pageQuery = query
       .orderBy(sql`${pireps.updatedAt} DESC`)
       .limit(pageSize)
       .offset((page - 1) * pageSize);
 
-    return NextResponse.json({
-      data: pirepList,
-      page,
-      pageSize,
-      total,
-      totalPages: Math.ceil(total / pageSize),
-    });
+    // Run the count and the page query in parallel instead of serially (they're
+    // independent). The clients depend on `total` on every page, so we can't skip it
+    // without changing them — but `private, max-age=60` lets the browser serve
+    // back/forward pagination from its own cache, so repeated page turns don't
+    // re-invoke the function at all.
+    const [ pirepList, countResult ] = await Promise.all([ pageQuery, countQuery ]);
+    const total = Number(countResult[ 0 ]?.count || 0);
+
+    return NextResponse.json(
+      {
+        data: pirepList,
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+      { headers: { "Cache-Control": "private, max-age=60" } },
+    );
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -425,12 +444,21 @@ export async function POST(request) {
         });
       }
 
+      // Embed accent: green for IFATC sessions, deep plum ONLY when the PIREP was
+      // recognised as a Maharaja Trail leg (trail code in comments), teal for every
+      // ordinary flight PIREP.
+      const embedColor = isIFATC
+        ? 0x2ecc71
+        : trailResult
+          ? 0x511d4b
+          : 0x1abc9c;
+
       const embed = {
         title: `PIREP #${inserted.pirepId}`,
         description: isIFATC
           ? "**IFATC PIREP**"
           : null,
-        color: isIFATC ? 0x1abc9c : 0x511d4b,
+        color: embedColor,
         fields,
         timestamp: new Date(inserted.updatedAt || Date.now()).toISOString(),
       };

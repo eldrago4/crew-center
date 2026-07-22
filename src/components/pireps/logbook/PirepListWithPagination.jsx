@@ -37,9 +37,11 @@ const PirepListWithPagination = ({ initialPireps, initialTotalPireps, userId }) 
 
       setLoading(true);
       try {
-        const response = await fetch(`/api/users/pireps?id=${userId}&page=${currentPage}&pageSize=${pageSize}`, {
-          cache: 'no-store'
-        });
+        // No cache:'no-store' here — it would override the route's
+        // `Cache-Control: private, max-age=60`, forcing a function invocation on
+        // every page turn. With the default mode, flipping back to a recently
+        // viewed page is served straight from the browser cache.
+        const response = await fetch(`/api/users/pireps?id=${userId}&page=${currentPage}&pageSize=${pageSize}`);
 
         if (!response.ok) {
           throw new Error('Failed to fetch PIREPs');

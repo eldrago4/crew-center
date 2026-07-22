@@ -26,7 +26,11 @@ export async function GET() {
             cache.data = data
             cache.expiresAt = Date.now() + CACHE_TTL
             return NextResponse.json(data, {
-                headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=300' },
+                headers: {
+                    'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+                    // Cloudflare edge TTL (passed through by Vercel): 3h fresh, 6h serve-stale.
+                    'CDN-Cache-Control': 'public, max-age=10800, stale-while-revalidate=21600',
+                },
             })
         }
     } catch (error) {
@@ -58,7 +62,11 @@ export async function GET() {
         }
 
         return NextResponse.json(events, {
-            headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=300' },
+            headers: {
+                    'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+                    // Cloudflare edge TTL (passed through by Vercel): 3h fresh, 6h serve-stale.
+                    'CDN-Cache-Control': 'public, max-age=10800, stale-while-revalidate=21600',
+                },
         })
     } catch (error) {
         console.error('Discord events fetch error:', error)

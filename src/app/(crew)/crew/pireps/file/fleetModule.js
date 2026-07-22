@@ -1,41 +1,29 @@
+import { unstable_cache, revalidateTag } from 'next/cache';
 import db from '@/db/client';
 import { crewcenter } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-const cache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
-
-// Modules that should never be cached (always fetch fresh data)
-const NO_CACHE_MODULES = new Set([ 'multipliers', 'ifatcMultipliers' ]);
-
-async function fetchModuleValue(moduleName, forceRefresh = false) {
-  console.log(`[CACHE] Checking cache for module: ${moduleName}, forceRefresh: ${forceRefresh}`);
-
-  // For multipliers and IFATC multipliers, always fetch fresh data
-  if (NO_CACHE_MODULES.has(moduleName)) {
-    console.log(`[CACHE] No-cache module ${moduleName}, fetching fresh data`);
-    return await fetchFromDatabase(moduleName);
-  }
-
-  const now = Date.now();
-  const cached = cache.get(moduleName);
-
-  if (!forceRefresh && cached && (now - cached.timestamp < CACHE_TTL)) {
-    console.log(`[CACHE] Cache hit for ${moduleName}:`, cached.value);
-    return cached.value;
-  }
-
-  console.log(`[CACHE] Cache miss/stale for ${moduleName}, fetching from database`);
-
-  try {
-    return await fetchFromDatabase(moduleName);
-  } catch (error) {
-    console.error(`Error fetching module '${moduleName}':`, error);
-    throw error;
-  }
+// All crewcenter module reads share one 5-minute cache — including multipliers and
+// ifatcMultipliers, which used to hit Postgres on every single request. This branch
+// keeps the durable unstable_cache layer (survives across instances and deploys)
+// rather than Cache Components' 'use cache: remote', which on Cloudflare Workers
+// would need an OpenNext incremental/tag cache wired up. Admin edits still land
+// instantly EVERYWHERE: updateModuleValue revalidates the module's tag.
+//
+// A thrown DB error is never cached (the wrapped promise rejects and nothing is
+// stored), so failures aren't pinned for the window — callers keep their own fallbacks.
+async function fetchModuleValue(moduleName) {
+  return unstable_cache(
+    () => fetchModuleValueFresh(moduleName),
+    [ 'crewcenter-module', moduleName ],
+    { revalidate: 300, tags: [ `crewcenter-${moduleName}` ] }
+  )();
 }
 
-async function fetchFromDatabase(moduleName) {
+// Uncached read, straight from Postgres. Use this for read-modify-write flows
+// (gate-allocations, gate-briefing): reading a possibly-minutes-stale value and
+// writing it back would silently clobber concurrent edits.
+async function fetchModuleValueFresh(moduleName) {
   const result = await db.select().from(crewcenter).where(eq(crewcenter.module, moduleName));
 
   if (result.length === 0) {
@@ -44,21 +32,11 @@ async function fetchFromDatabase(moduleName) {
 
   // Drizzle ORM with jsonb() type should already return a parsed JavaScript object/array.
   // No need for JSON.parse here.
-  const value = result[ 0 ].value;
-
-  // Only cache if it's not a no-cache module
-  if (!NO_CACHE_MODULES.has(moduleName)) {
-    cache.set(moduleName, { value: value, timestamp: Date.now() });
-    console.log(`[CACHE] Stored in cache for ${moduleName}:`, value);
-  } else {
-    console.log(`[CACHE] No-cache module ${moduleName}, data fetched but not cached:`, value);
-  }
-
-  return value;
+  return result[ 0 ].value;
 }
 
-async function fetchFleetModule(module, forceRefresh = false) {
-  const data = await fetchModuleValue(module, forceRefresh);
+async function fetchFleetModule(module) {
+  const data = await fetchModuleValue(module);
   // For 'fleet', data is already in { label, value } format
   return data;
 }
@@ -72,28 +50,17 @@ async function updateModuleValue(moduleName, newValue) {
         set: { value: newValue }
       });
 
-    // Invalidate cache for the updated module to ensure fresh data on next fetch
-    invalidateCache(moduleName);
-    console.log(`[CACHE] Module '${moduleName}' updated successfully.`);
+    // Expire the cached read everywhere so the edit shows on the next request.
+    revalidateTag(`crewcenter-${moduleName}`);
   } catch (error) {
     console.error(`Error updating module '${moduleName}':`, error);
     throw error;
   }
 }
 
-function invalidateCache(moduleName) {
-  if (moduleName) {
-    cache.delete(moduleName);
-    console.log(`[CACHE] Cache invalidated for module: ${moduleName}`);
-  } else {
-    cache.clear();
-    console.log('[CACHE] All module caches invalidated');
-  }
-}
-
 export {
   fetchModuleValue,
+  fetchModuleValueFresh,
   fetchFleetModule,
-  updateModuleValue,
-  invalidateCache
+  updateModuleValue
 };

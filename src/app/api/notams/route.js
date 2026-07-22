@@ -49,7 +49,9 @@ export async function GET() {
             // NOTAMs are identical for every caller and change rarely, so let the edge
             // answer repeat requests instead of waking the database for each one.
             headers: {
-                'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+                'Cache-Control': 'public, max-age=600, stale-while-revalidate=3600',
+                // Cloudflare edge TTL (passed through by Vercel): admin-edited data, 1d fresh + 1d serve-stale.
+                'CDN-Cache-Control': 'public, max-age=86400, stale-while-revalidate=86400',
             },
         });
     } catch (error) {
@@ -142,4 +144,3 @@ export async function DELETE(request) {
     }
 }
 
-export const dynamic = 'force-dynamic';

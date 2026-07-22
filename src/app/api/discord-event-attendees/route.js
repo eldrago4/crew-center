@@ -26,7 +26,12 @@ export async function GET(request) {
     const cached = await getRedis().get(cacheKey)
     if (cached) {
       return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached, {
-        headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=180' },
+        headers: {
+      'Cache-Control': 'public, max-age=60, stale-while-revalidate=180',
+      // Cloudflare edge TTL (passed through by Vercel): 15m fresh, 30m serve-stale —
+      // attendance shifts during live events, so this stays the shortest edge TTL.
+      'CDN-Cache-Control': 'public, max-age=900, stale-while-revalidate=1800',
+    },
       })
     }
   } catch (error) {
@@ -68,7 +73,12 @@ export async function GET(request) {
       console.warn('Discord attendees Redis cache write failed:', error)
     }
     return NextResponse.json(emptyPayload, {
-      headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=180' },
+      headers: {
+      'Cache-Control': 'public, max-age=60, stale-while-revalidate=180',
+      // Cloudflare edge TTL (passed through by Vercel): 15m fresh, 30m serve-stale —
+      // attendance shifts during live events, so this stays the shortest edge TTL.
+      'CDN-Cache-Control': 'public, max-age=900, stale-while-revalidate=1800',
+    },
     })
   }
 
@@ -108,6 +118,11 @@ export async function GET(request) {
   }
 
   return NextResponse.json(payload, {
-    headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=180' },
+    headers: {
+      'Cache-Control': 'public, max-age=60, stale-while-revalidate=180',
+      // Cloudflare edge TTL (passed through by Vercel): 15m fresh, 30m serve-stale —
+      // attendance shifts during live events, so this stays the shortest edge TTL.
+      'CDN-Cache-Control': 'public, max-age=900, stale-while-revalidate=1800',
+    },
   })
 }

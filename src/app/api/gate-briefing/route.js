@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { updateModuleValue } from '@/app/(crew)/crew/pireps/file/fleetModule'
-import { fetchModuleValue } from '@/app/(crew)/crew/pireps/file/fleetModule'
+import { fetchModuleValueFresh } from '@/app/(crew)/crew/pireps/file/fleetModule'
 
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN
 const MODULE = 'gate_allocations'
@@ -168,7 +168,7 @@ export async function POST(request) {
 
   // Mark briefingSent in DB
   try {
-    const all = (await fetchModuleValue(MODULE)) || {}
+    const all = (await fetchModuleValueFresh(MODULE)) || {}
     if (all[eventId]) {
       all[eventId].briefingSent = true
       await updateModuleValue(MODULE, all)

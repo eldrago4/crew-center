@@ -12,6 +12,12 @@ const IMMUTABLE_ASSET = [
 ];
 
 const nextConfig = {
+  // Cache Components / PPR ('use cache') is deliberately NOT enabled on the
+  // Cloudflare Workers branch: 'use cache' + cacheTag/revalidateTag durability
+  // needs an OpenNext incremental cache (R2/KV) + tag cache (D1/Durable Objects)
+  // wired in open-next.config.ts, and the adapter warns cache interception does
+  // not work with PPR. This branch keeps the proven unstable_cache path instead
+  // (durable across instances, no extra infra). See main for the PPR version.
   experimental: {
     optimizePackageImports: [ "@chakra-ui/react" ],
   },
@@ -37,6 +43,14 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // Was src/app/flying-manual/route.js — a whole function invocation per hit
+      // just to 307 to the external manual. Config redirects are handled by the
+      // routing layer with no function involved.
+      {
+        source: '/flying-manual',
+        destination: 'https://zeff005.github.io/Flying-Manual/',
+        permanent: false,
+      },
     ];
   },
   async headers() {

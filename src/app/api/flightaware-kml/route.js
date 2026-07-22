@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 
-export const dynamic = 'force-dynamic'
 
 function parseKmlWaypoints(kml) {
     const points = []

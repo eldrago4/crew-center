@@ -1,42 +1,39 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, connection } from 'next/server';
+import { revalidateTag, unstable_cache } from 'next/cache';
 import db from '@/db/client';
 import { routes } from '@/db/schema';
 import { sql, inArray } from 'drizzle-orm';
 import { requireStaff } from '@/lib/apiAuth';
 
-const routesCache = new Map();
+// One cached full-table read, tagged 'routes'. Replaces a module-scope Map that had no
+// TTL or eviction: revalidateTag('routes') couldn't reach it, so a warm lambda served
+// permanently stale routes (a correctness bug), and every request first ran a full
+// flight-number scan of ~2294 rows before consulting it (two full passes when cold).
+// unstable_cache survives across instances/deploys and is busted instantly by the
+// revalidateTag('routes') calls in the mutations below.
+const getAllRoutes = unstable_cache(
+    async () => db.select().from(routes),
+    [ 'api-all-routes' ],
+    { revalidate: 86400, tags: [ 'routes' ] },
+);
 
 // GET all routes
 export async function GET() {
+    // Cached-read-only handler: without connection() it could be prerendered at
+    // build (running the cached read against a build-time DB, or baking a 500 if
+    // the DB blips). Keep it request-time; Cloudflare's edge absorbs traffic via
+    // the CDN-Cache-Control below.
+    await connection();
     try {
-        // Check if all routes are cached
-        const allFlightNumbers = await db.select({ flightNumber: routes.flightNumber }).from(routes);
-        const flightNumbers = allFlightNumbers.map(r => r.flightNumber);
-        const cachedRoutes = [];
-        const missingFlightNumbers = [];
-
-        for (const fn of flightNumbers) {
-            if (routesCache.has(fn)) {
-                cachedRoutes.push(routesCache.get(fn));
-            } else {
-                missingFlightNumbers.push(fn);
-            }
-        }
-
-        // Fetch missing routes from DB in batches to avoid PostgreSQL IN limit
-        if (missingFlightNumbers.length > 0) {
-            const batchSize = 1000;
-            for (let i = 0; i < missingFlightNumbers.length; i += batchSize) {
-                const batch = missingFlightNumbers.slice(i, i + batchSize);
-                const missingRoutes = await db.select().from(routes).where(inArray(routes.flightNumber, batch));
-                for (const route of missingRoutes) {
-                    routesCache.set(route.flightNumber, route);
-                    cachedRoutes.push(route);
-                }
-            }
-        }
-
-        return NextResponse.json(cachedRoutes);
+        const allRoutes = await getAllRoutes();
+        // Browser 10m; Cloudflare edge 12h + 1d serve-stale (CDN-Cache-Control passes
+        // through Vercel) — the route DB changes only on staff edits.
+        return NextResponse.json(allRoutes, {
+            headers: {
+                'Cache-Control': 'public, max-age=600',
+                'CDN-Cache-Control': 'public, max-age=43200, stale-while-revalidate=86400',
+            },
+        });
     } catch (error) {
         console.error('Error fetching routes:', error);
         return NextResponse.json(
@@ -71,10 +68,8 @@ export async function POST(request) {
             .values(routesToAdd)
             .returning();
 
-        // Update cache with new routes
-        for (const route of insertedRoutes) {
-            routesCache.set(route.flightNumber, route);
-        }
+        // Bust the routes cache (GET + /crew/routes page) so the edit shows immediately
+        revalidateTag('routes');
 
         return NextResponse.json(insertedRoutes, { status: 201 });
     } catch (error) {
@@ -126,7 +121,7 @@ export async function DELETE(request) {
             }
 
             // Remove from cache
-            flightNumbers.forEach(fn => routesCache.delete(fn));
+            revalidateTag('routes');
 
             return NextResponse.json({ message: `${result.length} routes deleted successfully` });
         } else {
@@ -154,7 +149,7 @@ export async function DELETE(request) {
             }
 
             // Remove from cache
-            routesCache.delete(flightNumber);
+            revalidateTag('routes');
 
             return NextResponse.json({ message: 'Route deleted successfully' });
         }
@@ -212,8 +207,7 @@ export async function PATCH(request) {
             );
         }
 
-        // Update cache with the updated route
-        routesCache.set(flightNumber, result[ 0 ]);
+        revalidateTag('routes');
 
         return NextResponse.json(result[ 0 ]);
     } catch (error) {

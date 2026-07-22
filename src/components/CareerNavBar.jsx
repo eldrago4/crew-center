@@ -18,7 +18,7 @@ import { FaChevronDown } from "react-icons/fa";
 import { CgMenuRight } from "react-icons/cg";
 import { IoCloseOutline } from "react-icons/io5";
 import NextImage from "next/image";
-import NextLink from "next/link";
+import NoPrefetchLink from "@/components/NoPrefetchLink";
 import { useEffect, useRef, useState } from "react";
 
 const MENU_LINKS = [
@@ -105,7 +105,7 @@ function OperationsMenu({ open, setOpen }) {
                                             fontWeight="500"
                                             color="white"
                                         >
-                                            <Link as={NextLink} href={item.href}>{item.label}</Link>
+                                            <Link as={NoPrefetchLink} href={item.href}>{item.label}</Link>
                                         </Menu.Item>
                                     ))}
                                 </VStack>
@@ -232,23 +232,23 @@ export function CareerMobileNavMenu() {
                             pt={dropdownOpen ? 2 : 0}
                         >
                             <VStack align="stretch" spacing={2}>
-                                <Link as={NextLink} href="/crew/career/routes" color="gray.300">Routes</Link>
-                                <Link as={NextLink} href="/crew/career/ranks" color="gray.300">Ranks</Link>
-                                <Link as={NextLink} href="/crew/career/briefings" color="gray.300">Briefings</Link>
-                                <Link as={NextLink} href="/crew/career/fleet" color="gray.300">Fleet</Link>
+                                <Link as={NoPrefetchLink} href="/crew/career/routes" color="gray.300">Routes</Link>
+                                <Link as={NoPrefetchLink} href="/crew/career/ranks" color="gray.300">Ranks</Link>
+                                <Link as={NoPrefetchLink} href="/crew/career/briefings" color="gray.300">Briefings</Link>
+                                <Link as={NoPrefetchLink} href="/crew/career/fleet" color="gray.300">Fleet</Link>
                             </VStack>
                         </Box>
                     </Box>
-                    <Link as={NextLink} color="white" href="/crew/career/live" fontSize="xl" fontWeight="medium">
+                    <Link as={NoPrefetchLink} color="white" href="/crew/career/live" fontSize="xl" fontWeight="medium">
                         Live
                     </Link>
-                    <Link as={NextLink} color="white" href="/crew/career/events" fontSize="xl" fontWeight="medium">
+                    <Link as={NoPrefetchLink} color="white" href="/crew/career/events" fontSize="xl" fontWeight="medium">
                         Events
                     </Link>
-                    <Link as={NextLink} color="white" href="/crew/career/info" fontSize="xl" fontWeight="medium">
+                    <Link as={NoPrefetchLink} color="white" href="/crew/career/info" fontSize="xl" fontWeight="medium">
                         About
                     </Link>
-                    <Link as={NextLink} color="white" href="/crew/career/apply" fontSize="xl" fontWeight="medium">
+                    <Link as={NoPrefetchLink} color="white" href="/crew/career/apply" fontSize="xl" fontWeight="medium">
                         Apply
                     </Link>
                 </VStack>
@@ -338,7 +338,7 @@ export default function CareerNavBar() {
                         <HStack spacing={2} justify="flex-end" pr="2em">
                             <OperationsMenu open={menuOpen} setOpen={setMenuOpen} />
                             <Link
-                                as={NextLink}
+                                as={NoPrefetchLink}
                                 href="/crew/career/live"
                                 color="white"
                                 fontFamily={fontFamily}
@@ -373,7 +373,7 @@ export default function CareerNavBar() {
                     <GridItem>
                         <HStack spacing={1} justify="flex-start" pl="2em">
                             <Link
-                                as={NextLink}
+                                as={NoPrefetchLink}
                                 href="/crew/career/events"
                                 color="white"
                                 fontFamily={fontFamily}
@@ -387,7 +387,7 @@ export default function CareerNavBar() {
                                 Events
                             </Link>
                             <Link
-                                as={NextLink}
+                                as={NoPrefetchLink}
                                 href="/crew/career/info"
                                 color="white"
                                 fontFamily={fontFamily}
@@ -404,7 +404,7 @@ export default function CareerNavBar() {
                             <Flex ml="auto" align="center">
                                 <HStack mr={10}>
                                     <Link
-                                        as={NextLink}
+                                        as={NoPrefetchLink}
                                         href="/crew/career/apply"
                                         color="white"
                                         fontFamily={fontFamily}

@@ -8,6 +8,9 @@ function avatarResponse(payload, status = 200) {
         status,
         headers: {
             'Cache-Control': 'public, s-maxage=604800, stale-while-revalidate=86400',
+            // Cloudflare edge TTL (passed through by Vercel; s-maxage above is stripped
+            // by Vercel's own CDN layer, so CF needs this): avatars are content-addressed.
+            'CDN-Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400',
         },
     });
 }

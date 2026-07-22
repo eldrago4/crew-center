@@ -13,7 +13,7 @@ import {
   Circle,
 } from '@chakra-ui/react';
 import { useState, useEffect, useRef } from 'react';
-import NextLink from 'next/link';
+import NoPrefetchLink from '@/components/NoPrefetchLink';
 import {
   FiUser, FiBookOpen, FiFilePlus, FiMap, FiBriefcase, FiTrendingUp,
   FiCalendar, FiStar, FiAward, FiGlobe, FiBook, FiDatabase, FiTruck,
@@ -113,7 +113,10 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     ],
     resources: [
       { label: "Flying Manual", href: "/crew/resources/flying-manual", icon: FiBook },
-      { label: "Simbrief", href: "/crew/resources/simbrief", icon: FiBriefcase }
+      // Was "Simbrief" → /crew/resources/simbrief, a route that doesn't exist (168×
+      // 404/24h, each still rendered through the dynamic crew segment). Repurposed to
+      // Ranks; external Discord link → rendered as a plain <a>, so no prefetch.
+      { label: "Ranks", href: "https://discord.com/channels/1246895842581938276/1277594854989234290", icon: FiBarChart2 }
     ],
   };
 
@@ -167,7 +170,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
           <Box key={idx} position="relative" display="flex" width="100%">
             <Button
               {...desktopButtonProps}
-              as={href && !disabled ? (isExternalHref(href) ? "a" : NextLink) : "button"}
+              as={href && !disabled ? (isExternalHref(href) ? "a" : NoPrefetchLink) : "button"}
               href={href}
               {...(disabled ? { disabled: true } : {})}
               flex={1}
@@ -213,7 +216,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
             <Box
               key={idx}
               position="relative"
-              as={!disabled && !isExternalHref(href) ? NextLink : "a"}
+              as={!disabled && !isExternalHref(href) ? NoPrefetchLink : "a"}
               href={!disabled ? href : undefined}
               _hover={{ textDecoration: 'none' }}
               onClick={(e) => { if (disabled) e.preventDefault(); }}
