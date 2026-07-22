@@ -55,12 +55,14 @@ export async function GET() {
         slotsRemaining: Math.max(0, LOTUS_MEMBER_LIMIT - lotusMembers.length),
       },
     }, {
-      // Shared, non-per-user stats built from ~10 Redis reads. Let Cloudflare's
-      // edge answer repeat hits so this heavy handler runs at most once a minute
-      // instead of once per chanda-page view. New contributions show within 60s.
+      // Shared, non-per-user stats built from ~10 Redis reads. Cached hard at the
+      // Cloudflare edge for a week so this heavy handler runs at most ~weekly
+      // instead of once per chanda-page view. NOTE: a new contribution/goal change
+      // won't surface on the public page until the week elapses (no edge purge is
+      // wired) — accepted per the chosen retention policy. Browser holds 1h.
       headers: {
-        'Cache-Control': 'public, max-age=30',
-        'CDN-Cache-Control': 'public, max-age=60, stale-while-revalidate=120',
+        'Cache-Control': 'public, max-age=3600',
+        'CDN-Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400',
       },
     });
   } catch (err) {

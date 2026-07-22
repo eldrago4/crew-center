@@ -21,10 +21,13 @@ export async function GET() {
 
     const badges = rows?.[ 0 ]?.badges
 
-    // Badges change rarely (award cron). Private browser cache so repeat views
-    // within 2 min reuse it instead of re-hitting the worker.
+    // Badges effectively never change for a given browser session, and the dashboard
+    // shows them from the server-rendered users.badges prop anyway (this endpoint is
+    // not on the dashboard's hot path), so cache them ~forever in the private browser
+    // cache. A newly awarded badge still appears on the next full page load via the
+    // server prop; only this secondary API stays cached.
     return NextResponse.json({ badges: Array.isArray(badges) ? badges : [] }, {
-        headers: { 'Cache-Control': 'private, max-age=120' },
+        headers: { 'Cache-Control': 'private, max-age=31536000' },
     })
 }
 

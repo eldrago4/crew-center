@@ -376,13 +376,19 @@ shells (rejected) or a Cloudflare **paid plan** (edge error/transform features).
 Keep server gating; reduce how often the Worker runs. This is the committed
 "Phase B" (commit `01f3d27`):
 - **Shared, non‑per‑user reads → `CDN-Cache-Control`** so Cloudflare's edge answers
-  repeats (e.g. `chanda/stats`; already done in round 1 for fleet/routes/leaderboard/
-  stats/events/notams). **Rule of thumb: any GET with no `auth()` and no per‑user
-  input is an edge‑cache candidate.**
+  repeats (e.g. `chanda/stats` edge **1 week**; `stats` edge **1 month**; already
+  done in round 1 for fleet/routes/leaderboard/events/notams). **Rule of thumb: any
+  GET with no `auth()` and no per‑user input is an edge‑cache candidate.** Retention
+  is tuned to data volatility, not a single value — pick from how often the data
+  actually changes and whether a stale window is acceptable (no edge purge is wired,
+  so an edge TTL is a hard staleness ceiling).
 - **Slow‑changing per‑user reads → `Cache-Control: private, max-age=N`** so the
-  *browser* (never a shared cache) skips the Worker on repeat/soft‑nav
-  (`user-rank` 300s, `users/badges` 120s, `chanda/lotus/status` 60s, the expensive
-  external `if-last-flight`/`if-last-atc` 120s).
+  *browser* (never a shared cache) skips the Worker on repeat/soft‑nav. Current
+  policy: `users/badges` **~forever** (1y — badges also come from the server prop, so
+  new ones still show on full load), `chanda/lotus/status` **1 month** (monthly
+  billing), `user-rank` 300s, the expensive external `if-last-flight`/`if-last-atc`
+  120s. Private caches have **no server‑side bust** — size the window to how long a
+  stale value is tolerable.
 - **Watch for client fetches that defeat it:** a caller doing
   `fetch(url, { cache: 'no-store' })` (or `no-cache`/`Pragma`) nullifies the
   header. Grep for those when you add a cache header.
