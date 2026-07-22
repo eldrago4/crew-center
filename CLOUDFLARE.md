@@ -45,9 +45,14 @@ grep -rnE "^(const|let|var) +[A-Za-z0-9_]+ *= *(new Redis\(|Redis\.fromEnv\(|neo
 
 # CRITICAL 3: next pin — bump main's 16.2.10 back to ^16.2.11 (opennext peer)
 # CRITICAL 4: src/proxy.js must NOT come back (Node middleware unsupported)
+# CRITICAL 5: wrangler.jsonc must keep "minify": true (3 MiB Free-plan limit)
 
 npx next build                    # must reach a full manifest
 npm run cf:build                  # MUST also pass — catches Workers-only failures
+
+# CRITICAL 6: the size gate — this fails the deploy, not the build, so check it
+#             locally BEFORE pushing (gzip must stay under 3072 KiB):
+npx wrangler deploy --dry-run --outdir /tmp/wout | grep "Total Upload"
 
 git commit
 git push origin cloudflare
@@ -349,6 +354,67 @@ they persist across deploys. A missing secret produces the *same* error text as
 the module‑scope bug above (`No database connection string`, `Unable to find
 environment variable`) — if a lazy‑init fix doesn't resolve a 500, check that the
 secret is actually set on the Worker.
+
+---
+
+## The 3 MiB Worker size limit (Free plan)
+
+**This is a deploy-time gate, not a build-time one.** `next build` and
+`npm run cf:build` both pass happily and *then* `wrangler deploy` fails with:
+
+```
+✘ [ERROR] Your Worker failed validation because it exceeded size limits.
+   - Your Worker exceeded the size limit of 3 MiB. [code: 10027]
+```
+
+The limit is on the **gzipped** script (3072 KiB). Assets in
+`.open-next/assets` don't count — only the worker bundle.
+
+**Why it nearly bit us.** OpenNext emits an already-minified
+`.open-next/server-functions/default/handler.mjs` (~2.5k very long lines).
+Wrangler then re-bundles it with its *own* esbuild pass, which **pretty-prints
+that code back out** — the handler expands to ~202k lines inside `worker.js`,
+taking the upload from 10.0 MB to 14.5 MB raw and **3131 KiB gzipped, 60 KiB
+over the limit**. Nothing in the app had actually grown by 4 MB; the merge just
+nudged an already-marginal bundle past the edge.
+
+**The fix, already applied:** `"minify": true` in `wrangler.jsonc`. That undoes
+the re-printing (and mangles identifiers on top), giving **2790 KiB gzipped —
+~282 KiB / 9% of headroom**. Keep this key through every merge (CRITICAL 5).
+
+**Caveat worth knowing.** OpenNext deliberately sets `minifyIdentifiers: false`
+in its own bundle ("stay safe by not renaming identifiers"), and `"minify": true`
+overrides that intent for the final upload. It was smoke-tested under real
+`workerd` (`wrangler dev --minify`) — login, NextAuth session/csrf/providers,
+the Chakra-SSR pages, Neon and Redis routes all 200 with zero errors — but
+**re-run that smoke test after any wrangler / Next / OpenNext upgrade**.
+
+**Check before pushing** — the build log won't warn you:
+
+```bash
+npm run cf:build
+npx wrangler deploy --dry-run --outdir /tmp/wout | grep "Total Upload"
+# gzip must be < 3072 KiB
+```
+
+**If headroom runs out** (9% is not much — a few new heavy client-SSR'd
+components could eat it):
+
+1. Move client-only heavy components to `next/dynamic({ ssr: false })` so they
+   leave the server bundle entirely (check `recharts`, `papaparse`,
+   `react-frame-component`, `typed.js` — none are server-bundled today).
+2. Add heavy barrel packages to `experimental.optimizePackageImports`.
+3. **Upgrade to the Workers paid plan ($5/mo) → 10 MiB.** Honestly the robust
+   answer if this becomes recurring; every option above is shaving percent.
+
+To see what's actually big:
+
+```bash
+node -e "const m=require('./.open-next/server-functions/default/handler.mjs.meta.json');
+for(const [k,v] of Object.entries(m.outputs)) if(k.endsWith('handler.mjs')&&v.inputs)
+  Object.entries(v.inputs).map(([f,i])=>[f,i.bytesInOutput]).sort((a,b)=>b[1]-a[1])
+    .slice(0,25).forEach(([f,b])=>console.log((b/1024).toFixed(0).padStart(7)+' KiB  '+f));"
+```
 
 ---
 

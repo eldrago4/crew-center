@@ -2,6 +2,15 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "crew-center",
   "main": ".open-next/worker.js",
+  // Required on the Workers Free plan (3 MiB gzipped script limit). OpenNext
+  // emits an already-minified handler.mjs, but wrangler's own esbuild pass
+  // re-prints it — the 2.5k-line handler becomes 202k lines inside worker.js,
+  // which pushed the upload to 3131 KiB gzipped and hard-failed deploy with
+  // "exceeded the size limit of 3 MiB" [code: 10027]. Minifying on upload
+  // brings it back to ~2790 KiB. Note this also renames identifiers (esbuild
+  // minifyIdentifiers), which OpenNext deliberately avoids in its own bundle,
+  // so any wrangler/Next upgrade should be re-smoke-tested under `cf:preview`.
+  "minify": true,
   "compatibility_date": "2026-07-14",
   // nodejs_compat is required: firebase-admin, drizzle and the Neon driver all
   // reach for Node built-ins. enable_nodejs_process_v2 keeps process.env working.
