@@ -201,6 +201,12 @@ export async function GET() {
             totalMinutes: flight.totalTime,
             aircraftName: livery?.aircraftName || '',
             operator,
+        }, {
+            // Per-user and expensive (2 IF-API round trips + liveries catalog).
+            // Private browser cache so a dashboard revisit/soft-nav within 2 min
+            // reuses it instead of re-hitting the worker and IF's API. A new flight
+            // showing up ~2 min late on the dashboard is fine.
+            headers: { 'Cache-Control': 'private, max-age=120' },
         })
     } catch (err) {
         console.error('[IF LAST FLIGHT]', err.message)

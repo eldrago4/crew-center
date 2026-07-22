@@ -10,7 +10,11 @@ export async function GET() {
 
   try {
     const status = await getLotusStatus(session.user.discordId || session.user.id);
-    return NextResponse.json(status);
+    // Per-user subscription status, changes rarely. Private browser cache trims
+    // repeat worker hits from the chanda page within a minute.
+    return NextResponse.json(status, {
+      headers: { 'Cache-Control': 'private, max-age=60' },
+    });
   } catch (err) {
     console.error('[lotus/status]', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });

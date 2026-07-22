@@ -39,7 +39,11 @@ export async function GET() {
             );
         }
 
-        return NextResponse.json({ userRank: userRank[ 0 ] });
+        // Rank changes only on a (rare) promotion. Private browser cache so the
+        // dashboard doesn't re-hit the worker for it on every visit within 5 min.
+        return NextResponse.json({ userRank: userRank[ 0 ] }, {
+            headers: { 'Cache-Control': 'private, max-age=300' },
+        });
     } catch (error) {
         console.error('Error fetching user rank:', error);
         return NextResponse.json(

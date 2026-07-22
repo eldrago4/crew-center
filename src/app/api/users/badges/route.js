@@ -21,6 +21,10 @@ export async function GET() {
 
     const badges = rows?.[ 0 ]?.badges
 
-    return NextResponse.json({ badges: Array.isArray(badges) ? badges : [] })
+    // Badges change rarely (award cron). Private browser cache so repeat views
+    // within 2 min reuse it instead of re-hitting the worker.
+    return NextResponse.json({ badges: Array.isArray(badges) ? badges : [] }, {
+        headers: { 'Cache-Control': 'private, max-age=120' },
+    })
 }
 
