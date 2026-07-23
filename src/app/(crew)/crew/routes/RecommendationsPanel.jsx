@@ -173,23 +173,25 @@ function TypingLoader() {
   useEffect(() => {
     let alive = true;
     let timer;
+    const TYPE_MS = 3000; // every phrase types out over ~3 seconds, whatever its length
     const type = (phrase, i) => {
       if (!alive) return;
+      const step = Math.max(TYPE_MS / phrase.length, 16);
       if (i <= phrase.length) {
         setText(phrase.slice(0, i));
-        timer = setTimeout(() => type(phrase, i + 1), 45);
+        timer = setTimeout(() => type(phrase, i + 1), step);
       } else {
-        timer = setTimeout(() => erase(phrase, phrase.length), 1100);
+        timer = setTimeout(() => erase(phrase, phrase.length), 650);
       }
     };
     const erase = (phrase, i) => {
       if (!alive) return;
       if (i >= 0) {
         setText(phrase.slice(0, i));
-        timer = setTimeout(() => erase(phrase, i - 1), 22);
+        timer = setTimeout(() => erase(phrase, i - 1), 18);
       } else {
         phraseRef.current = (phraseRef.current + 1) % LOADING_PHRASES.length;
-        timer = setTimeout(() => type(LOADING_PHRASES[phraseRef.current], 0), 180);
+        timer = setTimeout(() => type(LOADING_PHRASES[phraseRef.current], 0), 150);
       }
     };
     type(LOADING_PHRASES[phraseRef.current], 0);
@@ -265,8 +267,8 @@ function ModeTabs({ mode, loading, onPick }) {
   );
 }
 
-// ---- One recommendation (full-width, data-centric card) ----------------------
-function RecCard({ rec, rankOfViewer }) {
+// ---- One recommendation (a full-width row inside the single results card) ----
+function RecCard({ rec, isFirst }) {
   const from = parseLoc(rec.from, rec.departureIcao);
   const to = parseLoc(rec.to, rec.arrivalIcao);
   const aircraft = (rec.aircraft || "").split(",").map((a) => a.trim()).filter(Boolean);
@@ -285,16 +287,10 @@ function RecCard({ rec, rankOfViewer }) {
   return (
     <Box
       className={styles.card}
-      borderWidth="1px"
+      borderTopWidth={isFirst ? "0" : "1px"}
       borderColor={{ base: "gray.200", _dark: "whiteAlpha.200" }}
-      bg={{ base: "white", _dark: "gray.900" }}
-      borderRadius="2xl"
-      overflow="hidden"
-      transition="border-color 0.2s ease, box-shadow 0.2s ease"
-      _hover={{
-        borderColor: { base: "rgba(190,18,61,0.4)", _dark: "rgba(255,178,183,0.35)" },
-        boxShadow: "0 4px 20px rgba(190, 18, 61, 0.10)",
-      }}
+      transition="background 0.2s ease"
+      _hover={{ bg: { base: "rgba(190,18,61,0.02)", _dark: "whiteAlpha.50" } }}
     >
       <Grid templateColumns={{ base: "1fr", lg: "minmax(0,1.35fr) minmax(0,1fr)" }} gap={0}>
         {/* Zone 1 + 2: header + route */}
@@ -443,11 +439,34 @@ function RecCard({ rec, rankOfViewer }) {
 export function RecommendationResults({ recommender }) {
   const { open, mode, loading, data, error, run } = recommender;
   const activeMode = useMemo(() => MODES.find((m) => m.value === mode), [mode]);
+  const recs = data?.recommendations || [];
+
+  // Fake-streaming reveal: once the picks arrive, uncover them one route at a
+  // time so it reads like the recommender is charting them live. Resets on every
+  // new request (loading) and re-streams whenever a fresh `data` object lands.
+  const [revealed, setRevealed] = useState(0);
+  useEffect(() => {
+    if (loading || recs.length === 0) {
+      setRevealed(0);
+      return;
+    }
+    setRevealed(1);
+    const id = setInterval(() => {
+      setRevealed((r) => {
+        if (r >= recs.length) {
+          clearInterval(id);
+          return r;
+        }
+        return r + 1;
+      });
+    }, 600);
+    return () => clearInterval(id);
+  }, [loading, data, recs.length]);
 
   if (!open) return null;
 
-  const recs = data?.recommendations || [];
   const summary = data?.profileSummary;
+  const streaming = recs.length > 0 && revealed < recs.length;
 
   return (
     <VStack align="stretch" gap={4}>
@@ -503,11 +522,36 @@ export function RecommendationResults({ recommender }) {
       )}
 
       {!loading && !error && recs.length > 0 && (
-        <VStack align="stretch" gap={4}>
-          {recs.map((rec) => (
-            <RecCard key={rec.flightNumber} rec={rec} rankOfViewer={data?.rank} />
+        <Box
+          className={styles.card}
+          borderWidth="1px"
+          borderColor={{ base: "gray.200", _dark: "whiteAlpha.200" }}
+          bg={{ base: "white", _dark: "gray.900" }}
+          borderRadius="2xl"
+          overflow="hidden"
+          boxShadow="0 4px 20px rgba(190, 18, 61, 0.06)"
+        >
+          {recs.slice(0, revealed).map((rec, i) => (
+            <RecCard key={rec.flightNumber} rec={rec} isFirst={i === 0} />
           ))}
-        </VStack>
+
+          {/* Streaming footer — pulses while more routes are still being charted */}
+          {streaming && (
+            <HStack
+              gap={3}
+              px={{ base: 4, md: 6 }}
+              py={3}
+              borderTopWidth="1px"
+              borderColor={{ base: "gray.200", _dark: "whiteAlpha.200" }}
+              bg={{ base: "#f8f9ff", _dark: "whiteAlpha.50" }}
+            >
+              <Box className={styles.pulseDot} w="8px" h="8px" borderRadius="full" bg={CRIMSON} flexShrink={0} />
+              <Text fontFamily="mono" fontSize="2xs" letterSpacing="0.1em" textTransform="uppercase" color="gray.500">
+                Charting route {revealed + 1} of {recs.length}…
+              </Text>
+            </HStack>
+          )}
+        </Box>
       )}
     </VStack>
   );

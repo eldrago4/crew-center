@@ -70,6 +70,22 @@
   }
 }
 
+/* ---- Streaming "charting more routes" pulse ----------------------------- */
+.pulseDot {
+  animation: aigPulse 1s ease-in-out infinite;
+}
+@keyframes aigPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.6);
+  }
+}
+
 /* ---- Route connector line (origin ——✈—— destination) -------------------- */
 .connector {
   position: relative;
