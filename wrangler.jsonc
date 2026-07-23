@@ -1,7 +1,21 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "crew-center",
-  "main": ".open-next/worker.js",
+  // Points at the wrapper (worker.js) rather than .open-next/worker.js directly:
+  // the wrapper re-exports OpenNext's fetch + Durable Objects and adds a
+  // scheduled() handler for the Cron Triggers below. opennextjs-cloudflare's
+  // deploy/preview just run `wrangler`, which honours this `main`.
+  "main": "worker.js",
+  // Cloudflare Cron Triggers — the Workers replacement for Vercel Cron. Each
+  // expression is dispatched to worker.js's scheduled() handler, which maps it
+  // to the matching /api/*/cron route. Keep these in sync with CRON_ROUTES in
+  // worker.js. Times are UTC; adjust to taste.
+  "triggers": {
+    "crons": [
+      "0 3 * * *",
+      "0 4 1 * *"
+    ]
+  },
   // Required on the Workers Free plan (3 MiB gzipped script limit). OpenNext
   // emits an already-minified handler.mjs, but wrangler's own esbuild pass
   // re-prints it — the 2.5k-line handler becomes 202k lines inside worker.js,
@@ -21,7 +35,10 @@
   "vars": {
     // NextAuth only auto-trusts the request host on Vercel. Without this,
     // every auth call on Workers fails with UntrustedHost and login bbreaks.
-    "AUTH_TRUST_HOST": "true"
+    "AUTH_TRUST_HOST": "true",
+    // Base URL of the flight-recommender worker. The matching RECS_API_KEY is a
+    // secret (wrangler secret put RECS_API_KEY), not a var.
+    "RECS_API_URL": "https://api.indianvirtual.site"
   },
   "assets": {
     "directory": ".open-next/assets",

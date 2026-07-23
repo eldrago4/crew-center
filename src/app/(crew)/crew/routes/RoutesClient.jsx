@@ -30,6 +30,11 @@ import {
 } from "@chakra-ui/react";
 import { FiSend } from "react-icons/fi";
 import { Toaster, toaster } from "@/components/ui/toaster";
+import {
+  useFlightRecommender,
+  RecommendationButton,
+  RecommendationResults,
+} from "./RecommendationsPanel";
 
 const ACCENT = "#9e0b1f";
 
@@ -128,42 +133,6 @@ function computeTimeBounds(routes) {
 
 
 // Constants
-const aircraftList = [
-  'A220-300',
-  'A319',
-  'A320',
-  'A321',
-  'A333',
-  'A339',
-  'A346',
-  'A359',
-  'A35K',
-  'A388',
-  'Boeing 737-800',
-  'Boeing 737-900',
-  'Boeing 737MAX',
-  'Boeing 747-400',
-  'Boeing 747-8',
-  'Boeing 757-200',
-  'Boeing 767-300',
-  'Boeing 777-200ER',
-  'Boeing 777-200LR',
-  'Boeing 777-300ER',
-  'Boeing 777F',
-  'Boeing 787-10',
-  'Boeing 787-8',
-  'Boeing 787-9',
-  'Bombardier Dash 8-Q400',
-  'CRJ-900',
-  'ERJ-175',
-  'ERJ-190',
-  'MD-11'
-];
-
-const aircraftOptions = createListCollection({
-  items: aircraftList.map(ac => ({ label: ac, value: ac })),
-});
-
 const rankHierarchy = [
   "Yuvraj", "Rajkumar", "Rajvanshi", "Rajdhiraj", "Maharaja", "Samrat", "Chhatrapati",
 ];
@@ -172,18 +141,24 @@ const rankOptions = createListCollection({
   items: rankHierarchy.map(rank => ({ label: rank.charAt(0).toUpperCase() + rank.slice(1), value: rank })),
 });
 
-// Maps route aircraft names → SimBrief ICAO type codes
+// Maps route aircraft names → SimBrief ICAO type codes for the FPL deep-link.
+// SimBrief codes aren't stored in the DB fleet module, so this stays in-code;
+// it covers every aircraft the fleet module can contain. Unknown names fall
+// back to the raw aircraft string (see the FPL link builder below).
 const aircraftICAOCodes = {
-  'A220-300': 'BCS3',
+  'A318': 'A318',
   'A319': 'A319',
   'A320': 'A320',
   'A321': 'A321',
+  'A220-300': 'BCS3',
+  'A332': 'A332',
   'A333': 'A333',
   'A339': 'A339',
   'A346': 'A346',
   'A359': 'A359',
   'A35K': 'A35K',
   'A388': 'A388',
+  'Boeing 737-700': 'B737',
   'Boeing 737-800': 'B738',
   'Boeing 737-900': 'B739',
   'Boeing 737MAX': 'B38M',
@@ -191,28 +166,26 @@ const aircraftICAOCodes = {
   'Boeing 747-8': 'B748',
   'Boeing 757-200': 'B752',
   'Boeing 767-300': 'B763',
+  'Boeing 767-300ER': 'B763',
   'Boeing 777-200ER': 'B772',
   'Boeing 777-200LR': 'B77L',
   'Boeing 777-300ER': 'B77W',
   'Boeing 777F': 'B77L',
-  'Boeing 787-10': 'B78X',
   'Boeing 787-8': 'B788',
   'Boeing 787-9': 'B789',
+  'Boeing 787-10': 'B78X',
   'Bombardier Dash 8-Q400': 'DH8D',
+  'CRJ-700': 'CRJ7',
   'CRJ-900': 'CRJ9',
+  'CRJ-1000': 'CRJX',
+  'DC-10': 'DC10',
+  'DC-10F': 'DC10',
   'ERJ-175': 'E175',
   'ERJ-190': 'E190',
   'MD-11': 'MD11',
-};
-
-const rankAircraftMap = {
-  Yuvraj: [ "A220-300", "A320", "Bombardier Dash 8-Q400", "ERJ-175", "ERJ-190", "CRJ-900" ],
-  Rajkumar: [ "Boeing 737MAX", "Boeing 737-800", "Boeing 737-900", "A321" ],
-  Rajvanshi: [ "Boeing 767-300", "Boeing 757-200", "A333", "A339", "Boeing 787-8" ],
-  Rajdhiraj: [ "Boeing 787-9", "Boeing 787-10" ],
-  Maharaja: [ "Boeing 777-200LR", "Boeing 777-200ER", "Boeing 777-300ER", "Boeing 747-400", "A346" ],
-  Samrat: [ "A359", "Boeing 747-8" ],
-  Chhatrapati: [ "A35K", "A388" ],
+  'MD-11F': 'MD11',
+  'C208': 'C208',
+  'TBM-930': 'TBM9',
 };
 
 const ITEMS_PER_PAGE = 15;
@@ -223,8 +196,31 @@ function formatTime(h, m) {
 
 const EMPTY_ROUTE_REQUEST = { flightNumber: "", departureIcao: "", arrivalIcao: "", flightTime: "", aircraft: "" };
 
-export default function RoutesClient({ initialRoutes, cacheVersion }) {
+export default function RoutesClient({ initialRoutes, cacheVersion, fleet = [] }) {
   const { data: session } = useSession();
+
+  // Aircraft dropdown options come straight from the DB fleet module ({ label,
+  // value, rank }). Empty fleet (fetch failure) just yields an empty select.
+  const aircraftOptions = useMemo(
+    () => createListCollection({
+      items: fleet.map(f => ({ label: f.label, value: f.value })),
+    }),
+    [ fleet ],
+  );
+
+  // rank gating: aircraft value → its rank's index in the hierarchy. The rank
+  // filter shows a route if any of its aircraft unlocks at or below the picked
+  // rank. Aircraft with a missing/unknown rank map to index 0 (Yuvraj) so they
+  // are never hidden by the filter.
+  const aircraftRankIndex = useMemo(() => {
+    const map = new Map();
+    for (const f of fleet) {
+      const idx = rankHierarchy.indexOf(f.rank);
+      map.set(f.value, idx === -1 ? 0 : idx);
+    }
+    return map;
+  }, [ fleet ]);
+
   const [ data, setData ] = useState(initialRoutes);
   const [ filtered, setFiltered ] = useState(initialRoutes);
   const [ filters, setFilters ] = useState(() => ({
@@ -238,6 +234,9 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
   const [ page, setPage ] = useState(1);
   const [ randomRoute, setRandomRoute ] = useState(null);
   const [ loading, setLoading ] = useState(false);
+
+  // AI flight recommendations (calls the Cloudflare recommender via /api proxy).
+  const recommender = useFlightRecommender();
 
   const [ isRequestOpen, setRequestOpen ] = useState(false);
   const [ requestForm, setRequestForm ] = useState(EMPTY_ROUTE_REQUEST);
@@ -316,9 +315,9 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
       let rankAllowed = true;
       if (filters.rank) {
         const selectedRankIndex = rankHierarchy.indexOf(filters.rank);
-        const allowedAircrafts = rankHierarchy
-          .slice(0, selectedRankIndex + 1)
-          .flatMap((rank) => rankAircraftMap[ rank ] || []);
+        const allowedAircrafts = fleet
+          .filter((f) => (aircraftRankIndex.get(f.value) ?? 0) <= selectedRankIndex)
+          .map((f) => f.value);
         rankAllowed = allowedAircrafts.some((ac) =>
           route.aircraft_names.toLowerCase().includes(ac.toLowerCase())
         );
@@ -337,7 +336,7 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
 
     setFiltered(result);
     setPage(1);
-  }, [ filters, data ]);
+  }, [ filters, data, fleet, aircraftRankIndex ]);
 
   const handleRandomRoute = () => {
     if (filtered.length > 0) {
@@ -506,11 +505,12 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
         </VStack>
       </Box>
 
-      {/* Random Route + Request Route Buttons */}
+      {/* Random Route + Recommendations + Request Route Buttons */}
       <HStack spacing={3} wrap="wrap">
         <Button onClick={handleRandomRoute} colorPalette="blue" variant="solid" borderRadius="full">
           🎲 Random Route
         </Button>
+        <RecommendationButton recommender={recommender} disabled={!session?.user?.callsign} />
         <Button
           onClick={() => setRequestOpen(true)}
           variant="ghost"
@@ -520,6 +520,9 @@ export default function RoutesClient({ initialRoutes, cacheVersion }) {
           <FiSend /> Request Route
         </Button>
       </HStack>
+
+      {/* AI recommendation results (loader → data-centric cards) */}
+      <RecommendationResults recommender={recommender} />
 
       {/* Request Route Dialog */}
       <Dialog.Root open={isRequestOpen} onOpenChange={(e) => setRequestOpen(e.open)}>
