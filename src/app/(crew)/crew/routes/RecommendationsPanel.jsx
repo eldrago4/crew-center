@@ -29,6 +29,9 @@ import {
   LuChevronRight,
 } from "react-icons/lu";
 import styles from "./recommendations.module.css";
+// Bundled with the lazy Lottie chunk below, so it's fetched once, gzipped, and
+// cached immutably under /_next/static — no runtime fetch/parse per open.
+import aigAnimation from "./aig-lottie.json";
 
 // lottie-react touches `document`, so load it only in the browser and only when
 // the loader actually mounts (keeps the ~250 KB player out of the initial page).
@@ -153,21 +156,8 @@ export function RecommendationButton({ recommender, disabled }) {
 
 // ---- Typewriter loader (AIG lottie + cycling phrases) ------------------------
 function TypingLoader() {
-  const [animData, setAnimData] = useState(null);
   const [text, setText] = useState("");
   const phraseRef = useRef(0);
-
-  // Fetch the lottie JSON lazily (kept out of the JS bundle; lives in /public).
-  useEffect(() => {
-    let alive = true;
-    fetch("/lottie/AIG.json")
-      .then((r) => r.json())
-      .then((j) => alive && setAnimData(j))
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   // Type the current phrase, hold, erase, advance — looping while mounted.
   useEffect(() => {
@@ -213,11 +203,7 @@ function TypingLoader() {
     >
       <HStack gap={4} align="center">
         <Box w={{ base: "56px", md: "72px" }} h={{ base: "56px", md: "72px" }} flexShrink={0}>
-          {animData ? (
-            <Lottie animationData={animData} loop style={{ width: "100%", height: "100%" }} />
-          ) : (
-            <Image src="/fonts/Aig.png" alt="AI.g" width={72} height={72} />
-          )}
+          <Lottie animationData={aigAnimation} loop style={{ width: "100%", height: "100%" }} />
         </Box>
         <Box minW={0}>
           <Text
