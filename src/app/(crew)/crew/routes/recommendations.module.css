@@ -7,18 +7,21 @@
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  background: linear-gradient(135deg, #be123c 0%, #95002a 100%);
-  color: #fff;
-  box-shadow: 0 2px 10px rgba(190, 18, 61, 0.28);
-  transition: box-shadow 0.2s ease, transform 0.12s ease;
+  /* Light surface so the red AI.g logo actually reads (was invisible on red). */
+  background: #ffffff;
+  color: #be123c;
+  border: 1px solid rgba(190, 18, 61, 0.35);
+  box-shadow: 0 2px 10px rgba(190, 18, 61, 0.12);
+  transition: box-shadow 0.2s ease, transform 0.12s ease, border-color 0.2s ease;
 }
 .aigButton:hover {
-  box-shadow: 0 4px 20px rgba(190, 18, 61, 0.42);
+  border-color: rgba(190, 18, 61, 0.6);
+  box-shadow: 0 4px 20px rgba(190, 18, 61, 0.24);
 }
 .aigButton:active {
   transform: translateY(1px);
 }
-/* Horizontal "processing" shimmer sweeping across on hover. */
+/* Faint crimson "processing" sweep on hover (reads on the light background). */
 .aigButton::after {
   content: "";
   position: absolute;
@@ -27,7 +30,7 @@
   background: linear-gradient(
     100deg,
     transparent 20%,
-    rgba(255, 255, 255, 0.35) 50%,
+    rgba(190, 18, 61, 0.1) 50%,
     transparent 80%
   );
   transform: translateX(-120%);

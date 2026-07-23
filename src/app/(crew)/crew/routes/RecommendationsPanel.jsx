@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import Image from "next/image";
 import NoPrefetchLink from "@/components/NoPrefetchLink";
 import {
@@ -29,13 +28,8 @@ import {
   LuChevronRight,
 } from "react-icons/lu";
 import styles from "./recommendations.module.css";
-// Bundled with the lazy Lottie chunk below, so it's fetched once, gzipped, and
-// cached immutably under /_next/static — no runtime fetch/parse per open.
+// Bundled (imported, not fetched) so it's cached immutably under /_next/static.
 import aigAnimation from "./aig-lottie.json";
-
-// lottie-react touches `document`, so load it only in the browser and only when
-// the loader actually mounts (keeps the ~250 KB player out of the initial page).
-const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 // Design tokens (DESIGN.md — "Aeronaut Intelligence").
 const CRIMSON = "#be123c";
@@ -75,6 +69,14 @@ const LOADING_PHRASES = [
   "Somebody forgot the paperwork...",
   "Autopilot's got this...",
 ];
+
+// Pick a random phrase index, never repeating the current one twice in a row.
+function nextRandomPhrase(cur) {
+  if (LOADING_PHRASES.length < 2) return 0;
+  let n = cur;
+  while (n === cur) n = Math.floor(Math.random() * LOADING_PHRASES.length);
+  return n;
+}
 
 // "New Delhi, India (VIDP)" → { place: "New Delhi, India", city: "New Delhi", country: "India" }
 function parseLoc(raw, fallbackIcao) {
@@ -147,17 +149,45 @@ export function RecommendationButton({ recommender, disabled }) {
       px={5}
     >
       <HStack gap={2}>
-        <Image src="/fonts/Aig.png" alt="AI.g" width={20} height={20} priority />
+        {/* Oversized on purpose — let the logo break out of the button padding. */}
+        <Image src="/fonts/Aig.png" alt="AI.g" width={40} height={40} priority style={{ margin: "-10px 0" }} />
         <Text>Recommendations</Text>
       </HStack>
     </Button>
   );
 }
 
+// Renders the AI.g Lottie with the reference lottie-web engine, initialised in
+// an effect so it only ever runs in the browser (no SSR / hydration quirks) and
+// always mounts into a live DOM node. lottie-web is imported dynamically to keep
+// it out of the initial page bundle; the animation JSON is bundled statically.
+function AigLottie() {
+  const ref = useRef(null);
+  useEffect(() => {
+    let anim;
+    let cancelled = false;
+    import("lottie-web").then(({ default: lottie }) => {
+      if (cancelled || !ref.current) return;
+      anim = lottie.loadAnimation({
+        container: ref.current,
+        renderer: "svg",
+        loop: true,
+        autoplay: true,
+        animationData: aigAnimation,
+      });
+    });
+    return () => {
+      cancelled = true;
+      if (anim) anim.destroy();
+    };
+  }, []);
+  return <div ref={ref} style={{ width: "100%", height: "100%" }} aria-hidden="true" />;
+}
+
 // ---- Typewriter loader (AIG lottie + cycling phrases) ------------------------
 function TypingLoader() {
   const [text, setText] = useState("");
-  const phraseRef = useRef(0);
+  const phraseRef = useRef(Math.floor(Math.random() * LOADING_PHRASES.length));
 
   // Type the current phrase, hold, erase, advance — looping while mounted.
   useEffect(() => {
@@ -180,7 +210,7 @@ function TypingLoader() {
         setText(phrase.slice(0, i));
         timer = setTimeout(() => erase(phrase, i - 1), 18);
       } else {
-        phraseRef.current = (phraseRef.current + 1) % LOADING_PHRASES.length;
+        phraseRef.current = nextRandomPhrase(phraseRef.current);
         timer = setTimeout(() => type(LOADING_PHRASES[phraseRef.current], 0), 150);
       }
     };
@@ -202,8 +232,8 @@ function TypingLoader() {
       py={6}
     >
       <HStack gap={4} align="center">
-        <Box w={{ base: "56px", md: "72px" }} h={{ base: "56px", md: "72px" }} flexShrink={0}>
-          <Lottie animationData={aigAnimation} loop style={{ width: "100%", height: "100%" }} />
+        <Box w={{ base: "60px", md: "76px" }} h={{ base: "60px", md: "76px" }} flexShrink={0}>
+          <AigLottie />
         </Box>
         <Box minW={0}>
           <Text
@@ -324,10 +354,10 @@ function RecCard({ rec, isFirst }) {
             </VStack>
           </HStack>
 
-          {/* Meta row: duration + min rank */}
-          <Wrap gap={5}>
+          {/* Meta row: duration + fleet side by side */}
+          <Wrap gapX={8} gapY={4} align="start">
             <WrapItem>
-              <VStack gap={0} align="start">
+              <VStack gap={1} align="start">
                 <Text {...dataLabel}>Duration</Text>
                 <HStack gap={1}>
                   <Icon as={LuClock} boxSize={3.5} color="gray.500" />
@@ -335,42 +365,37 @@ function RecCard({ rec, isFirst }) {
                 </HStack>
               </VStack>
             </WrapItem>
-            <WrapItem>
-              <VStack gap={0} align="start">
-                <Text {...dataLabel}>Unlocks at</Text>
-                <Text fontFamily="mono" fontWeight="600" fontSize="sm">{rec.minRank}</Text>
+            {/* Aircraft chips — flyable ones highlighted teal, locked ones muted */}
+            <WrapItem flex="1" minW="0">
+              <VStack gap={1} align="start">
+                <Text {...dataLabel}>Fleet</Text>
+                <Wrap gap={2}>
+                  {aircraft.map((ac) => {
+                    const canFly = unlocked.has(ac);
+                    return (
+                      <WrapItem key={ac}>
+                        <Badge
+                          borderRadius="full"
+                          px={3}
+                          py={1}
+                          fontFamily="mono"
+                          fontSize="2xs"
+                          letterSpacing="0.05em"
+                          variant={canFly ? "solid" : "outline"}
+                          bg={canFly ? "rgba(13,148,136,0.12)" : "transparent"}
+                          color={canFly ? TEAL : "gray.500"}
+                          borderWidth="1px"
+                          borderColor={canFly ? "rgba(13,148,136,0.4)" : { base: "gray.200", _dark: "whiteAlpha.200" }}
+                        >
+                          {ac}
+                        </Badge>
+                      </WrapItem>
+                    );
+                  })}
+                </Wrap>
               </VStack>
             </WrapItem>
           </Wrap>
-
-          {/* Aircraft chips — flyable ones highlighted teal, locked ones muted */}
-          <Box mt={4}>
-            <Text {...dataLabel} mb={2}>Fleet</Text>
-            <Wrap gap={2}>
-              {aircraft.map((ac) => {
-                const canFly = unlocked.has(ac);
-                return (
-                  <WrapItem key={ac}>
-                    <Badge
-                      borderRadius="full"
-                      px={3}
-                      py={1}
-                      fontFamily="mono"
-                      fontSize="2xs"
-                      letterSpacing="0.05em"
-                      variant={canFly ? "solid" : "outline"}
-                      bg={canFly ? "rgba(13,148,136,0.12)" : "transparent"}
-                      color={canFly ? TEAL : "gray.500"}
-                      borderWidth="1px"
-                      borderColor={canFly ? "rgba(13,148,136,0.4)" : { base: "gray.200", _dark: "whiteAlpha.200" }}
-                    >
-                      {ac}
-                    </Badge>
-                  </WrapItem>
-                );
-              })}
-            </Wrap>
-          </Box>
         </GridItem>
 
         {/* Zone 3: AI insights + CTA */}
@@ -451,7 +476,6 @@ export function RecommendationResults({ recommender }) {
 
   if (!open) return null;
 
-  const summary = data?.profileSummary;
   const streaming = recs.length > 0 && revealed < recs.length;
 
   return (
@@ -483,9 +507,6 @@ export function RecommendationResults({ recommender }) {
       {activeMode && (
         <Text fontSize="xs" fontFamily="mono" letterSpacing="0.06em" textTransform="uppercase" color="gray.500">
           {activeMode.blurb}
-          {data?.rank ? ` · Rank ${data.rank}` : ""}
-          {summary?.pirepCount != null ? ` · ${summary.pirepCount} PIREPs analysed` : ""}
-          {data && !data.explained ? " · quick mode" : ""}
         </Text>
       )}
 
