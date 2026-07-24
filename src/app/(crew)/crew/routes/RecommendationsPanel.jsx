@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import NoPrefetchLink from "@/components/NoPrefetchLink";
 import {
@@ -28,8 +29,11 @@ import {
   LuChevronRight,
 } from "react-icons/lu";
 import styles from "./recommendations.module.css";
-// Bundled (imported, not fetched) so it's cached immutably under /_next/static.
-import aigAnimation from "./aig-lottie.json";
+
+// The AI.g Lottie plays only in the browser (lottie-web touches window/document),
+// so it's pulled in with ssr:false — never evaluated during SSR, kept out of the
+// initial page bundle, and code-split into its own chunk. See ./AigLottie.jsx.
+const AigLottie = dynamic(() => import("./AigLottie"), { ssr: false });
 
 // Design tokens (DESIGN.md — "Aeronaut Intelligence").
 const CRIMSON = "#be123c";
@@ -155,48 +159,6 @@ export function RecommendationButton({ recommender, disabled }) {
       </HStack>
     </Button>
   );
-}
-
-// Renders the AI.g Lottie with the reference lottie-web engine, initialised in
-// an effect so it only ever runs in the browser (no SSR / hydration quirks) and
-// always mounts into a live DOM node. lottie-web is imported dynamically to keep
-// it out of the initial page bundle; the animation JSON is bundled statically.
-//
-// The clone is load-bearing, not defensive noise: lottie-web MUTATES the object
-// it's handed (it tags it `completed` and stores per-frame render state on it).
-// A statically-imported JSON module is a frozen, shared singleton, so passing
-// `aigAnimation` straight in throws "Cannot add property completed, object is
-// not extensible" — swallowed here inside the async import, so the animation
-// just silently never appeared. This is why it rendered on LottieFiles (raw,
-// mutable data) but never in-app, and why the react wrapper failed identically
-// (same engine, same mutation). Hand it a fresh mutable copy every mount.
-function AigLottie() {
-  const ref = useRef(null);
-  useEffect(() => {
-    let anim;
-    let cancelled = false;
-    import("lottie-web")
-      .then((mod) => {
-        const lottie = mod.default ?? mod;
-        if (cancelled || !ref.current) return;
-        anim = lottie.loadAnimation({
-          container: ref.current,
-          renderer: "svg",
-          loop: true,
-          autoplay: true,
-          animationData: structuredClone(aigAnimation),
-        });
-      })
-      .catch((err) => {
-        // Never fail silently again — if the player can't load, say so.
-        console.error("[AigLottie] failed to render", err);
-      });
-    return () => {
-      cancelled = true;
-      if (anim) anim.destroy();
-    };
-  }, []);
-  return <div ref={ref} style={{ width: "100%", height: "100%" }} aria-hidden="true" />;
 }
 
 // ---- Typewriter loader (AIG lottie + cycling phrases) ------------------------

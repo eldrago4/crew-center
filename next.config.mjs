@@ -29,6 +29,15 @@ const nextConfig = {
     '/api/**/*': ['./node_modules/jose/dist/**/*'],
   },
   images: {
+    // On Cloudflare Workers, next/image's optimizer (/_next/image?url=…) is
+    // served by OpenNext through a Cloudflare Images binding named IMAGES. That
+    // binding isn't declared (and Images transformations aren't on the Free
+    // plan), so every optimized request failed with "env.IMAGES binding is not
+    // defined". Serving originals instead: next/image now emits the real asset
+    // path (e.g. /fonts/Aig.png), delivered by the ASSETS binding and cached a
+    // year via the headers() rules below. The art is already small, so there's
+    // nothing meaningful to optimize away.
+    unoptimized: true,
     remotePatterns: [
       { protocol: 'https', hostname: 'cdn.discordapp.com' },
     ],
