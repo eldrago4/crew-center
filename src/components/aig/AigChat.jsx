@@ -2,9 +2,9 @@
 
 import * as React from 'react'
 import NextImage from 'next/image'
+import dynamic from 'next/dynamic'
 import { useSession } from 'next-auth/react'
 import {
-  Avatar,
   Box,
   Code,
   Dialog,
@@ -13,17 +13,43 @@ import {
   IconButton,
   Link,
   Portal,
-  Spinner,
   Text,
   Textarea,
   VStack,
+  useBreakpointValue,
 } from '@chakra-ui/react'
 import { LuArrowUp, LuX } from 'react-icons/lu'
 import { DiscordAvatar } from '@/components/DiscordAvatar'
+import styles from './AigChat.module.css'
+
+// The AI.g dotLottie sprite (browser-only WASM renderer) — reuse the one the
+// /crew/routes recommender already ships and self-hosts.
+const AigLottie = dynamic(() => import('@/app/(crew)/crew/routes/AigLottie'), { ssr: false })
 
 const AIG_LOGO = '/fonts/Aig.png'
 const GREETING =
   "Hi! I'm AI.g, your Air India Virtual assistant. Ask me about flying procedures, ATC, our routes, or anything Infinite Flight."
+
+// Same playful loading lines the routes recommender uses.
+const LOADING_PHRASES = [
+  'Spooling engines...',
+  'Punching through clouds...',
+  'Chasing tailwinds...',
+  'Lining up...',
+  'Floating...',
+  'Finding FL690...',
+  'Tiny turbulence...',
+  'Blaming ATC...',
+  'Somebody forgot the paperwork...',
+  'Autopilot\'s got this...',
+]
+
+function nextRandomPhrase(cur) {
+  if (LOADING_PHRASES.length < 2) return 0
+  let n = cur
+  while (n === cur) n = Math.floor(Math.random() * LOADING_PHRASES.length)
+  return n
+}
 
 // Square AI.g avatar: the wide wordmark contained inside a rounded square chip
 // so it never gets cropped. Used for the bot's messages and the header.
@@ -257,12 +283,15 @@ export default function AigChat() {
   const { data: session } = useSession()
   const discordId = session?.user?.discordId
 
+  const isDesktop = useBreakpointValue({ base: false, md: true })
+
   const [open, setOpen] = React.useState(false)
   const [messages, setMessages] = React.useState([
     { role: 'assistant', content: GREETING, intro: true },
   ])
   const [input, setInput] = React.useState('')
   const [loading, setLoading] = React.useState(false)
+  const [phraseIdx, setPhraseIdx] = React.useState(0)
 
   const scrollRef = React.useRef(null)
   const inputRef = React.useRef(null)
@@ -279,12 +308,20 @@ export default function AigChat() {
     }
   }, [open])
 
+  // Rotate the playful loading phrase while we wait for the first token.
+  React.useEffect(() => {
+    if (!loading) return
+    setPhraseIdx(nextRandomPhrase(-1))
+    const id = setInterval(() => setPhraseIdx((cur) => nextRandomPhrase(cur)), 2500)
+    return () => clearInterval(id)
+  }, [loading])
+
   const send = React.useCallback(async () => {
     const text = input.trim()
     if (!text || loading) return
 
     // Forward the recent conversation (minus the canned greeting and any error
-    // notices) so the chat API has multi-turn context.
+    // notices) so the API has multi-turn context.
     const history = messages
       .filter((m) => (m.role === 'user' || m.role === 'assistant') && !m.intro)
       .map((m) => ({ role: m.role, content: m.content }))
@@ -294,24 +331,66 @@ export default function AigChat() {
     setInput('')
     setLoading(true)
 
+    const updateStreaming = (content) =>
+      setMessages((prev) => {
+        const copy = prev.slice()
+        const last = copy[copy.length - 1]
+        if (last && last.role === 'assistant' && last.streaming) {
+          copy[copy.length - 1] = { ...last, content }
+        }
+        return copy
+      })
+
     try {
       const res = await fetch('/api/aig/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: outgoing }),
       })
-      const data = await res.json().catch(() => ({}))
 
-      if (!res.ok) {
+      // Errors come back as JSON; a successful answer is a streamed text body.
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({}))
         setMessages((prev) => [
           ...prev,
           { role: 'error', content: data?.error || 'Something went wrong. Please try again.' },
         ])
+        return
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let acc = ''
+      let started = false
+
+      for (;;) {
+        const { value, done } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
+        if (!chunk) continue
+        acc += chunk
+        if (!started) {
+          started = true
+          setLoading(false)
+          setMessages((prev) => [...prev, { role: 'assistant', content: acc, streaming: true }])
+        } else {
+          updateStreaming(acc)
+        }
+      }
+
+      const finalText =
+        acc.trim() || "I couldn't find anything on that in the manuals or guides. Try rephrasing?"
+      if (started) {
+        setMessages((prev) => {
+          const copy = prev.slice()
+          const last = copy[copy.length - 1]
+          if (last && last.role === 'assistant' && last.streaming) {
+            copy[copy.length - 1] = { ...last, content: finalText, streaming: false }
+          }
+          return copy
+        })
       } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: data.answer, sources: data.sources || [] },
-        ])
+        setMessages((prev) => [...prev, { role: 'assistant', content: finalText }])
       }
     } catch {
       setMessages((prev) => [
@@ -344,24 +423,26 @@ export default function AigChat() {
         <IconButton
           aria-label="Open AI.g assistant"
           variant="ghost"
-          rounded="md"
-          px="1"
-          py="0"
+          rounded="12px"
+          p="0"
           minW="auto"
           h="auto"
-          _hover={{ bg: 'transparent', transform: 'scale(1.05)' }}
-          transition="transform 0.15s ease"
+          _hover={{ bg: 'transparent' }}
+          _active={{ bg: 'transparent' }}
         >
-          {/* The logo is a wide wordmark (294×129) — keep its aspect ratio in a
-              rectangle instead of cropping it into a circle. Sized as large as
-              the 60px navbar comfortably allows. */}
-          <NextImage
-            src={AIG_LOGO}
-            alt="AI.g"
-            width={91}
-            height={40}
-            style={{ objectFit: 'contain', display: 'block' }}
-          />
+          {/* Wide wordmark (294×129) kept in a rectangle, wrapped in a golden
+              revolving-shimmer border (see AigChat.module.css). */}
+          <span className={styles.ring}>
+            <span className={styles.inner}>
+              <NextImage
+                src={AIG_LOGO}
+                alt="AI.g"
+                width={78}
+                height={34}
+                style={{ objectFit: 'contain', display: 'block' }}
+              />
+            </span>
+          </span>
         </IconButton>
       </Dialog.Trigger>
 
@@ -381,19 +462,28 @@ export default function AigChat() {
             flexDirection="column"
             overflow="hidden"
             bg={{ base: 'white', _dark: 'gray.800' }}
-            position={{ md: 'fixed' }}
-            top={{ md: '64px' }}
-            right={{ md: '12px' }}
-            left={{ md: 'auto' }}
-            bottom={{ md: 'auto' }}
-            w={{ base: '100%', md: '380px' }}
-            maxW={{ md: '380px' }}
-            h={{ base: '100dvh', md: 'min(600px, calc(100dvh - 84px))' }}
-            maxH={{ base: '100dvh', md: 'calc(100dvh - 84px)' }}
-            borderRadius={{ base: '0', md: 'xl' }}
             borderWidth={{ md: '1px' }}
             borderColor={{ base: 'transparent', _dark: 'gray.700' }}
             boxShadow={{ md: '2xl' }}
+            /* Inline style wins over Chakra's placement/size recipe: on desktop
+               pin it top-right under the 60px navbar (never centers/clips);
+               mobile falls back to the size="full" sheet. */
+            style={
+              isDesktop
+                ? {
+                    position: 'fixed',
+                    top: '64px',
+                    right: '12px',
+                    left: 'auto',
+                    bottom: 'auto',
+                    width: '380px',
+                    maxWidth: '380px',
+                    height: 'min(600px, calc(100dvh - 84px))',
+                    maxHeight: 'calc(100dvh - 84px)',
+                    borderRadius: '14px',
+                  }
+                : undefined
+            }
           >
             {/* Header */}
             <Flex
@@ -433,19 +523,28 @@ export default function AigChat() {
                 ))}
                 {loading && (
                   <HStack align="center" gap="2.5">
-                    <AigMark size={30} />
-                    <HStack
-                      gap="2"
-                      px="3.5"
-                      py="3"
-                      borderRadius="xl"
-                      bg={{ base: 'gray.100', _dark: 'gray.700' }}
+                    {/* AI.g dotLottie sprite on a dark chip (the sprite is
+                        white+gold on transparent) — same footprint as the chat
+                        avatar, inline with a rotating loading phrase. */}
+                    <Box
+                      boxSize="30px"
+                      borderRadius="lg"
+                      overflow="hidden"
+                      flexShrink={0}
+                      bg="#0b1020"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
                     >
-                      <Spinner size="xs" color={{ base: 'red.500', _dark: 'red.300' }} />
-                      <Text fontSize="sm" color={{ base: 'gray.500', _dark: 'gray.400' }}>
-                        AI.g is thinking…
-                      </Text>
-                    </HStack>
+                      <AigLottie />
+                    </Box>
+                    <Text
+                      fontSize="sm"
+                      fontFamily="mono"
+                      color={{ base: 'gray.500', _dark: 'gray.400' }}
+                    >
+                      {LOADING_PHRASES[phraseIdx]}
+                    </Text>
                   </HStack>
                 )}
               </VStack>

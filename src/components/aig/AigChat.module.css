@@ -1,0 +1,60 @@
+/* Golden revolving shimmer border for the AI.g navbar button.
+   A faint gold ring (the .ring padding) with a brighter highlight that sweeps
+   slowly around it via a rotating conic-gradient. The inner element masks the
+   centre so only the ~2px ring shows the gradient. */
+
+.ring {
+  position: relative;
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 12px;
+  overflow: hidden;
+  isolation: isolate;
+  /* faint constant gold base so it always reads as a golden border */
+  background: rgba(212, 175, 55, 0.45);
+}
+
+.ring::before {
+  content: "";
+  position: absolute;
+  inset: -60%;
+  z-index: 0;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 65deg,
+    rgba(255, 226, 150, 0.9) 95deg,
+    #ffd76b 110deg,
+    rgba(255, 226, 150, 0.9) 125deg,
+    transparent 160deg,
+    transparent 360deg
+  );
+  animation: aig-revolve 4.5s linear infinite;
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  padding: 2px 5px;
+  background: #ffffff;
+}
+
+:global(html.dark) .inner {
+  background: #1a202c; /* gray.800 — matches the navbar */
+}
+
+@keyframes aig-revolve {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring::before {
+    animation: none;
+  }
+}
