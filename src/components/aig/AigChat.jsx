@@ -32,7 +32,7 @@ const AIG_LOGO = '/fonts/Aig.png'
 const AIG_ICON_LIGHT = '/aig-icon-light.png'
 const AIG_ICON_DARK = '/aig-icon-dark.png'
 const GREETING =
-  "Hi! I'm AI.g, your Air India Virtual assistant. Ask me about flying procedures, ATC, our routes, or anything Infinite Flight."
+  "Hi! I'm AI.g, your Indian Virtual assistant. Ask me about flying procedures, ATC, our routes, or anything Infinite Flight."
 
 // Same playful loading lines the routes recommender uses.
 const LOADING_PHRASES = [
@@ -450,9 +450,9 @@ export default function AigChat() {
     <Dialog.Root
       open={open}
       onOpenChange={(e) => setOpen(e.open)}
-      size={{ base: 'full', md: 'md' }}
+      size="md"
       placement="center"
-      motionPreset="slide-in-bottom"
+      motionPreset="none"
       scrollBehavior="inside"
     >
       <Dialog.Trigger asChild>
@@ -470,9 +470,9 @@ export default function AigChat() {
               src={AIG_ICON_LIGHT}
               alt=""
               aria-hidden
-              width={20}
-              height={20}
-              style={{ width: '20px', height: '20px', objectFit: 'contain', display: 'block' }}
+              width={24}
+              height={24}
+              style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'block' }}
               priority
             />
           </Box>
@@ -481,9 +481,9 @@ export default function AigChat() {
               src={AIG_ICON_DARK}
               alt=""
               aria-hidden
-              width={20}
-              height={20}
-              style={{ width: '20px', height: '20px', objectFit: 'contain', display: 'block' }}
+              width={24}
+              height={24}
+              style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'block' }}
               priority
             />
           </Box>
@@ -532,7 +532,7 @@ export default function AigChat() {
                   <Box boxSize="7px" borderRadius="full" bg="green.400" />
                 </HStack>
                 <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.400' }} truncate>
-                  Air India&apos;s AI assistant for pilots
+                  Indian Virtual&apos;s AI assistant for pilots
                 </Text>
               </Box>
               <Dialog.CloseTrigger asChild>

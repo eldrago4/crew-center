@@ -1,12 +1,22 @@
-/* AI.g chat popup positioning. The doubled `.desktopPanel.desktopPanel`
-   selector + `!important` beats Chakra's placement/size recipe, which otherwise
-   keeps trying to center/size the dialog and was the source of the recurring
-   "cut off at the bottom" bug. */
+/* AI.g chat popup — we fully own position/size/animation so Chakra's Dialog
+   recipe can't clip, oversize, or under-animate it. The doubled
+   `.desktopPanel.desktopPanel` selector + !important outranks Chakra's atomic
+   recipe classes.
 
-/* ── Desktop: a top-right dropdown just below the 60px navbar. ──────────────
-   Anchored by BOTH top and bottom (height:auto) so the bottom edge is
-   physically pinned above the fold and can never clip, whatever Chakra sets.
-   max-height only caps it on tall screens (kept intentionally compact). */
+   ROOT CAUSE of the recurring "runs past the viewport / height won't shrink":
+   Chakra's size="full" variant sets `min-height: 100dvh` on the content, and
+   min-height outranks both `height` and `max-height` — so no cap could ever
+   win and the panel was pinned to the full viewport (which also blocked the
+   keyboard from contracting it). We stopped using size="full" AND force
+   `min-height: 0` here so nothing can re-inflate it. */
+.desktopPanel.desktopPanel {
+  min-height: 0 !important;
+  min-width: 0 !important;
+}
+
+/* ── Desktop: top-right dropdown below the 60px navbar. Anchored by BOTH top
+   and bottom (height:auto) so the bottom edge is pinned above the fold and can
+   never clip; max-height keeps it compact. ─────────────────────────────────── */
 @media (min-width: 768px) {
   .desktopPanel.desktopPanel {
     position: fixed !important;
@@ -20,16 +30,20 @@
     max-height: 480px !important;
     margin: 0 !important;
     border-radius: 14px !important;
+    transform-origin: top right;
+  }
+  .desktopPanel.desktopPanel[data-state='open'] {
+    animation: aig-pop-in 160ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .desktopPanel.desktopPanel[data-state='closed'] {
+    animation: aig-pop-out 120ms ease-in forwards;
   }
 }
 
-/* ── Mobile: a bottom sheet with a curved top that slides up from the bottom
-   (motionPreset="slide-in-bottom"). ──────────────────────────────────────────
-   `--aig-kb` is the on-screen keyboard height, published by the component from
-   the VisualViewport API. The sheet lifts by exactly that much and shrinks so
-   its top stays put — so opening the keyboard never scrolls the greeting and
-   messages off the top; the composer just rides up to sit above the keyboard.
-   Defaults to 0px, so with no keyboard it's a normal ~85dvh sheet. */
+/* ── Mobile: a Razorpay-style bottom sheet — curved top, slides up from the
+   bottom. Keyboard-aware via `--aig-kb` (published by the component from the
+   VisualViewport API): the sheet lifts by the keyboard height and shrinks so
+   its top stays put, so the greeting/messages never get pushed off-screen. ─── */
 @media (max-width: 767px) {
   .desktopPanel.desktopPanel {
     position: fixed !important;
@@ -44,4 +58,31 @@
     margin: 0 !important;
     border-radius: 20px 20px 0 0 !important;
   }
+  .desktopPanel.desktopPanel[data-state='open'] {
+    animation: aig-sheet-in 300ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .desktopPanel.desktopPanel[data-state='closed'] {
+    animation: aig-sheet-out 220ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+}
+
+@keyframes aig-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes aig-sheet-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+@keyframes aig-pop-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes aig-pop-out {
+  from { opacity: 1; }
+  to { opacity: 0; transform: translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktopPanel.desktopPanel[data-state] { animation: none !important; }
 }
