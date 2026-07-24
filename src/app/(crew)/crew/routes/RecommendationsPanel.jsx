@@ -470,13 +470,34 @@ export function RecommendationResults({ recommender }) {
 
   return (
     <VStack align="stretch" gap={4}>
-      {/* Header row: title + mode tabs + refresh */}
-      <HStack justify="space-between" align="center" wrap="wrap" gap={3}>
-        <HStack gap={2}>
-          <Image src="/fonts/Aig.png" alt="AI.g" width={22} height={22} />
-          <Text fontWeight="800" fontSize="lg" letterSpacing="-0.01em">
-            Recommended for you
-          </Text>
+      {/* Header: big AI.g logo (column 1) + title/sentence stacked (column 2),
+          with the mode tabs + refresh on the right. */}
+      <HStack justify="space-between" align={{ base: "flex-start", md: "center" }} wrap="wrap" gap={4}>
+        <HStack gap={3} align="center" minW={0}>
+          <Image
+            src="/fonts/Aig.png"
+            alt="AI.g"
+            width={56}
+            height={56}
+            priority
+            style={{ flexShrink: 0, margin: "-6px 0" }}
+          />
+          <VStack gap={0.5} align="start" minW={0}>
+            <Text fontWeight="800" fontSize="lg" letterSpacing="-0.01em" lineHeight="1.15">
+              Recommended for you
+            </Text>
+            {activeMode && (
+              <Text
+                fontSize="xs"
+                fontFamily="mono"
+                letterSpacing="0.06em"
+                textTransform="uppercase"
+                color="gray.500"
+              >
+                {activeMode.blurb}
+              </Text>
+            )}
+          </VStack>
         </HStack>
         <HStack gap={2} wrap="wrap">
           <ModeTabs mode={mode} loading={loading} onPick={(m) => run(m)} />
@@ -493,12 +514,6 @@ export function RecommendationResults({ recommender }) {
           )}
         </HStack>
       </HStack>
-
-      {activeMode && (
-        <Text fontSize="xs" fontFamily="mono" letterSpacing="0.06em" textTransform="uppercase" color="gray.500">
-          {activeMode.blurb}
-        </Text>
-      )}
 
       {loading && <TypingLoader />}
 

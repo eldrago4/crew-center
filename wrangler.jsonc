@@ -40,6 +40,12 @@
     // secret (wrangler secret put RECS_API_KEY), not a var.
     "RECS_API_URL": "https://api.indianvirtual.site"
   },
+  // Workers AI binding — used by the AI.g assistant to query the AI Search
+  // (AutoRAG) instance "soft-dew-c29d": env.AI.autorag("soft-dew-c29d").aiSearch(...).
+  // Accessed in route handlers via getCloudflareContext().env.AI.
+  "ai": {
+    "binding": "AI"
+  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
