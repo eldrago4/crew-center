@@ -1,13 +1,12 @@
-/* Desktop popup: pin it top-right just below the 60px navbar so it reads as a
-   dropdown. The recurring "cut off at the bottom" bug came from driving the
-   panel with an explicit `height` (min(600px, …)) that Chakra's placement/size
-   recipe could still override, letting the content run past the fold. Here the
-   panel is anchored by BOTH `top` and `bottom` with `height: auto`, so its
-   bottom edge is physically pinned above the fold and can never clip — whatever
-   Chakra tries to set. `max-height` only keeps it from getting absurdly tall on
-   large monitors; when that cap applies the panel is simply top-anchored and
-   shorter, still nowhere near the bottom edge. `!important` beats Chakra's
-   recipe (the doubled selector adds specificity). */
+/* AI.g chat popup positioning. The doubled `.desktopPanel.desktopPanel`
+   selector + `!important` beats Chakra's placement/size recipe, which otherwise
+   keeps trying to center/size the dialog and was the source of the recurring
+   "cut off at the bottom" bug. */
+
+/* ── Desktop: a top-right dropdown just below the 60px navbar. ──────────────
+   Anchored by BOTH top and bottom (height:auto) so the bottom edge is
+   physically pinned above the fold and can never clip, whatever Chakra sets.
+   max-height only caps it on tall screens (kept intentionally compact). */
 @media (min-width: 768px) {
   .desktopPanel.desktopPanel {
     position: fixed !important;
@@ -18,8 +17,31 @@
     width: 380px !important;
     max-width: 380px !important;
     height: auto !important;
-    max-height: 680px !important;
+    max-height: 480px !important;
     margin: 0 !important;
     border-radius: 14px !important;
+  }
+}
+
+/* ── Mobile: a bottom sheet with a curved top that slides up from the bottom
+   (motionPreset="slide-in-bottom"). ──────────────────────────────────────────
+   `--aig-kb` is the on-screen keyboard height, published by the component from
+   the VisualViewport API. The sheet lifts by exactly that much and shrinks so
+   its top stays put — so opening the keyboard never scrolls the greeting and
+   messages off the top; the composer just rides up to sit above the keyboard.
+   Defaults to 0px, so with no keyboard it's a normal ~85dvh sheet. */
+@media (max-width: 767px) {
+  .desktopPanel.desktopPanel {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    bottom: var(--aig-kb, 0px) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: min(85dvh, calc(100dvh - var(--aig-kb, 0px) - 12px)) !important;
+    max-height: calc(100dvh - var(--aig-kb, 0px) - 12px) !important;
+    margin: 0 !important;
+    border-radius: 20px 20px 0 0 !important;
   }
 }

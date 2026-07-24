@@ -302,6 +302,32 @@ export default function AigChat() {
 
   React.useEffect(() => () => clearTimeout(revealTimer.current), [])
 
+  // Mobile keyboard handling. When the on-screen keyboard opens, the browser
+  // shrinks the *visual* viewport but leaves our bottom:0 fixed sheet anchored
+  // to the *layout* viewport — so the composer ends up behind the keyboard and
+  // the browser scrolls the whole sheet up to reveal it, shoving the greeting
+  // and messages off the top. Instead of letting that happen, we publish the
+  // keyboard's height as a CSS var and let the sheet lift by exactly that much
+  // (and shrink so its top stays put — see .desktopPanel in the module CSS).
+  React.useEffect(() => {
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null
+    if (!open || !vv) return
+    const root = document.documentElement
+    const sync = () => {
+      // Only meaningful on the mobile bottom sheet; desktop ignores the var.
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+      root.style.setProperty('--aig-kb', `${kb}px`)
+    }
+    sync()
+    vv.addEventListener('resize', sync)
+    vv.addEventListener('scroll', sync)
+    return () => {
+      vv.removeEventListener('resize', sync)
+      vv.removeEventListener('scroll', sync)
+      root.style.setProperty('--aig-kb', '0px')
+    }
+  }, [open])
+
   React.useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
@@ -426,7 +452,7 @@ export default function AigChat() {
       onOpenChange={(e) => setOpen(e.open)}
       size={{ base: 'full', md: 'md' }}
       placement="center"
-      motionPreset="slide-in-top"
+      motionPreset="slide-in-bottom"
       scrollBehavior="inside"
     >
       <Dialog.Trigger asChild>
@@ -472,9 +498,10 @@ export default function AigChat() {
           backdropFilter={{ base: 'blur(2px)', md: 'none' }}
         />
         <Dialog.Positioner>
-          {/* Desktop: pin the content itself top-right, just below the 60px
-              navbar, so it reads as a dropdown and never centers/clips. Mobile
-              keeps the size="full" sheet. */}
+          {/* Desktop: pin the content top-right below the 60px navbar so it
+              reads as a dropdown and never centers/clips. Mobile: a bottom sheet
+              with a curved top that slides up, keyboard-aware via --aig-kb (see
+              AigChat.module.css). */}
           <Dialog.Content
             className={styles.desktopPanel}
             display="flex"
@@ -505,7 +532,7 @@ export default function AigChat() {
                   <Box boxSize="7px" borderRadius="full" bg="green.400" />
                 </HStack>
                 <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.400' }} truncate>
-                  Air India Virtual assistant
+                  Air India&apos;s AI assistant for pilots
                 </Text>
               </Box>
               <Dialog.CloseTrigger asChild>
