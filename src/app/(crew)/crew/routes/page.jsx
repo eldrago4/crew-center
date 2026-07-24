@@ -4,6 +4,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import db from "@/db/client";
 import { routes } from "@/db/schema";
 import { count } from "drizzle-orm";
+import { fetchFleetModule } from "@/app/(crew)/crew/pireps/file/fleetModule";
 import RoutesClient from "./RoutesClient";
 
 // Cache Components: the routes table is shared, per-user-free data reached at
@@ -73,6 +74,18 @@ export default async function RoutesPage() {
     cacheVersion = Date.now().toString();
   }
 
+  // Fleet is the single source of truth for the aircraft dropdown AND the rank
+  // filter (each entry carries { label, value, rank }). Fetched separately so a
+  // fleet-read failure still renders the routes list — the client falls back to
+  // an empty aircraft/rank filter rather than breaking the page.
+  let fleet;
+  try {
+    fleet = await fetchFleetModule("fleet");
+  } catch (error) {
+    console.error("Error fetching fleet:", error);
+    fleet = [];
+  }
+
 
   return (
     <>
@@ -80,6 +93,7 @@ export default async function RoutesPage() {
         <RoutesClient
           initialRoutes={routesData}
           cacheVersion={cacheVersion}
+          fleet={Array.isArray(fleet) ? fleet : []}
         />
       </Box>
     </>

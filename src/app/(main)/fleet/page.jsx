@@ -175,6 +175,18 @@ const AIRCRAFT = [
     specs: { 'Range': '2,935 NM', 'Cruise': 'M 0.78', 'Ceiling': 'FL410', 'Passengers': '189', 'MTOW': '79,002 kg', 'Wingspan': '35.79 m', 'Engines': '2× CFM56-7B' },
   },
   {
+    id: 'a321neo-airindiaexpress',
+    name: 'Airbus A321neo',
+    type: 'A321neo',
+    code: 'A21N',
+    airline: 'air-india-express',
+    image: '/livery/air-india/a321-airindia.png',
+    role: 'High-Density Regional',
+    featured: false,
+    copy: 'The workhorse of Air India Express\'s expanding network. Designed to move nearly two hundred passengers efficiently across India, the Gulf, and Southeast Asia, the A321neo pairs Airbus\' latest engines with a stretched fuselage and Sharklets to deliver lower fuel burn without sacrificing range. It is the aircraft that quietly keeps the group\'s short- and medium-haul network moving at scale.',
+    specs: { 'Range': '4,000 NM', 'Cruise': 'M 0.78', 'Ceiling': 'FL391', 'Passengers': '190', 'MTOW': '97,000 kg', 'Wingspan': '35.8 m', 'Engines': '2× CFM LEAP-1A' },
+  },
+  {
     id: 'b787-9',
     name: 'Boeing 787-9',
     type: '787-9',

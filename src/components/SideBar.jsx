@@ -11,6 +11,7 @@ import {
   HStack,
   Float,
   Circle,
+  Badge,
 } from '@chakra-ui/react';
 import { useState, useEffect, useRef } from 'react';
 import NoPrefetchLink from '@/components/NoPrefetchLink';
@@ -26,12 +27,47 @@ import { useSidebar } from '@/components/SidebarContext';
 // only in-app routes get next/link so navigation doesn't full-page-reload.
 const isExternalHref = (href) => /^https?:\/\//.test(href || '');
 
+// Small crimson "NEW" pill matching the AI-recommendations feature accent.
+const NewBadge = () => (
+  <Badge
+    bg="#be123c"
+    color="white"
+    fontSize="9px"
+    fontWeight="800"
+    letterSpacing="0.08em"
+    px="1.5"
+    py="0"
+    borderRadius="full"
+    lineHeight="1.4"
+    textTransform="uppercase"
+    flexShrink={0}
+  >
+    New
+  </Badge>
+);
+
 const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) => {
 
 
   const { sidebarMode: currentValue, updateSidebarMode } = useSidebar();
 
+  // "NEW" badge on the Routes item (AI recommendations launch). Shown until the
+  // pilot opens Routes once, then remembered in localStorage so it never
+  // reappears. Default hidden so SSR and the first client render match; the
+  // effect reveals it after reading storage.
+  const NEW_BADGE_KEY = 'routes-ai-recs-seen';
+  const [ showRoutesNew, setShowRoutesNew ] = useState(false);
 
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(NEW_BADGE_KEY) !== '1') setShowRoutesNew(true);
+    } catch { /* storage unavailable — just don't show the badge */ }
+  }, []);
+
+  const dismissRoutesNew = () => {
+    setShowRoutesNew(false);
+    try { localStorage.setItem(NEW_BADGE_KEY, '1'); } catch { /* ignore */ }
+  };
 
   const [ isMobileNavVisible, setIsMobileNavVisible ] = useState(true);
 
@@ -100,7 +136,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
       { label: "File", href: "/crew/pireps/file", icon: FiFilePlus }
     ],
     plan: [
-      { label: "Routes", href: "/crew/routes", icon: FiMap },
+      { label: "Routes", href: "/crew/routes", icon: FiMap, isNew: true },
       { label: "Simbrief", href: "/crew/plan/simbrief", icon: FiBriefcase },
       { label: "Career Mode", href: "/crew/career", disabled: !careerMode, icon: FiTrendingUp }
     ],
@@ -165,7 +201,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
 
   const renderDesktopButtons = (buttons) => (
     <ButtonGroup orientation="vertical" spacing={4} width="100%">
-      {buttons.map(({ label, href, disabled }, idx) => {
+      {buttons.map(({ label, href, disabled, isNew }, idx) => {
         return (
           <Box key={idx} position="relative" display="flex" width="100%">
             <Button
@@ -173,9 +209,13 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
               as={href && !disabled ? (isExternalHref(href) ? "a" : NoPrefetchLink) : "button"}
               href={href}
               {...(disabled ? { disabled: true } : {})}
+              onClick={isNew && showRoutesNew ? dismissRoutesNew : undefined}
               flex={1}
             >
-              {label}
+              <HStack gap={2} width="100%">
+                <Text as="span">{label}</Text>
+                {isNew && showRoutesNew && <NewBadge />}
+              </HStack>
             </Button>
 
           </Box>
@@ -198,7 +238,7 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
       }}
     >
       <HStack spacing={2} align="center" justify="center">
-        {buttons.map(({ label, href, disabled, icon, isSegmentControl }, idx) => {
+        {buttons.map(({ label, href, disabled, icon, isSegmentControl, isNew }, idx) => {
           if (isSegmentControl) {
 
 
@@ -219,9 +259,17 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
               as={!disabled && !isExternalHref(href) ? NoPrefetchLink : "a"}
               href={!disabled ? href : undefined}
               _hover={{ textDecoration: 'none' }}
-              onClick={(e) => { if (disabled) e.preventDefault(); }}
+              onClick={(e) => {
+                if (disabled) { e.preventDefault(); return; }
+                if (isNew && showRoutesNew) dismissRoutesNew();
+              }}
               aria-disabled={disabled}
             >
+              {isNew && showRoutesNew && (
+                <Float placement="top-end" offsetX="1" offsetY="1">
+                  <NewBadge />
+                </Float>
+              )}
               <VStack
                 w="72px"
                 minH="58px"
