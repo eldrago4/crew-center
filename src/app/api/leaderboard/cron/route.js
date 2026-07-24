@@ -14,7 +14,22 @@ function getRedis() {
   return _redis
 }
 
-export async function GET() {
+// The Cron Trigger (worker.js scheduled handler) calls this route with
+// `Authorization: Bearer <CRON_SECRET>`. Enforce it only when the secret is
+// configured, so the route stays callable in environments where it isn't set —
+// same contract as /api/badges/cron. Without this the route was public: anyone
+// could trigger a full users scan + Redis write + Discord role reconciliation.
+function isAuthorized(request) {
+    const secret = process.env.CRON_SECRET
+    if (!secret) return true
+    const header = request.headers.get('authorization') || ''
+    return header === `Bearer ${secret}`
+}
+
+export async function GET(request) {
+    if (!isAuthorized(request)) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     try {
         // Query top 10 users by flightTime
         const topPilotsRaw = await db
