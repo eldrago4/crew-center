@@ -80,51 +80,21 @@ export async function POST(request) {
   try {
     // aiSearch() is the Workers-binding "chat" method: it retrieves context and
     // generates an answer in one call (the instance's AI.g system prompt,
-    // reranking and hybrid search all apply). We stream so the UI can render
-    // tokens as they arrive.
-    const upstream = await env.AI.autorag(AI_SEARCH_INSTANCE).aiSearch({
+    // reranking and hybrid search all apply). We return the full answer as JSON
+    // — returning a *streamed* body from a route handler hangs under OpenNext on
+    // Workers (observed ~15s → 502), so the client renders it with a typewriter
+    // reveal instead.
+    const result = await env.AI.autorag(AI_SEARCH_INSTANCE).aiSearch({
       query: lastMessage.content,
       model: AI_SEARCH_MODEL,
       rewrite_query: true,
-      stream: true,
     });
 
-    // AI Search streams SSE (`data: {json}` lines, terminated by `[DONE]`). The
-    // token text lands in either `response` or an OpenAI-style
-    // `choices[].delta.content` depending on the model, so we parse defensively
-    // and re-emit clean UTF-8 text — the client just appends what it reads.
-    const decoder = new TextDecoder();
-    const encoder = new TextEncoder();
-    let buffer = '';
+    const answer =
+      (result?.response || '').trim() ||
+      "I couldn't find anything on that in the manuals or guides. Try rephrasing?";
 
-    const parse = new TransformStream({
-      transform(chunk, controller) {
-        buffer += decoder.decode(chunk, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data:')) continue;
-          const payload = trimmed.slice(5).trim();
-          if (!payload || payload === '[DONE]') continue;
-          try {
-            const obj = JSON.parse(payload);
-            const text = obj.response ?? obj.choices?.[0]?.delta?.content ?? '';
-            if (text) controller.enqueue(encoder.encode(text));
-          } catch {
-            /* keepalive or partial JSON — ignore */
-          }
-        }
-      },
-    });
-
-    return new Response(upstream.pipeThrough(parse), {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-store',
-        'X-Accel-Buffering': 'no',
-      },
-    });
+    return NextResponse.json({ answer });
   } catch (err) {
     console.error('[aig/chat] aiSearch failed:', err);
     return NextResponse.json(

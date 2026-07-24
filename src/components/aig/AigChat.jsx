@@ -290,11 +290,15 @@ export default function AigChat() {
     { role: 'assistant', content: GREETING, intro: true },
   ])
   const [input, setInput] = React.useState('')
-  const [loading, setLoading] = React.useState(false)
+  const [loading, setLoading] = React.useState(false) // waiting on the server (shows the lottie)
+  const [busy, setBusy] = React.useState(false) // whole turn incl. typewriter reveal (locks the composer)
   const [phraseIdx, setPhraseIdx] = React.useState(0)
 
   const scrollRef = React.useRef(null)
   const inputRef = React.useRef(null)
+  const revealTimer = React.useRef(null)
+
+  React.useEffect(() => () => clearTimeout(revealTimer.current), [])
 
   React.useEffect(() => {
     const el = scrollRef.current
@@ -316,9 +320,51 @@ export default function AigChat() {
     return () => clearInterval(id)
   }, [loading])
 
+  // Reveal the full answer word-by-word (a typewriter "stream"). True server
+  // streaming hangs under OpenNext on Workers, so we stream the reveal client
+  // side instead. Long answers still finish in ~3s (revealed in <=120 ticks).
+  const revealAnswer = React.useCallback((full) => {
+    return new Promise((resolve) => {
+      const tokens = full.match(/\S+\s*/g) || (full ? [full] : [])
+      if (tokens.length === 0) {
+        resolve()
+        return
+      }
+      const perTick = Math.max(1, Math.ceil(tokens.length / 120))
+      setMessages((prev) => [...prev, { role: 'assistant', content: '', streaming: true }])
+      let i = 0
+      const step = () => {
+        i = Math.min(tokens.length, i + perTick)
+        const content = tokens.slice(0, i).join('')
+        setMessages((prev) => {
+          const copy = prev.slice()
+          const last = copy[copy.length - 1]
+          if (last && last.role === 'assistant' && last.streaming) {
+            copy[copy.length - 1] = { ...last, content }
+          }
+          return copy
+        })
+        if (i < tokens.length) {
+          revealTimer.current = setTimeout(step, 25)
+        } else {
+          setMessages((prev) => {
+            const copy = prev.slice()
+            const last = copy[copy.length - 1]
+            if (last && last.role === 'assistant' && last.streaming) {
+              copy[copy.length - 1] = { ...last, streaming: false }
+            }
+            return copy
+          })
+          resolve()
+        }
+      }
+      step()
+    })
+  }, [])
+
   const send = React.useCallback(async () => {
     const text = input.trim()
-    if (!text || loading) return
+    if (!text || busy) return
 
     // Forward the recent conversation (minus the canned greeting and any error
     // notices) so the API has multi-turn context.
@@ -329,17 +375,8 @@ export default function AigChat() {
 
     setMessages((prev) => [...prev, { role: 'user', content: text }])
     setInput('')
+    setBusy(true)
     setLoading(true)
-
-    const updateStreaming = (content) =>
-      setMessages((prev) => {
-        const copy = prev.slice()
-        const last = copy[copy.length - 1]
-        if (last && last.role === 'assistant' && last.streaming) {
-          copy[copy.length - 1] = { ...last, content }
-        }
-        return copy
-      })
 
     try {
       const res = await fetch('/api/aig/chat', {
@@ -347,10 +384,10 @@ export default function AigChat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: outgoing }),
       })
+      const data = await res.json().catch(() => ({}))
+      setLoading(false)
 
-      // Errors come back as JSON; a successful answer is a streamed text body.
-      if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
         setMessages((prev) => [
           ...prev,
           { role: 'error', content: data?.error || 'Something went wrong. Please try again.' },
@@ -358,50 +395,21 @@ export default function AigChat() {
         return
       }
 
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let acc = ''
-      let started = false
-
-      for (;;) {
-        const { value, done } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value, { stream: true })
-        if (!chunk) continue
-        acc += chunk
-        if (!started) {
-          started = true
-          setLoading(false)
-          setMessages((prev) => [...prev, { role: 'assistant', content: acc, streaming: true }])
-        } else {
-          updateStreaming(acc)
-        }
-      }
-
-      const finalText =
-        acc.trim() || "I couldn't find anything on that in the manuals or guides. Try rephrasing?"
-      if (started) {
-        setMessages((prev) => {
-          const copy = prev.slice()
-          const last = copy[copy.length - 1]
-          if (last && last.role === 'assistant' && last.streaming) {
-            copy[copy.length - 1] = { ...last, content: finalText, streaming: false }
-          }
-          return copy
-        })
-      } else {
-        setMessages((prev) => [...prev, { role: 'assistant', content: finalText }])
-      }
+      await revealAnswer(
+        (data.answer || '').trim() ||
+          "I couldn't find anything on that in the manuals or guides. Try rephrasing?",
+      )
     } catch {
+      setLoading(false)
       setMessages((prev) => [
         ...prev,
         { role: 'error', content: "I couldn't reach the server. Check your connection and try again." },
       ])
     } finally {
-      setLoading(false)
+      setBusy(false)
       setTimeout(() => inputRef.current?.focus(), 60)
     }
-  }, [input, loading, messages])
+  }, [input, busy, messages, revealAnswer])
 
   const onKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -592,7 +600,7 @@ export default function AigChat() {
                 <IconButton
                   aria-label="Send message"
                   onClick={send}
-                  disabled={!input.trim() || loading}
+                  disabled={!input.trim() || busy}
                   size="sm"
                   rounded="full"
                   colorPalette="red"
