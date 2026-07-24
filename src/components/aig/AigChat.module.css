@@ -1,89 +1,25 @@
-/* Golden beveled border for the AI.g navbar button. A thin, solid gold ring
-   (lighter top-left → deeper bottom-right for a bevel) with a bright highlight
-   that sweeps around it twice on mount, then settles. The inner element masks
-   the centre so only the ~1.5px ring shows. */
-
-.ring {
-  position: relative;
-  display: inline-flex;
-  padding: 1.5px;
-  border-radius: 11px;
-  overflow: hidden;
-  isolation: isolate;
-  /* solid, beveled gold — no translucency */
-  background: linear-gradient(135deg, #f7dd8b 0%, #d4af37 46%, #a97d24 100%);
-}
-
-.ring::before {
-  content: "";
-  position: absolute;
-  inset: -60%;
-  z-index: 0;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    transparent 72deg,
-    rgba(255, 244, 214, 0.95) 100deg,
-    #fff6da 112deg,
-    rgba(255, 244, 214, 0.95) 124deg,
-    transparent 152deg,
-    transparent 360deg
-  );
-  /* sweep twice, then stop */
-  animation: aig-revolve 3s linear 2;
-}
-
-.inner {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9.5px;
-  padding: 2px 5px;
-  background: #ffffff;
-  /* bevel: soft top highlight + bottom shadow for depth */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.1);
-}
-
-:global(html.dark) .inner {
-  background: #1a202c; /* gray.800 — matches the navbar */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.4);
-}
-
-/* Desktop popup: pin it top-right just below the 60px navbar as a dropdown.
-   Applied unconditionally; the media query scopes it to desktop, and the
-   !important beats Chakra's placement/size recipe (which kept centering/clipping
-   it when set via style props or the inline style attribute). Height is capped
-   to the viewport so it can never clip below the fold. */
+/* Desktop popup: pin it top-right just below the 60px navbar so it reads as a
+   dropdown. The recurring "cut off at the bottom" bug came from driving the
+   panel with an explicit `height` (min(600px, …)) that Chakra's placement/size
+   recipe could still override, letting the content run past the fold. Here the
+   panel is anchored by BOTH `top` and `bottom` with `height: auto`, so its
+   bottom edge is physically pinned above the fold and can never clip — whatever
+   Chakra tries to set. `max-height` only keeps it from getting absurdly tall on
+   large monitors; when that cap applies the panel is simply top-anchored and
+   shorter, still nowhere near the bottom edge. `!important` beats Chakra's
+   recipe (the doubled selector adds specificity). */
 @media (min-width: 768px) {
   .desktopPanel.desktopPanel {
     position: fixed !important;
     top: 64px !important;
     right: 12px !important;
     left: auto !important;
-    bottom: auto !important;
+    bottom: 16px !important;
     width: 380px !important;
     max-width: 380px !important;
-    height: min(600px, calc(100dvh - 84px)) !important;
-    max-height: calc(100dvh - 84px) !important;
+    height: auto !important;
+    max-height: 680px !important;
     margin: 0 !important;
     border-radius: 14px !important;
-  }
-}
-
-@keyframes aig-revolve {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ring::before {
-    animation: none;
   }
 }

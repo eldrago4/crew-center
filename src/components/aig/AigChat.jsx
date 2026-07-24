@@ -26,6 +26,11 @@ import styles from './AigChat.module.css'
 const AigLottie = dynamic(() => import('@/app/(crew)/crew/routes/AigLottie'), { ssr: false })
 
 const AIG_LOGO = '/fonts/Aig.png'
+// Navbar trigger emblem — two art variants tuned per background: the darker one
+// for light mode (contrast on white), the brighter one for dark mode (pops on
+// gray.800). Swapped in pure CSS below via Chakra's _dark condition.
+const AIG_ICON_LIGHT = '/aig-icon-light.png'
+const AIG_ICON_DARK = '/aig-icon-dark.png'
 const GREETING =
   "Hi! I'm AI.g, your Air India Virtual assistant. Ask me about flying procedures, ATC, our routes, or anything Infinite Flight."
 
@@ -428,26 +433,34 @@ export default function AigChat() {
         <IconButton
           aria-label="Open AI.g assistant"
           variant="ghost"
-          rounded="11px"
-          p="0"
-          minW="auto"
-          h="auto"
-          _hover={{ bg: 'transparent' }}
-          _active={{ bg: 'transparent' }}
+          size="sm"
         >
-          {/* Wide wordmark (294×129) kept in a rectangle, wrapped in a golden
-              revolving-shimmer border (see AigChat.module.css). */}
-          <span className={styles.ring}>
-            <span className={styles.inner}>
-              <NextImage
-                src={AIG_LOGO}
-                alt="AI.g"
-                width={78}
-                height={34}
-                style={{ objectFit: 'contain', display: 'block' }}
-              />
-            </span>
-          </span>
+          {/* Brand emblem, matched to the theme toggle's footprint (ghost sm,
+              ~20px glyph). No border, no hover lift — reads as a plain nav icon.
+              Light/dark art is swapped in pure CSS (Chakra's _dark condition maps
+              to html.dark) so there's no hydration flash and no JS on the path. */}
+          <Box display={{ base: 'inline-flex', _dark: 'none' }}>
+            <NextImage
+              src={AIG_ICON_LIGHT}
+              alt=""
+              aria-hidden
+              width={20}
+              height={20}
+              style={{ width: '20px', height: '20px', objectFit: 'contain', display: 'block' }}
+              priority
+            />
+          </Box>
+          <Box display={{ base: 'none', _dark: 'inline-flex' }}>
+            <NextImage
+              src={AIG_ICON_DARK}
+              alt=""
+              aria-hidden
+              width={20}
+              height={20}
+              style={{ width: '20px', height: '20px', objectFit: 'contain', display: 'block' }}
+              priority
+            />
+          </Box>
         </IconButton>
       </Dialog.Trigger>
 
