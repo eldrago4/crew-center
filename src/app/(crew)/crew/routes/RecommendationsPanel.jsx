@@ -209,7 +209,20 @@ function TypingLoader() {
       py={6}
     >
       <HStack gap={4} align="center">
-        <Box w={{ base: "60px", md: "76px" }} h={{ base: "60px", md: "76px" }} flexShrink={0}>
+        {/* Dark chip: the sprite is white-arc + gold-tail on a transparent bg,
+            so it would vanish on the white loader card. The navy backdrop makes
+            the pixels read and suits the gamified look. */}
+        <Box
+          w={{ base: "60px", md: "76px" }}
+          h={{ base: "60px", md: "76px" }}
+          flexShrink={0}
+          borderRadius="xl"
+          bg="#0b1020"
+          p={1.5}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
           <AigLottie />
         </Box>
         <Box minW={0}>
