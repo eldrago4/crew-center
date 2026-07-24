@@ -25,6 +25,34 @@ const AIG_LOGO = '/fonts/Aig.png'
 const GREETING =
   "Hi! I'm AI.g, your Air India Virtual assistant. Ask me about flying procedures, ATC, our routes, or anything Infinite Flight."
 
+// Square AI.g avatar: the wide wordmark contained inside a rounded square chip
+// so it never gets cropped. Used for the bot's messages and the header.
+function AigMark({ size = 30 }) {
+  return (
+    <Box
+      boxSize={`${size}px`}
+      borderRadius="lg"
+      overflow="hidden"
+      flexShrink={0}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      bg={{ base: 'white', _dark: 'gray.700' }}
+      borderWidth="1px"
+      borderColor={{ base: 'gray.200', _dark: 'gray.600' }}
+      p="1"
+    >
+      <NextImage
+        src={AIG_LOGO}
+        alt="AI.g"
+        width={294}
+        height={129}
+        style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
+      />
+    </Box>
+  )
+}
+
 // ── Minimal, dependency-free markdown → JSX ─────────────────────────────────
 // The AI Search answers come back as light markdown (bold, italics, links,
 // bullet/numbered lists). We render just those so replies read cleanly without
@@ -130,20 +158,6 @@ function MessageRow({ msg, discordId }) {
   const isUser = msg.role === 'user'
   const isError = msg.role === 'error'
 
-  const AigAvatar = (
-    <Box
-      boxSize="30px"
-      borderRadius="full"
-      overflow="hidden"
-      flexShrink={0}
-      bg={{ base: 'white', _dark: 'gray.700' }}
-      borderWidth="1px"
-      borderColor={{ base: 'gray.200', _dark: 'gray.600' }}
-    >
-      <NextImage src={AIG_LOGO} alt="AI.g" width={30} height={30} style={{ objectFit: 'cover' }} />
-    </Box>
-  )
-
   return (
     <HStack
       align="flex-start"
@@ -154,7 +168,7 @@ function MessageRow({ msg, discordId }) {
       {isUser ? (
         <DiscordAvatar userId={discordId} size="xs" flexShrink={0} />
       ) : (
-        AigAvatar
+        <AigMark size={30} />
       )}
       <Box
         maxW="82%"
@@ -330,24 +344,24 @@ export default function AigChat() {
         <IconButton
           aria-label="Open AI.g assistant"
           variant="ghost"
-          rounded="full"
-          p="0"
+          rounded="md"
+          px="1"
+          py="0"
           minW="auto"
           h="auto"
-          _hover={{ bg: 'transparent', transform: 'scale(1.06)' }}
+          _hover={{ bg: 'transparent', transform: 'scale(1.05)' }}
           transition="transform 0.15s ease"
         >
-          {/* As large as the 60px navbar allows — the negative vertical margin
-              lets it bleed through the bar's padding so it reads big. */}
-          <Box
-            boxSize="52px"
-            borderRadius="full"
-            overflow="hidden"
-            display="inline-flex"
-            my="-8px"
-          >
-            <NextImage src={AIG_LOGO} alt="AI.g" width={52} height={52} style={{ objectFit: 'cover' }} />
-          </Box>
+          {/* The logo is a wide wordmark (294×129) — keep its aspect ratio in a
+              rectangle instead of cropping it into a circle. Sized as large as
+              the 60px navbar comfortably allows. */}
+          <NextImage
+            src={AIG_LOGO}
+            alt="AI.g"
+            width={91}
+            height={40}
+            style={{ objectFit: 'contain', display: 'block' }}
+          />
         </IconButton>
       </Dialog.Trigger>
 
@@ -358,22 +372,24 @@ export default function AigChat() {
           bg={{ base: 'blackAlpha.500', md: 'transparent' }}
           backdropFilter={{ base: 'blur(2px)', md: 'none' }}
         />
-        {/* Desktop: anchor top-right, just below the 60px navbar, like a dropdown. */}
-        <Dialog.Positioner
-          alignItems={{ base: 'stretch', md: 'flex-start' }}
-          justifyContent={{ base: 'stretch', md: 'flex-end' }}
-          pt={{ md: '68px' }}
-          pr={{ md: '12px' }}
-        >
+        <Dialog.Positioner>
+          {/* Desktop: pin the content itself top-right, just below the 60px
+              navbar, so it reads as a dropdown and never centers/clips. Mobile
+              keeps the size="full" sheet. */}
           <Dialog.Content
             display="flex"
             flexDirection="column"
             overflow="hidden"
             bg={{ base: 'white', _dark: 'gray.800' }}
-            w={{ md: '380px' }}
+            position={{ md: 'fixed' }}
+            top={{ md: '64px' }}
+            right={{ md: '12px' }}
+            left={{ md: 'auto' }}
+            bottom={{ md: 'auto' }}
+            w={{ base: '100%', md: '380px' }}
             maxW={{ md: '380px' }}
-            h={{ base: '100dvh', md: 'min(600px, calc(100dvh - 88px))' }}
-            maxH={{ base: '100dvh', md: 'calc(100dvh - 88px)' }}
+            h={{ base: '100dvh', md: 'min(600px, calc(100dvh - 84px))' }}
+            maxH={{ base: '100dvh', md: 'calc(100dvh - 84px)' }}
             borderRadius={{ base: '0', md: 'xl' }}
             borderWidth={{ md: '1px' }}
             borderColor={{ base: 'transparent', _dark: 'gray.700' }}
@@ -390,15 +406,7 @@ export default function AigChat() {
               bg={{ base: 'red.50', _dark: 'whiteAlpha.100' }}
               flexShrink={0}
             >
-              <Box
-                boxSize="36px"
-                borderRadius="full"
-                overflow="hidden"
-                borderWidth="1px"
-                borderColor={{ base: 'gray.200', _dark: 'gray.600' }}
-              >
-                <NextImage src={AIG_LOGO} alt="AI.g" width={36} height={36} style={{ objectFit: 'cover' }} />
-              </Box>
+              <AigMark size={38} />
               <Box flex="1" minW="0">
                 <HStack gap="2" align="center">
                   <Text fontWeight="semibold" fontSize="md" color={{ base: 'gray.800', _dark: 'white' }}>
@@ -425,17 +433,7 @@ export default function AigChat() {
                 ))}
                 {loading && (
                   <HStack align="center" gap="2.5">
-                    <Box
-                      boxSize="30px"
-                      borderRadius="full"
-                      overflow="hidden"
-                      flexShrink={0}
-                      bg={{ base: 'white', _dark: 'gray.700' }}
-                      borderWidth="1px"
-                      borderColor={{ base: 'gray.200', _dark: 'gray.600' }}
-                    >
-                      <NextImage src={AIG_LOGO} alt="AI.g" width={30} height={30} style={{ objectFit: 'cover' }} />
-                    </Box>
+                    <AigMark size={30} />
                     <HStack
                       gap="2"
                       px="3.5"

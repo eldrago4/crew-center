@@ -4,16 +4,18 @@ import { requireUser } from '@/lib/apiAuth';
 import { rateLimit } from '@/lib/rateLimit';
 
 // Server-side endpoint for the AI.g chat assistant. It authenticates the pilot,
-// rate-limits per callsign, then calls the Cloudflare AI Search chat API
-// (chatCompletions — the OpenAI-compatible, multi-turn chat endpoint) through
-// the Workers AI binding. Reranking, hybrid search and the AI.g system prompt
-// are configured on the instance itself, so they apply automatically — we only
-// forward the conversation and the generation model.
+// rate-limits per callsign, then queries the Cloudflare AI Search instance
+// through the Workers AI binding's aiSearch() — which retrieves context and
+// generates an answer in one call (the "chat" behaviour; search() would return
+// raw chunks instead). Reranking, hybrid search and the AI.g system prompt are
+// configured on the instance itself, so they apply automatically. The binding
+// has no OpenAI-style chatCompletions() — that lives only on the REST API — so
+// we answer from the latest user turn (the client still sends recent history).
 
 const AI_SEARCH_INSTANCE = 'soft-dew-c29d';
 const AI_SEARCH_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const MAX_MESSAGE_LEN = 1000;
-const MAX_HISTORY = 10; // most recent turns forwarded as context
+const MAX_HISTORY = 10; // most recent turns accepted from the client
 
 // Per-pilot budget. Generous enough for a real conversation, tight enough to
 // stop a runaway loop from burning inference quota.
@@ -102,20 +104,24 @@ export async function POST(request) {
   }
 
   try {
-    const result = await env.AI.autorag(AI_SEARCH_INSTANCE).chatCompletions({
-      messages,
+    // aiSearch() is the Workers-binding "chat" method: it retrieves context and
+    // generates an answer in one call (the instance's AI.g system prompt,
+    // reranking and hybrid search all apply). The OpenAI-style chatCompletions
+    // endpoint only exists on the REST API (needs a Service token), not on the
+    // binding, so we drive the conversation from the latest user turn here.
+    const result = await env.AI.autorag(AI_SEARCH_INSTANCE).aiSearch({
+      query: lastMessage.content,
       model: AI_SEARCH_MODEL,
+      rewrite_query: true,
     });
 
     const answer =
-      (result?.choices?.[0]?.message?.content || result?.response || '').trim() ||
+      (result?.response || '').trim() ||
       "I couldn't find anything on that in the manuals or guides. Try rephrasing?";
 
-    // chatCompletions may attach retrieved chunks (e.g. result.data); surface
-    // them as citations when present, otherwise just return the answer.
     return NextResponse.json({ answer, sources: buildSources(result?.data) });
   } catch (err) {
-    console.error('[aig/chat] chatCompletions failed:', err);
+    console.error('[aig/chat] aiSearch failed:', err);
     return NextResponse.json(
       { error: 'AI.g had trouble answering that. Please try again in a moment.' },
       { status: 502 },
