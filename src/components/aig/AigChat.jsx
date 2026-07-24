@@ -16,7 +16,6 @@ import {
   Text,
   Textarea,
   VStack,
-  useBreakpointValue,
 } from '@chakra-ui/react'
 import { LuArrowUp, LuX } from 'react-icons/lu'
 import { DiscordAvatar } from '@/components/DiscordAvatar'
@@ -283,8 +282,6 @@ export default function AigChat() {
   const { data: session } = useSession()
   const discordId = session?.user?.discordId
 
-  const isDesktop = useBreakpointValue({ base: false, md: true })
-
   const [open, setOpen] = React.useState(false)
   const [messages, setMessages] = React.useState([
     { role: 'assistant', content: GREETING, intro: true },
@@ -431,7 +428,7 @@ export default function AigChat() {
         <IconButton
           aria-label="Open AI.g assistant"
           variant="ghost"
-          rounded="12px"
+          rounded="11px"
           p="0"
           minW="auto"
           h="auto"
@@ -466,6 +463,7 @@ export default function AigChat() {
               navbar, so it reads as a dropdown and never centers/clips. Mobile
               keeps the size="full" sheet. */}
           <Dialog.Content
+            className={styles.desktopPanel}
             display="flex"
             flexDirection="column"
             overflow="hidden"
@@ -473,25 +471,6 @@ export default function AigChat() {
             borderWidth={{ md: '1px' }}
             borderColor={{ base: 'transparent', _dark: 'gray.700' }}
             boxShadow={{ md: '2xl' }}
-            /* Inline style wins over Chakra's placement/size recipe: on desktop
-               pin it top-right under the 60px navbar (never centers/clips);
-               mobile falls back to the size="full" sheet. */
-            style={
-              isDesktop
-                ? {
-                    position: 'fixed',
-                    top: '64px',
-                    right: '12px',
-                    left: 'auto',
-                    bottom: 'auto',
-                    width: '380px',
-                    maxWidth: '380px',
-                    height: 'min(600px, calc(100dvh - 84px))',
-                    maxHeight: 'calc(100dvh - 84px)',
-                    borderRadius: '14px',
-                  }
-                : undefined
-            }
           >
             {/* Header */}
             <Flex

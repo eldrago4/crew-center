@@ -1,17 +1,17 @@
-/* Golden revolving shimmer border for the AI.g navbar button.
-   A faint gold ring (the .ring padding) with a brighter highlight that sweeps
-   slowly around it via a rotating conic-gradient. The inner element masks the
-   centre so only the ~2px ring shows the gradient. */
+/* Golden beveled border for the AI.g navbar button. A thin, solid gold ring
+   (lighter top-left → deeper bottom-right for a bevel) with a bright highlight
+   that sweeps around it twice on mount, then settles. The inner element masks
+   the centre so only the ~1.5px ring shows. */
 
 .ring {
   position: relative;
   display: inline-flex;
-  padding: 2px;
-  border-radius: 12px;
+  padding: 1.5px;
+  border-radius: 11px;
   overflow: hidden;
   isolation: isolate;
-  /* faint constant gold base so it always reads as a golden border */
-  background: rgba(212, 175, 55, 0.45);
+  /* solid, beveled gold — no translucency */
+  background: linear-gradient(135deg, #f7dd8b 0%, #d4af37 46%, #a97d24 100%);
 }
 
 .ring::before {
@@ -22,14 +22,15 @@
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
-    transparent 65deg,
-    rgba(255, 226, 150, 0.9) 95deg,
-    #ffd76b 110deg,
-    rgba(255, 226, 150, 0.9) 125deg,
-    transparent 160deg,
+    transparent 72deg,
+    rgba(255, 244, 214, 0.95) 100deg,
+    #fff6da 112deg,
+    rgba(255, 244, 214, 0.95) 124deg,
+    transparent 152deg,
     transparent 360deg
   );
-  animation: aig-revolve 4.5s linear infinite;
+  /* sweep twice, then stop */
+  animation: aig-revolve 3s linear 2;
 }
 
 .inner {
@@ -38,13 +39,41 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 9.5px;
   padding: 2px 5px;
   background: #ffffff;
+  /* bevel: soft top highlight + bottom shadow for depth */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.1);
 }
 
 :global(html.dark) .inner {
   background: #1a202c; /* gray.800 — matches the navbar */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.4);
+}
+
+/* Desktop popup: pin it top-right just below the 60px navbar as a dropdown.
+   Applied unconditionally; the media query scopes it to desktop, and the
+   !important beats Chakra's placement/size recipe (which kept centering/clipping
+   it when set via style props or the inline style attribute). Height is capped
+   to the viewport so it can never clip below the fold. */
+@media (min-width: 768px) {
+  .desktopPanel.desktopPanel {
+    position: fixed !important;
+    top: 64px !important;
+    right: 12px !important;
+    left: auto !important;
+    bottom: auto !important;
+    width: 380px !important;
+    max-width: 380px !important;
+    height: min(600px, calc(100dvh - 84px)) !important;
+    max-height: calc(100dvh - 84px) !important;
+    margin: 0 !important;
+    border-radius: 14px !important;
+  }
 }
 
 @keyframes aig-revolve {
