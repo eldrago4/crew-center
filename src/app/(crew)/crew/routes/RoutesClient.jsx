@@ -234,6 +234,10 @@ export default function RoutesClient({ initialRoutes, cacheVersion, fleet = [] }
   const [ page, setPage ] = useState(1);
   const [ randomRoute, setRandomRoute ] = useState(null);
   const [ loading, setLoading ] = useState(false);
+  // Routes are fetched client-side from the edge-cached /api/routes (see the
+  // fetch effect below) instead of being SSR-shipped, so start in a loading state
+  // whenever the server didn't hand us any rows.
+  const [ routesLoading, setRoutesLoading ] = useState(initialRoutes.length === 0);
 
   // AI flight recommendations (calls the Cloudflare recommender via /api proxy).
   const recommender = useFlightRecommender();
@@ -295,6 +299,48 @@ export default function RoutesClient({ initialRoutes, cacheVersion, fleet = [] }
     setData(initialRoutes);
     setFiltered(initialRoutes);
   }, [ initialRoutes ]);
+
+  // Fetch the routes list CLIENT-side from the edge-cached /api/routes instead of
+  // receiving ~2,294 rows in the SSR payload — that serialisation was the routes
+  // page's dominant per-request worker cost and the main cause of 1102 errors.
+  // The API sets CDN-Cache-Control, so this is served from Cloudflare's edge, not
+  // a worker render. Only runs when the server didn't already provide rows.
+  useEffect(() => {
+    if (initialRoutes.length > 0) return;
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/routes");
+        if (!res.ok) throw new Error(`routes fetch failed: ${res.status}`);
+        const rows = await res.json();
+        if (!alive) return;
+        const mapped = (Array.isArray(rows) ? rows : []).map((r) => {
+          const [ hours, minutes ] = r.flightTime ? r.flightTime.split(":").map(Number) : [ 0, 0 ];
+          return {
+            flight_number: r.flightNumber,
+            departure_icao: r.departureIcao,
+            arrival_icao: r.arrivalIcao,
+            flight_time_hours: hours || 0,
+            flight_time_minutes: minutes || 0,
+            aircraft_names: r.aircraft,
+          };
+        });
+        setData(mapped);
+        setFiltered(mapped);
+        // Match the old SSR behaviour: seed the time-range slider to the real
+        // min/max of the dataset now that we have it.
+        const bounds = computeTimeBounds(mapped);
+        setFilters((f) => ({ ...f, timeRange: [ bounds.min, bounds.max ] }));
+      } catch (err) {
+        console.error("Failed to load routes:", err);
+        if (alive) { setData([]); setFiltered([]); }
+      } finally {
+        if (alive) setRoutesLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Filter data when filters change
   useEffect(() => {
@@ -684,14 +730,24 @@ export default function RoutesClient({ initialRoutes, cacheVersion, fleet = [] }
       )}
 
       {/* Results Count */}
-      <Box textAlign="center">
-        <Text fontSize="sm" color="gray.500">
-          Showing {(page - 1) * ITEMS_PER_PAGE + 1}-{(page - 1) * ITEMS_PER_PAGE + paginatedData.length} of {filtered.length} routes
-        </Text>
-      </Box>
+      {!routesLoading && filtered.length > 0 && (
+        <Box textAlign="center">
+          <Text fontSize="sm" color="gray.500">
+            Showing {(page - 1) * ITEMS_PER_PAGE + 1}-{(page - 1) * ITEMS_PER_PAGE + paginatedData.length} of {filtered.length} routes
+          </Text>
+        </Box>
+      )}
 
-      {/* Alert for no results (Chakra v3) */}
-      {filtered.length === 0 && (
+      {/* Loading routes from the edge-cached API */}
+      {routesLoading && (
+        <Box textAlign="center" py={10}>
+          <Spinner size="lg" colorPalette="blue" />
+          <Text mt={3} fontSize="sm" color="gray.500">Loading routes…</Text>
+        </Box>
+      )}
+
+      {/* Alert for no results (Chakra v3) — only once loading has settled */}
+      {!routesLoading && filtered.length === 0 && (
         <Alert.Root status="info" colorPalette="blue">
           <Alert.Indicator />
           <Alert.Title>No routes found for the selected filters.</Alert.Title>

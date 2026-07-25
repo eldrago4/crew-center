@@ -7,45 +7,16 @@ import { count } from "drizzle-orm";
 import { fetchFleetModule } from "@/app/(crew)/crew/pireps/file/fleetModule";
 import RoutesClient from "./RoutesClient";
 
-// connection() keeps this page request-time instead of prerendering at build:
-// the crew layout no longer calls auth() to force the group dynamic, so without
-// this the full routes-table select + count would run against the build-time DB.
-// The real caching is unstable_cache (works inside dynamic renders, survives
-// across instances/deploys), cutting the full-table scan to once a day. Staff
-// edits bust it instantly via revalidateTag('routes') in /api/routes mutations.
+// The ~2,294-row routes table is NOT server-rendered here anymore: serialising
+// every row into the SSR/RSC payload on each request was this page's dominant
+// per-request CPU/memory cost on Workers and the main driver of 1102
+// ("exceeded resources") errors. RoutesClient now fetches the list from the
+// edge-cached /api/routes on mount instead, so the worker render stays light.
+// We keep only the tiny cached count here for the "Routes Version" display.
 //
-// The try/catch fallbacks deliberately live OUTSIDE the cached functions: a cached
-// function that swallows an error and returns [] would pin that empty result in the
-// cache for a day. A thrown error is never cached, so the next request retries.
-
-const getRoutesData = unstable_cache(
-  async () => {
-    const allRoutes = await db
-      .select({
-        flightNumber: routes.flightNumber,
-        departureIcao: routes.departureIcao,
-        arrivalIcao: routes.arrivalIcao,
-        flightTime: routes.flightTime,
-        aircraft: routes.aircraft,
-      })
-      .from(routes)
-
-    return allRoutes.map(route => {
-      const [ hours, minutes ] = route.flightTime ? route.flightTime.split(':').map(Number) : [ 0, 0 ];
-
-      return {
-        flight_number: route.flightNumber,
-        departure_icao: route.departureIcao,
-        arrival_icao: route.arrivalIcao,
-        flight_time_hours: hours,
-        flight_time_minutes: minutes,
-        aircraft_names: route.aircraft,
-      };
-    });
-  },
-  [ 'crew-routes-data' ],
-  { revalidate: 86400, tags: [ 'routes' ] },
-);
+// connection() keeps this request-time instead of prerendering at build (the
+// crew layout no longer calls auth() to force the group dynamic). The try/catch
+// lives OUTSIDE the cached function so a transient error is never pinned for a day.
 
 const getRoutesCount = unstable_cache(
   async () => {
@@ -59,22 +30,18 @@ const getRoutesCount = unstable_cache(
 export default async function RoutesPage() {
   await connection();
 
-  let routesData, cacheVersion;
+  let cacheVersion;
   try {
-    [ routesData, cacheVersion ] = await Promise.all([
-      getRoutesData(),
-      getRoutesCount(),
-    ]);
+    cacheVersion = await getRoutesCount();
   } catch (error) {
-    console.error("Error fetching routes:", error);
-    routesData = [];
-    cacheVersion = Date.now().toString();
+    console.error("Error fetching routes count:", error);
+    cacheVersion = "";
   }
 
   // Fleet is the single source of truth for the aircraft dropdown AND the rank
-  // filter (each entry carries { label, value, rank }). Fetched separately so a
-  // fleet-read failure still renders the routes list — the client falls back to
-  // an empty aircraft/rank filter rather than breaking the page.
+  // filter (each entry carries { label, value, rank }). It's small and cached, so
+  // it stays server-rendered — the filters are ready on first paint. A fleet-read
+  // failure just yields empty filter options rather than breaking the page.
   let fleet;
   try {
     fleet = await fetchFleetModule("fleet");
@@ -88,7 +55,7 @@ export default async function RoutesPage() {
     <>
       <Box p={{ base: 4, md: 4 }} flex="1">
         <RoutesClient
-          initialRoutes={routesData}
+          initialRoutes={[]}
           cacheVersion={cacheVersion}
           fleet={Array.isArray(fleet) ? fleet : []}
         />
