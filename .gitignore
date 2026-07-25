@@ -68,3 +68,6 @@ INVA_Flight_Tracker
 src/.claude
 # next-agents-md
 .next-docs/
+
+# ElevenLabs TTS generated audio (regenerate via scripts/tts/generate-voiceover.mjs)
+scripts/tts/*.mp3
