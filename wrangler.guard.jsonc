@@ -1,0 +1,27 @@
+{
+  // Guard worker that fronts crew-center so a 1102 never shows Cloudflare's page.
+  // Deploy: `npx wrangler deploy --config wrangler.guard.jsonc`
+  // (crew-center must already be deployed so the service binding resolves.)
+  //
+  // CUTOVER (one-time, in the Cloudflare dashboard — cannot be scripted safely):
+  //   1. Deploy this guard worker (command above).
+  //   2. Workers & Pages → crew-center → Settings → Domains & Routes:
+  //      REMOVE the public custom domain / route from crew-center.
+  //   3. Workers & Pages → crew-center-guard → add that SAME custom domain / route.
+  //   Now all public traffic enters the guard, which proxies to crew-center and
+  //   masks any 1102/exception with our own /1102.html-style page.
+  //
+  // crew-center keeps its own *.workers.dev (or an internal route) so the service
+  // binding can reach it. Its cron triggers stay on crew-center (they don't route
+  // through the guard). No assets binding here on purpose — see worker.guard.js.
+  "name": "crew-center-guard",
+  "main": "worker.guard.js",
+  "compatibility_date": "2026-07-14",
+  "workers_dev": true,
+  "services": [
+    { "binding": "MAIN", "service": "crew-center" }
+  ]
+
+  // After cutover, pin the domain here instead of the dashboard if you prefer:
+  // "routes": [{ "pattern": "app.indianvirtual.site", "custom_domain": true }]
+}
