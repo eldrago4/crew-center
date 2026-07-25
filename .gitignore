@@ -71,3 +71,4 @@ src/.claude
 
 # ElevenLabs TTS generated audio (regenerate via scripts/tts/generate-voiceover.mjs)
 scripts/tts/*.mp3
+scripts/tts/*.wav
