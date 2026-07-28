@@ -68,3 +68,8 @@ INVA_Flight_Tracker
 src/.claude
 # next-agents-md
 .next-docs/
+
+# Cloudflare Workers build output (the cloudflare branch builds in this tree)
+.open-next
+.wrangler
+.dev.vars

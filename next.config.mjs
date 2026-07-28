@@ -56,7 +56,7 @@ const nextConfig = {
         // /codeshare-emojis/DHL.png, /hero-blueprint.png, /career/*.jpg. These
         // are requested by their real path (plain <img> or CSS url()), so unlike
         // the next/image ones above, this header is what the browser actually sees.
-        source: '/:path*.:ext(png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2)',
+        source: '/:path*.:ext(png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2|wasm)',
         headers: IMMUTABLE_ASSET,
       },
     ];
