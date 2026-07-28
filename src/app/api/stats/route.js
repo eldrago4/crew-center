@@ -275,7 +275,14 @@ function formatOutput(monthLabel, cc, cm) {
 const statsCache = new Map() // key: 'YYYY-MM', value: { text, expiresAt }
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
 const CACHE_TTL_SECONDS = CACHE_TTL_MS / 1000
-const redis = Redis.fromEnv()
+// Lazy so Redis.fromEnv() reads UPSTASH_* at first use (request time) rather than
+// at module load. No-op on Node/Vercel; required on Cloudflare Workers, where env
+// isn't populated at isolate init and a top-level client throws.
+let _redis = null
+function getRedis() {
+    if (!_redis) _redis = Redis.fromEnv()
+    return _redis
+}
 
 function statsCacheKey(monthKey) {
     return `stats:monthly:${monthKey}`
@@ -311,7 +318,7 @@ async function readStatsCache(monthKey) {
     }
 
     try {
-        const cached = await redis.get(statsCacheKey(monthKey))
+        const cached = await getRedis().get(statsCacheKey(monthKey))
         if (!cached) return null
 
         const payload = typeof cached === 'string' ? JSON.parse(cached) : cached
@@ -335,7 +342,7 @@ async function writeStatsCache(monthKey, payload) {
     })
 
     try {
-        await redis.set(statsCacheKey(monthKey), payload, { ex: CACHE_TTL_SECONDS })
+        await getRedis().set(statsCacheKey(monthKey), payload, { ex: CACHE_TTL_SECONDS })
     } catch (error) {
         console.warn('Stats Redis cache write failed:', error)
     }

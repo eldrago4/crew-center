@@ -4,10 +4,14 @@ import db from '@/db/client';
 import { users } from '@/db/schema';
 import { sql } from 'drizzle-orm';
 
-const redis = new Redis({
+let _redis = null
+function getRedis() {
+  if (!_redis) _redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+})
+  return _redis
+}
 
 const CACHE_KEY = 'leaderboard:top10';
 const CACHE_TTL_SECONDS = 86400; // 24h — same as the cron
@@ -37,7 +41,7 @@ async function computeAndCacheLeaderboard() {
 
   // Best-effort cache write; don't fail the request if Redis write hiccups
   try {
-    await redis.set(CACHE_KEY, JSON.stringify(topPilots), { ex: CACHE_TTL_SECONDS });
+    await getRedis().set(CACHE_KEY, JSON.stringify(topPilots), { ex: CACHE_TTL_SECONDS });
   } catch (writeErr) {
     console.warn('Leaderboard cache write failed:', writeErr);
   }
@@ -47,7 +51,7 @@ async function computeAndCacheLeaderboard() {
 
 export async function GET() {
   try {
-    const cachedData = await redis.get(CACHE_KEY);
+    const cachedData = await getRedis().get(CACHE_KEY);
 
     // Browser 5m; Cloudflare edge 1d fresh + 1d serve-stale (CDN-Cache-Control is
     // passed through by Vercel). The data only changes via the daily midnight cron,

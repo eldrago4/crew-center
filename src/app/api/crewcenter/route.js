@@ -7,7 +7,11 @@ import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
 import { requireStaff } from '@/lib/apiAuth';
 
-const redis = Redis.fromEnv();
+let _redis = null
+function getRedis() {
+  if (!_redis) _redis = Redis.fromEnv()
+  return _redis
+}
 const CACHE_TTL_SECONDS = 180;
 
 function cacheKey(moduleName) {
@@ -35,7 +39,7 @@ export async function GET(request) {
     }
 
     try {
-      const cached = await redis.get(cacheKey(moduleName));
+      const cached = await getRedis().get(cacheKey(moduleName));
       if (cached !== null && cached !== undefined) {
         return new Response(JSON.stringify(cached), {
           status: 200,
@@ -74,7 +78,7 @@ export async function GET(request) {
     }
 
     try {
-      await redis.set(cacheKey(moduleName), result[ 0 ].value, { ex: CACHE_TTL_SECONDS });
+      await getRedis().set(cacheKey(moduleName), result[ 0 ].value, { ex: CACHE_TTL_SECONDS });
     } catch (error) {
       console.warn('Crewcenter Redis cache write failed:', error);
     }
@@ -120,7 +124,7 @@ export async function POST(req) {
 
     await updateModuleValue(moduleName, newValue);
     try {
-      await redis.del(cacheKey(moduleName));
+      await getRedis().del(cacheKey(moduleName));
     } catch (error) {
       console.warn('Crewcenter Redis cache invalidation failed:', error);
     }

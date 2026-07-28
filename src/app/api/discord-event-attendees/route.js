@@ -6,7 +6,11 @@ import { inArray, sql } from 'drizzle-orm'
 
 const GUILD_ID = process.env.DISCORD_GUILD_ID
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN
-const redis = Redis.fromEnv()
+let _redis = null
+function getRedis() {
+  if (!_redis) _redis = Redis.fromEnv()
+  return _redis
+}
 const CACHE_TTL_SECONDS = 180
 
 export async function GET(request) {
@@ -19,7 +23,7 @@ export async function GET(request) {
 
   const cacheKey = `discord:event:${discordEventId}:attendees:v1`
   try {
-    const cached = await redis.get(cacheKey)
+    const cached = await getRedis().get(cacheKey)
     if (cached) {
       return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached, {
         headers: {
@@ -64,7 +68,7 @@ export async function GET(request) {
   if (rawAttendees.length === 0) {
     const emptyPayload = { attendees: [] }
     try {
-      await redis.set(cacheKey, emptyPayload, { ex: CACHE_TTL_SECONDS })
+      await getRedis().set(cacheKey, emptyPayload, { ex: CACHE_TTL_SECONDS })
     } catch (error) {
       console.warn('Discord attendees Redis cache write failed:', error)
     }
@@ -108,7 +112,7 @@ export async function GET(request) {
 
   const payload = { attendees }
   try {
-    await redis.set(cacheKey, payload, { ex: CACHE_TTL_SECONDS })
+    await getRedis().set(cacheKey, payload, { ex: CACHE_TTL_SECONDS })
   } catch (error) {
     console.warn('Discord attendees Redis cache write failed:', error)
   }

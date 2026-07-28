@@ -6,7 +6,11 @@ import { eq, inArray, sql } from 'drizzle-orm'
 
 const GUILD_ID = process.env.DISCORD_GUILD_ID
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN
-const redis = Redis.fromEnv()
+let _redis = null
+function getRedis() {
+  if (!_redis) _redis = Redis.fromEnv()
+  return _redis
+}
 const CACHE_KEY = 'events:summary:v1'
 const CACHE_TTL_SECONDS = 180
 
@@ -132,7 +136,7 @@ async function buildSummary() {
 
 export async function GET() {
   try {
-    const cached = await redis.get(CACHE_KEY)
+    const cached = await getRedis().get(CACHE_KEY)
     if (cached) {
       return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached, {
         headers: {
@@ -149,7 +153,7 @@ export async function GET() {
   try {
     const payload = await buildSummary()
     try {
-      await redis.set(CACHE_KEY, payload, { ex: CACHE_TTL_SECONDS })
+      await getRedis().set(CACHE_KEY, payload, { ex: CACHE_TTL_SECONDS })
     } catch (error) {
       console.warn('Events summary Redis cache write failed:', error)
     }

@@ -5,10 +5,18 @@ import { sql } from 'drizzle-orm';
 import { Redis } from '@upstash/redis';
 import { reconcileLotusMembers } from '@/app/api/chanda/_lotus';
 
-const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+// Lazy so the UPSTASH_* reads happen at first use (request time) rather than at
+// module load. No-op on Node/Vercel; required on Cloudflare Workers, where env
+// isn't populated at isolate init and a top-level client throws. Writing it this
+// way here keeps the file identical on both branches.
+let _redis = null;
+function getRedis() {
+    if (!_redis) _redis = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+    return _redis;
+}
 
 // The cron caller (Vercel Cron) hits this route with `Authorization: Bearer
 // <CRON_SECRET>`. Enforce it only when the secret is configured, so the route
@@ -49,7 +57,7 @@ export async function GET(request) {
         }));
 
         // Cache in Redis with 24 hour TTL (86400 seconds)
-        await redis.set('leaderboard:top10', JSON.stringify(topPilots), { ex: 86400 });
+        await getRedis().set('leaderboard:top10', JSON.stringify(topPilots), { ex: 86400 });
 
         // Lotus reconciliation piggybacks on this daily run rather than taking a cron
         // slot of its own (Hobby allows two, and both are already spoken for). It used
@@ -59,7 +67,7 @@ export async function GET(request) {
         // fail the leaderboard, so it is caught separately.
         let lotus = null;
         try {
-            const result = await reconcileLotusMembers(redis);
+            const result = await reconcileLotusMembers(getRedis());
             lotus = { active: result.members.length, revoked: result.revoked.length };
         } catch (error) {
             console.error('Error reconciling lotus members:', error);
