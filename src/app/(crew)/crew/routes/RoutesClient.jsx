@@ -196,8 +196,27 @@ function formatTime(h, m) {
 
 const EMPTY_ROUTE_REQUEST = { flightNumber: "", departureIcao: "", arrivalIcao: "", flightTime: "", aircraft: "" };
 
-export default function RoutesClient({ initialRoutes, cacheVersion, fleet = [] }) {
+export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
   const { data: session } = useSession();
+
+  // Routes arrive server-side as ONE tab/newline-delimited string (cheap to
+  // serialize across the RSC boundary vs ~2,294 objects). Expand it back into row
+  // objects here on the client, where CPU isn't limited. Line fields:
+  // flightNumber \t dep \t arr \t hours \t minutes \t aircraft.
+  const initialRoutes = useMemo(() => {
+    if (!packedRoutes) return [];
+    return packedRoutes.split("\n").filter(Boolean).map((line) => {
+      const [ fn, dep, arr, h, m, ac ] = line.split("\t");
+      return {
+        flight_number: fn,
+        departure_icao: dep,
+        arrival_icao: arr,
+        flight_time_hours: Number(h) || 0,
+        flight_time_minutes: Number(m) || 0,
+        aircraft_names: ac || "",
+      };
+    });
+  }, [ packedRoutes ]);
 
   // Aircraft dropdown options come straight from the DB fleet module ({ label,
   // value, rank }). Empty fleet (fetch failure) just yields an empty select.
@@ -290,10 +309,12 @@ export default function RoutesClient({ initialRoutes, cacheVersion, fleet = [] }
     return marks;
   }, [ timeBounds ]);
 
-  // Update data when initialRoutes changes
+  // Keep local state in sync if the (expanded) server data changes.
   useEffect(() => {
     setData(initialRoutes);
     setFiltered(initialRoutes);
+    const bounds = computeTimeBounds(initialRoutes);
+    setFilters((f) => ({ ...f, timeRange: [ bounds.min, bounds.max ] }));
   }, [ initialRoutes ]);
 
   // Filter data when filters change
@@ -801,10 +822,10 @@ export default function RoutesClient({ initialRoutes, cacheVersion, fleet = [] }
         </Center>
       )}
 
-      {/* Cache Info */}
+      {/* Total routes in the network */}
       <Box textAlign="center" py={4}>
         <Text fontSize="sm" color="gray.500">
-          Routes Version: {cacheVersion}
+          {data.length} routes in the network
         </Text>
       </Box>
     </VStack>
