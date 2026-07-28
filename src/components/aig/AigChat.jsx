@@ -26,8 +26,13 @@ import styles from './AigChat.module.css'
 const AigLottie = dynamic(() => import('@/app/(crew)/crew/routes/AigLottie'), { ssr: false })
 
 const AIG_LOGO = '/fonts/Aig.png'
+// Navbar trigger emblem — two art variants tuned per background: the darker one
+// for light mode (contrast on white), the brighter one for dark mode (pops on
+// gray.800). Swapped in pure CSS below via Chakra's _dark condition.
+const AIG_ICON_LIGHT = '/aig-icon-light.png'
+const AIG_ICON_DARK = '/aig-icon-dark.png'
 const GREETING =
-  "Hi! I'm AI.g, your Air India Virtual assistant. Ask me about flying procedures, ATC, our routes, or anything Infinite Flight."
+  "Hi! I'm AI.g, your Indian Virtual assistant. Ask me about flying procedures, ATC, our routes, or anything Infinite Flight."
 
 // Same playful loading lines the routes recommender uses.
 const LOADING_PHRASES = [
@@ -297,6 +302,32 @@ export default function AigChat() {
 
   React.useEffect(() => () => clearTimeout(revealTimer.current), [])
 
+  // Mobile keyboard handling. When the on-screen keyboard opens, the browser
+  // shrinks the *visual* viewport but leaves our bottom:0 fixed sheet anchored
+  // to the *layout* viewport — so the composer ends up behind the keyboard and
+  // the browser scrolls the whole sheet up to reveal it, shoving the greeting
+  // and messages off the top. Instead of letting that happen, we publish the
+  // keyboard's height as a CSS var and let the sheet lift by exactly that much
+  // (and shrink so its top stays put — see .desktopPanel in the module CSS).
+  React.useEffect(() => {
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null
+    if (!open || !vv) return
+    const root = document.documentElement
+    const sync = () => {
+      // Only meaningful on the mobile bottom sheet; desktop ignores the var.
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+      root.style.setProperty('--aig-kb', `${kb}px`)
+    }
+    sync()
+    vv.addEventListener('resize', sync)
+    vv.addEventListener('scroll', sync)
+    return () => {
+      vv.removeEventListener('resize', sync)
+      vv.removeEventListener('scroll', sync)
+      root.style.setProperty('--aig-kb', '0px')
+    }
+  }, [open])
+
   React.useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
@@ -419,35 +450,43 @@ export default function AigChat() {
     <Dialog.Root
       open={open}
       onOpenChange={(e) => setOpen(e.open)}
-      size={{ base: 'full', md: 'md' }}
+      size="md"
       placement="center"
-      motionPreset="slide-in-top"
+      motionPreset="none"
       scrollBehavior="inside"
     >
       <Dialog.Trigger asChild>
         <IconButton
           aria-label="Open AI.g assistant"
           variant="ghost"
-          rounded="11px"
-          p="0"
-          minW="auto"
-          h="auto"
-          _hover={{ bg: 'transparent' }}
-          _active={{ bg: 'transparent' }}
+          size="sm"
         >
-          {/* Wide wordmark (294×129) kept in a rectangle, wrapped in a golden
-              revolving-shimmer border (see AigChat.module.css). */}
-          <span className={styles.ring}>
-            <span className={styles.inner}>
-              <NextImage
-                src={AIG_LOGO}
-                alt="AI.g"
-                width={78}
-                height={34}
-                style={{ objectFit: 'contain', display: 'block' }}
-              />
-            </span>
-          </span>
+          {/* Brand emblem, matched to the theme toggle's footprint (ghost sm,
+              ~20px glyph). No border, no hover lift — reads as a plain nav icon.
+              Light/dark art is swapped in pure CSS (Chakra's _dark condition maps
+              to html.dark) so there's no hydration flash and no JS on the path. */}
+          <Box display={{ base: 'inline-flex', _dark: 'none' }}>
+            <NextImage
+              src={AIG_ICON_LIGHT}
+              alt=""
+              aria-hidden
+              width={24}
+              height={24}
+              style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'block' }}
+              priority
+            />
+          </Box>
+          <Box display={{ base: 'none', _dark: 'inline-flex' }}>
+            <NextImage
+              src={AIG_ICON_DARK}
+              alt=""
+              aria-hidden
+              width={24}
+              height={24}
+              style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'block' }}
+              priority
+            />
+          </Box>
         </IconButton>
       </Dialog.Trigger>
 
@@ -459,9 +498,10 @@ export default function AigChat() {
           backdropFilter={{ base: 'blur(2px)', md: 'none' }}
         />
         <Dialog.Positioner>
-          {/* Desktop: pin the content itself top-right, just below the 60px
-              navbar, so it reads as a dropdown and never centers/clips. Mobile
-              keeps the size="full" sheet. */}
+          {/* Desktop: pin the content top-right below the 60px navbar so it
+              reads as a dropdown and never centers/clips. Mobile: a bottom sheet
+              with a curved top that slides up, keyboard-aware via --aig-kb (see
+              AigChat.module.css). */}
           <Dialog.Content
             className={styles.desktopPanel}
             display="flex"
@@ -492,7 +532,7 @@ export default function AigChat() {
                   <Box boxSize="7px" borderRadius="full" bg="green.400" />
                 </HStack>
                 <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.400' }} truncate>
-                  Air India Virtual assistant
+                  Indian Virtual&apos;s AI assistant for pilots
                 </Text>
               </Box>
               <Dialog.CloseTrigger asChild>
