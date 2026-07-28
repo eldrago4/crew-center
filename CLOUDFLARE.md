@@ -9,6 +9,12 @@ Merging is *not* a plain fast‑forward: a handful of files must keep their
 Cloudflare versions, and — more subtly — the Workers runtime has an environment
 model that breaks common Node/Vercel patterns. Read this before every merge.
 
+> **Writing a feature (on either branch)?** Start with
+> **["Coding etiquette — write it so it ports"](#coding-etiquette--write-it-so-it-ports)**.
+> Most of the merge pain below is self‑inflicted: code authored on `main` in a
+> shape that doesn't survive the Workers runtime. The etiquette rules are no‑ops
+> on Vercel and make the merge a fast‑forward.
+
 > **⚠️ Cache Components / PPR — STRIP on every merge (settled 2026‑07‑22).**
 > `main` runs `cacheComponents: true` + `'use cache' / 'use cache: remote'` +
 > `cacheLife`/`cacheTag`. **This branch does NOT** — we strip it and use
@@ -60,6 +66,193 @@ npm run cf:deploy             # or let the Workers build deploy it
 ```
 
 Then smoke‑test **`/crew`** and any page that talks to the DB or Redis.
+
+---
+
+## Coding etiquette — write it so it ports
+
+Every merge costs exactly as much as the code makes it cost. The rules below are
+what we've learned (mostly the hard way) about **writing a feature on `main` so
+it lands here without hand‑surgery**, and about **where a Workers‑only fix is
+allowed to live**. Follow them on *both* branches — most are free no‑ops on
+Vercel.
+
+### The direction of flow
+
+- **Features are written on `main` and merged down.** Never develop a feature
+  here first; there is no `cloudflare → main` merge and there never should be
+  (this branch carries platform edits that would break Vercel).
+- **Provider fixes stay on their own branch** — but a fix that is *portable*
+  (helps both runtimes) should be written on `main` and merged down, not applied
+  here directly. Anything applied only here becomes a permanent merge hazard: it
+  has to survive every future merge by hand. See the ledger at the end of this
+  section.
+
+### The divergence ledger — what differs and how to copy it
+
+| Concern | `main` (Vercel/Node) | `cloudflare` (Workers) | Copying a change |
+|---|---|---|---|
+| Env access | `process.env` at module load | **request‑time only** | Write lazy on both → **copies clean** |
+| Cached reads | `'use cache' / cacheLife / cacheTag` | `unstable_cache` | **Hand‑convert every merge** |
+| Force‑dynamic | `await connection()` | same | **copies clean — keep it** |
+| Middleware | `src/proxy.js` | **does not exist** | **Never copy** |
+| Firebase | `firebase-admin` | Firestore REST + `jose` | **Never copy** — keep ours |
+| AI Search | REST + `CF_ACCOUNT_ID`/token | `env.AI.autorag(...)` binding | **Never copy** — keep ours |
+| Cron | `vercel.json` `crons` | `wrangler.jsonc triggers` + `worker.js` | **Edit both, separately** |
+| `next/image` | optimizer on | `unoptimized: true` | **Never copy** the flag |
+| Outbound `fetch` | anything Node can reach | hostname + standard port only | Design for the strict side |
+| Response bodies | streaming fine | **no streamed bodies** (OpenNext hangs) | Design for the strict side |
+| Bundle size | effectively unbounded | **3 MiB gzipped, hard** | Watch new deps here |
+| CPU | Fluid Active CPU (billed) | **~2 s/request, hard 1102** | Cold‑start work is portable |
+
+### 1. Lazy‑init anything that reads env — **on `main` too**
+
+The single biggest source of "worked on Vercel, 500s on Workers". Full
+explanation in [the runtime gotcha](#the-runtime-gotcha-lazyinit-anything-that-reads-env);
+the etiquette half is: **write the lazy `getRedis()` / `getDb()` shape when you
+first author the code on `main`.** On Node it is a pure no‑op (the client is
+built on first call instead of at import), and it means the file merges down
+untouched instead of needing a conversion pass. Every eager client we've had to
+convert here (`stats`, `leaderboard/cron`, `db/client.js`, …) is a file that now
+conflicts on every merge that touches it.
+
+### 2. Keep cached reads in one named wrapper, at the top of the file
+
+The `'use cache'` ⇄ `unstable_cache` conversion is mechanical **only if the
+cached read is a standalone exported function**. It becomes surgery when
+`'use cache'` is sprinkled inside a component body or a route handler.
+
+```js
+// ✅ portable shape — one hunk to convert, everything else merges clean
+const getNotams = unstable_cache(async () => { … }, ['dashboard-notams'],
+                                 { revalidate: 300, tags: ['notams'] });
+// main writes the same function as: async function getNotams(){ 'use cache: remote'; cacheLife(…); cacheTag('notams'); … }
+```
+
+Corollaries:
+- **Keep the cache key and the tag string identical on both branches**
+  (`'notams'`, `crewcenter-${moduleName}`). `revalidateTag()` calls then copy
+  down verbatim, and the diff stays inside the wrapper.
+- **Put error fallbacks in the same place on both branches.** On `main` they must
+  sit *outside* the cached scope (a thrown error inside a build‑executed
+  `'use cache'` fails the build); `unstable_cache` doesn't care either way, so
+  match main's placement and the conversion stays a one‑liner.
+- `updateTag` is Cache‑Components‑only. Always write `revalidateTag` — it works
+  on both.
+
+### 3. `connection()` is portable — write it, don't strip it
+
+Any page that reads the DB and isn't already forced dynamic by `auth()` needs
+`await connection()` from `next/server` on **both** branches. On `main` it keeps
+cached reads out of the build; here it is what stops a prerender attempt from
+crashing with `No database connection string`. It is a plain Next API, not
+Cache‑Components‑gated. Adding it on `main` is the cheapest possible parity win.
+
+### 4. Gate auth in the layout/page — never in middleware
+
+`src/proxy.js` cannot exist here (Node middleware is unsupported by
+OpenNext‑Cloudflare, and Next 16 gives no edge escape hatch). So **don't move
+gating into the proxy on `main` either** — keep `auth()` + `redirect()` in each
+section `layout.jsx`/`page.jsx`, which runs identically on both. Anything you
+add to the proxy on `main` is functionality this branch silently loses.
+
+### 5. Outbound `fetch`: hostname, standard port, HTTPS
+
+Workers subrequests **cannot** target a raw IP literal, and a non‑standard port
+is silently dropped to the scheme's default. Node/undici has neither
+restriction, so this class of bug is invisible on `main`.
+
+- **Never hardcode a host.** Put every external base URL in an env var/secret
+  (`BOT_API_URL`, `RECS_API_URL`) so a transport fix is a `wrangler secret put`,
+  not a code change on two branches.
+- Point those at a **hostname on 443** (Cloudflare Tunnel, or proxied DNS + an
+  Origin Rule rewriting the port). `http://1.2.3.4:25565` is a dead address here.
+- The failure signature is nasty: workerd **strips the message** on an
+  internally‑rejected subrequest, so you get a stack with no `Name: message`
+  header and `error.message === ''`. Which leads to:
+- **Log `error.name` + `error.stack` + the target URL, and never return a bare
+  `error.message` to the client** — it renders as an empty toast. This is the
+  `/api/inactive-notice` lesson (all five bot integrations were dead for days
+  behind a blank error).
+
+### 6. Bindings stay in the route handler
+
+`getCloudflareContext()` and `env.AI` only exist here. Keep them **inside the one
+route handler that needs them** (see `api/aig/chat/route.js`) and never import
+them into a shared `src/lib/*` module — the moment a binding leaks into shared
+code, that file joins the "never copy" list and every merge touching it
+conflicts. Same rule in reverse on `main`: keep `CF_ACCOUNT_ID`/token REST calls
+in the route, not in a helper.
+
+### 7. Adding a cron = two edits, and the route must be portable
+
+There is no Vercel Cron here. A new scheduled job needs:
+1. `vercel.json` → `crons` entry (on `main`), **and**
+2. `wrangler.jsonc` → `triggers.crons` expression **plus** a matching
+   `CRON_ROUTES` key in `worker.js` — byte‑identical strings, or the event is a
+   silent no‑op.
+
+So write the job as a **plain `GET` route handler, `CRON_SECRET` Bearer‑gated
+and idempotent**, never as platform‑specific glue. Both runners then just call
+it. (`vercel.json` on this branch keeps only the `git.deploymentEnabled`
+block — don't let main's `crons` array merge back in.)
+
+### 8. Don't stream response bodies
+
+Returning a streamed body from a route handler **hangs under OpenNext on
+Workers** (~15 s → 502; see `156aab7`). Keep API responses plain JSON on both
+branches and do progressive reveal on the client (AI.g uses a typewriter
+effect). If you build a streaming feature on `main`, you are building something
+that must be rewritten here.
+
+### 9. Perf work: portable by default, Workers‑only by exception
+
+The two platforms punish different things — Vercel bills Fluid **Active CPU**,
+Workers **hard‑fails at ~2 s** with a 1102 — but the fixes overlap almost
+entirely, so **write them on `main` and merge them down**:
+
+- Heavy interactive client trees → `next/dynamic(..., { ssr: false })` with a
+  fixed‑size placeholder (DashNav, SideBar, the `/crew` login form). Cuts
+  cold‑start module‑init here, cuts SSR CPU there. Fully portable.
+- Shrink server→client payloads (the packed tab/newline routes string). Portable.
+- `CDN-Cache-Control` on any GET with no `auth()` and no per‑user input;
+  `Cache-Control: private, max-age=N` on slow‑changing per‑user reads. Both
+  branches honour these — **already in parity, keep it that way.** Remember
+  neither has a purge wired, so the TTL is a hard staleness ceiling.
+
+Genuinely Workers‑only (do **not** push these to `main`): `wrangler.jsonc`
+`minify`, `unoptimized: true`, the guard worker, anything about the 3 MiB gate.
+
+### 10. New dependency? Check three things before merging it down
+
+1. Does it need Node built‑ins beyond `nodejs_compat`? (`firebase-admin` did —
+   that's why `src/lib/firebase.js` is a REST client.) Prefer Web‑standard
+   APIs: `fetch`, Web Crypto, `jose`.
+2. Does it push the worker past the size gate?
+   `npx wrangler deploy --dry-run --outdir /tmp/wout | grep "Total Upload"` —
+   gzip must stay under 3072 KiB, and headroom is ~9%.
+3. Is it a client‑only lib? Then `ssr: false` it and it costs the worker nothing.
+
+### The cloudflare‑only patch ledger
+
+These files carry Workers‑specific edits that **a merge from `main` will try to
+revert**. Anything you add to this list should also earn a line here:
+
+| File | Why it diverges |
+|---|---|
+| `src/lib/firebase.js` | Firestore REST + `jose` (exports `Timestamp`) |
+| `src/db/client.js` | lazy neon behind a `Proxy` |
+| `next.config.mjs` | no `cacheComponents`, jose tracing, `unoptimized` |
+| `package.json` / `.npmrc` | jose/wrangler/opennext, `next ^16.2.11`, no `pg` |
+| `vercel.json` | deploy disabled for this branch; no `crons` |
+| `src/app/api/aig/chat/route.js` | AI binding instead of REST |
+| `src/app/api/stats/route.js` | `Timestamp` from our firebase shim + lazy Redis |
+| `src/app/api/leaderboard/cron/route.js` | lazy Redis |
+| `ProfileContainer.jsx`, `fleetModule.js`, `admin/statistics/queries.js`, `crew/routes/page.jsx`, `crew/admin/rotw/page.jsx` | Cache Components stripped → `unstable_cache` |
+| `crew/page.jsx` + `CrewLoginClient.jsx`, `ResponsiveCrewLayout.jsx`, `crew/routes/{page,RoutesClient}.jsx` | 1102 cold‑start work (**portable — fold into `main` when convenient and this row goes away**) |
+| `worker.js`, `worker.guard.js`, `wrangler*.jsonc`, `open-next.config.ts`, `public/1102.html` | Cloudflare‑only files |
+
+Regenerate it any time with `git diff --stat main..cloudflare`.
 
 ---
 
@@ -340,6 +533,11 @@ that catches Workers‑only failures like the Node‑middleware error above.
 - [ ] `npm install --package-lock-only` run; `npm ci` (or `--dry-run`) exits 0
 - [ ] **No module‑scope `neon(`/`new Redis(`/`Redis.fromEnv(`** (grep above)
 - [ ] `npx next build` compiles **and** `npm run cf:build` writes `.open-next/worker.js`
+- [ ] Every row of the [cloudflare‑only patch ledger](#the-cloudflareonly-patch-ledger)
+      still holds (`git diff --stat main..cloudflare` — a file that *disappeared*
+      from the diff means main's version overwrote ours)
+- [ ] No new `fetch()` to a raw IP or non‑standard port; no streamed response bodies
+- [ ] New cron? `wrangler.jsonc triggers.crons` **and** `worker.js CRON_ROUTES` both updated
 - [ ] Deployed and `/crew` login + a DB page + a Redis page load without 500s
 
 ---
