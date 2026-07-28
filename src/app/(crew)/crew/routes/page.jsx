@@ -1,47 +1,53 @@
-import { Box } from "@chakra-ui/react";
+import { Box, Grid, Skeleton, Stack } from "@chakra-ui/react";
+import { Suspense } from "react";
 import { connection } from "next/server";
 import { unstable_cache } from "next/cache";
 import db from "@/db/client";
 import { routes } from "@/db/schema";
-import { count } from "drizzle-orm";
 import { fetchFleetModule } from "@/app/(crew)/crew/pireps/file/fleetModule";
 import RoutesClient from "./RoutesClient";
 
-// The ~2,294-row routes table is NOT server-rendered here anymore: serialising
-// every row into the SSR/RSC payload on each request was this page's dominant
-// per-request CPU/memory cost on Workers and the main driver of 1102
-// ("exceeded resources") errors. RoutesClient now fetches the list from the
-// edge-cached /api/routes on mount instead, so the worker render stays light.
-// We keep only the tiny cached count here for the "Routes Version" display.
-//
-// connection() keeps this request-time instead of prerendering at build (the
-// crew layout no longer calls auth() to force the group dynamic). The try/catch
-// lives OUTSIDE the cached function so a transient error is never pinned for a day.
-
-const getRoutesCount = unstable_cache(
+// Routes are rendered SERVER-side (no browser-callable data endpoint), but packed
+// into ONE tab/newline-delimited string that's cached daily. Passing a single
+// string across the RSC boundary is far cheaper to serialize than ~2,294 nested
+// objects — that per-object Flight encoding was this page's SSR CPU cost and the
+// driver of its 1102s on a cold isolate. RoutesClient expands the string back
+// into rows on the client, where CPU isn't limited. Per line, tab-separated:
+// flightNumber, dep, arr, hours, minutes, aircraft. Staff edits bust it instantly
+// via revalidateTag('routes') in the /api/routes mutations.
+const getRoutesPacked = unstable_cache(
   async () => {
-    const result = await db.select({ value: count() }).from(routes);
-    return (result[ 0 ]?.value || 0).toString();
+    const rows = await db
+      .select({
+        flightNumber: routes.flightNumber,
+        departureIcao: routes.departureIcao,
+        arrivalIcao: routes.arrivalIcao,
+        flightTime: routes.flightTime,
+        aircraft: routes.aircraft,
+      })
+      .from(routes);
+    return rows
+      .map((r) => {
+        const [ h = "0", m = "0" ] = r.flightTime ? r.flightTime.split(":") : [];
+        return [ r.flightNumber, r.departureIcao, r.arrivalIcao, h, m, r.aircraft ].join("\t");
+      })
+      .join("\n");
   },
-  [ 'crew-routes-count' ],
-  { revalidate: 86400, tags: [ 'routes' ] },
+  [ "crew-routes-packed" ],
+  { revalidate: 86400, tags: [ "routes" ] },
 );
 
-export default async function RoutesPage() {
-  await connection();
-
-  let cacheVersion;
+// The data-dependent subtree, streamed under Suspense so the page shell + skeleton
+// flush immediately while the (cached) data resolves. Fleet is small + cached and
+// fetched alongside. The try/catch stays OUTSIDE the cached function so a transient
+// error is never pinned in the cache for a day.
+async function RoutesData() {
+  let packed = "";
   try {
-    cacheVersion = await getRoutesCount();
+    packed = await getRoutesPacked();
   } catch (error) {
-    console.error("Error fetching routes count:", error);
-    cacheVersion = "";
+    console.error("Error fetching routes:", error);
   }
-
-  // Fleet is the single source of truth for the aircraft dropdown AND the rank
-  // filter (each entry carries { label, value, rank }). It's small and cached, so
-  // it stays server-rendered — the filters are ready on first paint. A fleet-read
-  // failure just yields empty filter options rather than breaking the page.
   let fleet;
   try {
     fleet = await fetchFleetModule("fleet");
@@ -49,17 +55,32 @@ export default async function RoutesPage() {
     console.error("Error fetching fleet:", error);
     fleet = [];
   }
+  return <RoutesClient packedRoutes={packed} fleet={Array.isArray(fleet) ? fleet : []} />;
+}
 
+function RoutesSkeleton() {
+  return (
+    <Stack gap={6}>
+      <Skeleton height="44px" maxW="520px" borderRadius="md" />
+      <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }} gap={6}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} height="180px" borderRadius="lg" />
+        ))}
+      </Grid>
+    </Stack>
+  );
+}
+
+export default async function RoutesPage() {
+  // Keep this request-time (the crew layout no longer forces the group dynamic);
+  // without it the cached read could run against the build-time DB.
+  await connection();
 
   return (
-    <>
-      <Box p={{ base: 4, md: 4 }} flex="1">
-        <RoutesClient
-          initialRoutes={[]}
-          cacheVersion={cacheVersion}
-          fleet={Array.isArray(fleet) ? fleet : []}
-        />
-      </Box>
-    </>
-  )
+    <Box p={{ base: 4, md: 4 }} flex="1">
+      <Suspense fallback={<RoutesSkeleton />}>
+        <RoutesData />
+      </Suspense>
+    </Box>
+  );
 }

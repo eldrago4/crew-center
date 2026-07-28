@@ -196,8 +196,27 @@ function formatTime(h, m) {
 
 const EMPTY_ROUTE_REQUEST = { flightNumber: "", departureIcao: "", arrivalIcao: "", flightTime: "", aircraft: "" };
 
-export default function RoutesClient({ initialRoutes, cacheVersion, fleet = [] }) {
+export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
   const { data: session } = useSession();
+
+  // Routes arrive server-side as ONE tab/newline-delimited string (cheap to
+  // serialize across the RSC boundary vs ~2,294 objects). Expand it back into row
+  // objects here on the client, where CPU isn't limited. Line fields:
+  // flightNumber \t dep \t arr \t hours \t minutes \t aircraft.
+  const initialRoutes = useMemo(() => {
+    if (!packedRoutes) return [];
+    return packedRoutes.split("\n").filter(Boolean).map((line) => {
+      const [ fn, dep, arr, h, m, ac ] = line.split("\t");
+      return {
+        flight_number: fn,
+        departure_icao: dep,
+        arrival_icao: arr,
+        flight_time_hours: Number(h) || 0,
+        flight_time_minutes: Number(m) || 0,
+        aircraft_names: ac || "",
+      };
+    });
+  }, [ packedRoutes ]);
 
   // Aircraft dropdown options come straight from the DB fleet module ({ label,
   // value, rank }). Empty fleet (fetch failure) just yields an empty select.
@@ -234,10 +253,6 @@ export default function RoutesClient({ initialRoutes, cacheVersion, fleet = [] }
   const [ page, setPage ] = useState(1);
   const [ randomRoute, setRandomRoute ] = useState(null);
   const [ loading, setLoading ] = useState(false);
-  // Routes are fetched client-side from the edge-cached /api/routes (see the
-  // fetch effect below) instead of being SSR-shipped, so start in a loading state
-  // whenever the server didn't hand us any rows.
-  const [ routesLoading, setRoutesLoading ] = useState(initialRoutes.length === 0);
 
   // AI flight recommendations (calls the Cloudflare recommender via /api proxy).
   const recommender = useFlightRecommender();
@@ -294,53 +309,13 @@ export default function RoutesClient({ initialRoutes, cacheVersion, fleet = [] }
     return marks;
   }, [ timeBounds ]);
 
-  // Update data when initialRoutes changes
+  // Keep local state in sync if the (expanded) server data changes.
   useEffect(() => {
     setData(initialRoutes);
     setFiltered(initialRoutes);
+    const bounds = computeTimeBounds(initialRoutes);
+    setFilters((f) => ({ ...f, timeRange: [ bounds.min, bounds.max ] }));
   }, [ initialRoutes ]);
-
-  // Fetch the routes list CLIENT-side from the edge-cached /api/routes instead of
-  // receiving ~2,294 rows in the SSR payload — that serialisation was the routes
-  // page's dominant per-request worker cost and the main cause of 1102 errors.
-  // The API sets CDN-Cache-Control, so this is served from Cloudflare's edge, not
-  // a worker render. Only runs when the server didn't already provide rows.
-  useEffect(() => {
-    if (initialRoutes.length > 0) return;
-    let alive = true;
-    (async () => {
-      try {
-        const res = await fetch("/api/routes");
-        if (!res.ok) throw new Error(`routes fetch failed: ${res.status}`);
-        const rows = await res.json();
-        if (!alive) return;
-        const mapped = (Array.isArray(rows) ? rows : []).map((r) => {
-          const [ hours, minutes ] = r.flightTime ? r.flightTime.split(":").map(Number) : [ 0, 0 ];
-          return {
-            flight_number: r.flightNumber,
-            departure_icao: r.departureIcao,
-            arrival_icao: r.arrivalIcao,
-            flight_time_hours: hours || 0,
-            flight_time_minutes: minutes || 0,
-            aircraft_names: r.aircraft,
-          };
-        });
-        setData(mapped);
-        setFiltered(mapped);
-        // Match the old SSR behaviour: seed the time-range slider to the real
-        // min/max of the dataset now that we have it.
-        const bounds = computeTimeBounds(mapped);
-        setFilters((f) => ({ ...f, timeRange: [ bounds.min, bounds.max ] }));
-      } catch (err) {
-        console.error("Failed to load routes:", err);
-        if (alive) { setData([]); setFiltered([]); }
-      } finally {
-        if (alive) setRoutesLoading(false);
-      }
-    })();
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Filter data when filters change
   useEffect(() => {
@@ -730,24 +705,14 @@ export default function RoutesClient({ initialRoutes, cacheVersion, fleet = [] }
       )}
 
       {/* Results Count */}
-      {!routesLoading && filtered.length > 0 && (
-        <Box textAlign="center">
-          <Text fontSize="sm" color="gray.500">
-            Showing {(page - 1) * ITEMS_PER_PAGE + 1}-{(page - 1) * ITEMS_PER_PAGE + paginatedData.length} of {filtered.length} routes
-          </Text>
-        </Box>
-      )}
+      <Box textAlign="center">
+        <Text fontSize="sm" color="gray.500">
+          Showing {(page - 1) * ITEMS_PER_PAGE + 1}-{(page - 1) * ITEMS_PER_PAGE + paginatedData.length} of {filtered.length} routes
+        </Text>
+      </Box>
 
-      {/* Loading routes from the edge-cached API */}
-      {routesLoading && (
-        <Box textAlign="center" py={10}>
-          <Spinner size="lg" colorPalette="blue" />
-          <Text mt={3} fontSize="sm" color="gray.500">Loading routes…</Text>
-        </Box>
-      )}
-
-      {/* Alert for no results (Chakra v3) — only once loading has settled */}
-      {!routesLoading && filtered.length === 0 && (
+      {/* Alert for no results (Chakra v3) */}
+      {filtered.length === 0 && (
         <Alert.Root status="info" colorPalette="blue">
           <Alert.Indicator />
           <Alert.Title>No routes found for the selected filters.</Alert.Title>
@@ -857,10 +822,10 @@ export default function RoutesClient({ initialRoutes, cacheVersion, fleet = [] }
         </Center>
       )}
 
-      {/* Cache Info */}
+      {/* Total routes in the network */}
       <Box textAlign="center" py={4}>
         <Text fontSize="sm" color="gray.500">
-          Routes Version: {cacheVersion}
+          {data.length} routes in the network
         </Text>
       </Box>
     </VStack>
