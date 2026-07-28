@@ -569,7 +569,7 @@ export default function BasicInfo({ ifcName, image, flightTime, rank, badgePaylo
     if (lotusStatusFromParent != null) return
     const loadLotus = async () => {
       try {
-        const res = await fetch('/api/chanda/lotus/status', { cache: 'no-store' })
+        const res = await fetch('/api/chanda/lotus/status')
         if (!res.ok) return
         const data = await res.json()
         setLotusStatus(data)

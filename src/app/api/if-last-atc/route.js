@@ -63,6 +63,10 @@ export async function GET() {
             airportIcao: (session_entry.airportIcao || '').toUpperCase().slice(0, 4),
             openTime: session_entry.created,   // UTC ISO string
             closeTime: session_entry.updated,  // UTC ISO string
+        }, {
+            // Per-user and expensive (IF-API round trips). Private browser cache so
+            // a dashboard revisit/soft-nav within 2 min skips the worker + IF API.
+            headers: { 'Cache-Control': 'private, max-age=120' },
         })
     } catch (err) {
         console.error('[IF LAST ATC]', err.message)

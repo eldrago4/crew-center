@@ -54,10 +54,24 @@ export async function GET() {
         limit: LOTUS_MEMBER_LIMIT,
         slotsRemaining: Math.max(0, LOTUS_MEMBER_LIMIT - lotusMembers.length),
       },
+    }, {
+      // Shared, non-per-user stats built from ~10 Redis reads. Cached hard at the
+      // Cloudflare edge for a week so this heavy handler runs at most ~weekly
+      // instead of once per chanda-page view. NOTE: a new contribution/goal change
+      // won't surface on the public page until the week elapses (no edge purge is
+      // wired) — accepted per the chosen retention policy. Browser holds 1h.
+      headers: {
+        'Cache-Control': 'public, max-age=3600',
+        'CDN-Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400',
+      },
     });
   } catch (err) {
     console.error('Chanda stats error:', err);
-    return NextResponse.json({ contributors: 0, goals: {}, goalDefs: DEFAULT_GOALS, contributions: [], lotus: { subscribers: 0, members: [] } });
+    // A transient failure must never be pinned at the edge.
+    return NextResponse.json(
+      { contributors: 0, goals: {}, goalDefs: DEFAULT_GOALS, contributions: [], lotus: { subscribers: 0, members: [] } },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
   }
 }
 
