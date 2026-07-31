@@ -67,6 +67,10 @@ async function RoutesData() {
     fleet = [];
   }
 
+  // Gallery-view backdrops are NOT resolved here: they're per-arrival-airport
+  // photos, and prefetching all ~363 of them to render 15 cards — for a view
+  // most pilots never open — would be absurd. The client asks
+  // /api/routes/backdrops for the page it's actually showing instead.
   return <RoutesClient packedRoutes={packed} fleet={Array.isArray(fleet) ? fleet : []} />;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import NoPrefetchLink from "@/components/NoPrefetchLink";
 import { useSession } from "next-auth/react";
 import {
@@ -27,8 +27,9 @@ import {
   Field,
   Portal,
   CloseButton,
+  SegmentGroup,
 } from "@chakra-ui/react";
-import { FiSend } from "react-icons/fi";
+import { FiSend, FiImage, FiList, FiClock } from "react-icons/fi";
 import { Toaster, toaster } from "@/components/ui/toaster";
 import {
   useFlightRecommender,
@@ -196,6 +197,306 @@ function formatTime(h, m) {
 
 const EMPTY_ROUTE_REQUEST = { flightNumber: "", departureIcao: "", arrivalIcao: "", flightTime: "", aircraft: "" };
 
+// ---------------------------------------------------------------------------
+// View toggle
+// ---------------------------------------------------------------------------
+
+// "list" is the compact default (15 dense cards, no images, no network cost).
+// "gallery" is the photo-backed cinematic view. The choice is a pure display
+// preference, so it lives in localStorage rather than the session/DB.
+const VIEW_LIST = "list";
+const VIEW_GALLERY = "gallery";
+const VIEW_STORAGE_KEY = "crew:routes:view";
+
+function readStoredView() {
+  try {
+    return window.localStorage.getItem(VIEW_STORAGE_KEY) === VIEW_GALLERY ? VIEW_GALLERY : VIEW_LIST;
+  } catch {
+    // Private mode / blocked storage — fall back to the default view.
+    return VIEW_LIST;
+  }
+}
+
+// 33 rows in the routes table carry a routing note in the ICAO cell instead of a
+// bare code — "EGLL VIA VABB", "ZSPD (VIA VIDP, VTBS)", "DIAP (VIA DGAA)" — plus
+// stray leading/trailing spaces ("VIDP ", " EGLL") and one trailing backtick
+// ("VOBL VIA VABB`"). In every one of them the airport this route actually flies
+// is the FIRST standalone 4-letter token and everything after it is commentary
+// about the routing, so that is what's taken; a code wrapped in punctuation
+// ("DGAA)", "VIDP,") falls out of the same rule since \b treats those as breaks.
+//
+// Cleaning here rather than in the database keeps one definition feeding the
+// display, the filters, the FILE/FPL deep links and the backdrop lookup — before
+// this, a card for AIH47 asked Pexels for "EGLL VIA VABB" and deep-linked
+// SimBrief to the same nonsense.
+export function cleanIcao(value) {
+  const upper = String(value || "").toUpperCase();
+  const token = /\b[A-Z]{4}\b/.exec(upper);
+  if (token) return token[ 0 ];
+  // No clean token (e.g. a 3-letter fragment) — salvage what letters there are
+  // so the route still renders instead of showing an empty code.
+  return upper.replace(/[^A-Z]/g, "").slice(0, 4);
+}
+
+// Both views link to the same two destinations, so the hrefs are built once here
+// instead of being duplicated per card layout.
+function buildRouteLinks(route) {
+  const firstAircraft = route.aircraft_names.split(",")[ 0 ]?.trim() || "";
+  const aircraftIcao = aircraftICAOCodes[ firstAircraft ] || firstAircraft;
+  return {
+    firstAircraft,
+    fileHref: `/crew/pireps/file?flightNumber=${encodeURIComponent(route.flight_number)}&departureIcao=${route.departure_icao}&arrivalIcao=${route.arrival_icao}&aircraft=${encodeURIComponent(firstAircraft)}`,
+    fplHref: `/crew/plan/simbrief?orig=${route.departure_icao}&dest=${route.arrival_icao}&type=${aircraftIcao}&fltnum=${encodeURIComponent(route.flight_number)}`,
+  };
+}
+
+// Aircraft silhouettes (public/aircraft/*.webp). Six drawings have to stand in
+// for the whole fleet, so routes are matched to the nearest airframe by family
+// rather than exactly — at 60px what reads is the tube length, the engine count
+// and the 747's hump, not the variant. Ordered: the first rule that matches
+// wins, so the specific families (quads, A340/A35K) are tested before the
+// general ones they'd otherwise fall into.
+const AIRCRAFT_ICON_RULES = [
+  [ /747|a380|a388/i, "b747-8" ],
+  [ /a35k|a350-?1000|a34\d|a340/i, "a350-1000" ],
+  [ /a350|a359|a33\d|a330/i, "a350-900" ],
+  [ /787|777|767|md-?11|dc-?10/i, "b787-9" ],
+  [ /737|757|crj|erj|e1\d\d|dash|q400|c208|tbm/i, "b737max8" ],
+  [ /a31\d|a32\d|a220|bcs3/i, "a320neo" ],
+];
+
+function aircraftIconFor(name) {
+  if (!name) return null;
+  const rule = AIRCRAFT_ICON_RULES.find(([ pattern ]) => pattern.test(name));
+  // Unmatched types render the text label alone rather than a wrong silhouette.
+  return rule ? `/aircraft/${rule[ 1 ]}.webp` : null;
+}
+
+// The source art is purple-on-white with white window/door detail. grayscale +
+// brightness lifts the body to a light grey and leaves that detail at full
+// white, which keeps the airframe readable on the photo; a flat
+// `brightness(0) invert(1)` would collapse the whole thing into one blob.
+const AIRCRAFT_ICON_FILTER = "grayscale(1) brightness(3.4)";
+
+// Scrim over the photo: near-opaque at the bottom where the route block and the
+// buttons sit, clearing by two-thirds up so the image still reads as an image.
+const SCRIM = "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.65) 38%, rgba(0,0,0,0.15) 70%, rgba(0,0,0,0.05) 100%)";
+
+// Shown while the arrival airport's photo is still resolving, and permanently if
+// there is no photo for it (PEXELS_API_KEY unset, an unmapped ICAO, or nothing
+// on Pexels) — the card keeps its shape and legibility, just without the picture.
+const BACKDROP_FALLBACK = "linear-gradient(145deg, #1a2233 0%, #2c1620 55%, #0d1119 100%)";
+
+function GalleryRouteCard({ route, backdrop }) {
+  const { fileHref, fplHref, firstAircraft } = buildRouteLinks(route);
+  const aircraftIcon = aircraftIconFor(firstAircraft);
+
+  // The photo arrives after the card has already rendered on its gradient, so
+  // it's faded in on load rather than popping in. Keyed on the URL below so a
+  // changed backdrop starts from transparent again.
+  const [ photoLoaded, setPhotoLoaded ] = useState(false);
+
+  return (
+    <Box
+      // Chakra v3's _groupHover compiles to `.group:hover &`, so the class (not
+      // role="group") is what arms the backdrop's hover zoom below.
+      className="group"
+      position="relative"
+      height={{ base: "260px", sm: "280px", xl: "320px" }}
+      borderRadius="2xl"
+      overflow="hidden"
+      boxShadow="lg"
+      bgImage={BACKDROP_FALLBACK}
+    >
+      {/* Backdrop: a photo of the arrival city. A plain <img> rather than
+          next/image because Pexels already serves it at the size we asked for
+          (see lib/pexels.js) — the optimizer would add a transform per photo for
+          an identical result. It fades in so a slow photo doesn't pop. */}
+      {backdrop && (
+        <Box
+          key={backdrop}
+          as="img"
+          src={backdrop}
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setPhotoLoaded(true)}
+          position="absolute"
+          inset="0"
+          width="100%"
+          height="100%"
+          objectFit="cover"
+          opacity={photoLoaded ? 1 : 0}
+          transition="opacity 0.4s ease-out, transform 0.7s ease"
+          _groupHover={{ transform: "scale(1.05)" }}
+        />
+      )}
+      <Box position="absolute" inset="0" bgImage={SCRIM} />
+
+      <Flex
+        position="relative"
+        zIndex={1}
+        height="100%"
+        direction="column"
+        justify="space-between"
+        p={{ base: 4, xl: 5 }}
+      >
+        <Text
+          fontWeight="bold"
+          fontSize={{ base: "xl", xl: "2xl" }}
+          lineHeight="1"
+          letterSpacing="tight"
+          color="white"
+          textShadow="0 2px 8px rgba(0,0,0,0.9)"
+        >
+          #{route.flight_number}
+        </Text>
+
+        <Box mt="auto">
+          {/* Origin → destination, with the leg drawn between them */}
+          <HStack justify="space-between" align="flex-end" mb={{ base: 3, xl: 4 }}>
+            <VStack align="flex-start" gap="1" minW={0}>
+              <Text fontSize="2xs" fontWeight="700" letterSpacing="0.08em" color="whiteAlpha.700">
+                ORIGIN
+              </Text>
+              <Text
+                fontFamily="mono"
+                fontSize={{ base: "2xl", xl: "3xl" }}
+                fontWeight="600"
+                lineHeight="1"
+                color="white"
+                textShadow="0 2px 6px rgba(0,0,0,0.8)"
+              >
+                {route.departure_icao}
+              </Text>
+            </VStack>
+
+            {/* Hand-drawn arc from origin to destination. The row is
+                align="flex-end", so this bottoms out on the ICAO baseline and is
+                then lifted to arch over the top of both codes. */}
+            <Flex
+              flex="1"
+              minW="28px"
+              mx={{ base: 1.5, xl: 2.5 }}
+              justify="center"
+              align="flex-end"
+              aria-hidden="true"
+            >
+              <Box
+                as="img"
+                src="/arrw.webp"
+                alt=""
+                loading="lazy"
+                decoding="async"
+                width="100%"
+                maxW={{ base: "76px", xl: "96px" }}
+                height="auto"
+                opacity={0.9}
+                transform={{ base: "translateY(-16px)", xl: "translateY(-20px)" }}
+                filter="drop-shadow(0 1px 3px rgba(0,0,0,0.75))"
+              />
+            </Flex>
+
+            <VStack align="flex-end" gap="1" minW={0}>
+              <Text fontSize="2xs" fontWeight="700" letterSpacing="0.08em" color="whiteAlpha.700">
+                DEST
+              </Text>
+              <Text
+                fontFamily="mono"
+                fontSize={{ base: "2xl", xl: "3xl" }}
+                fontWeight="600"
+                lineHeight="1"
+                color="white"
+                textShadow="0 2px 6px rgba(0,0,0,0.8)"
+              >
+                {route.arrival_icao}
+              </Text>
+            </VStack>
+          </HStack>
+
+          {/* Block time above, then the silhouette of the route's lead aircraft
+              beside its name — the reference layout's compact info stack. */}
+          <VStack gap="1" mb={{ base: 3, xl: 4 }} color="whiteAlpha.900">
+            <HStack gap="1" textShadow="0 1px 4px rgba(0,0,0,0.8)">
+              <Box as={FiClock} boxSize="12px" />
+              <Text fontFamily="mono" fontSize="xs">
+                {formatTime(route.flight_time_hours, route.flight_time_minutes)}
+              </Text>
+            </HStack>
+            <HStack gap="2" minW={0} maxW="100%">
+              {aircraftIcon && (
+                <Box
+                  as="img"
+                  src={aircraftIcon}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  decoding="async"
+                  width={{ base: "48px", xl: "60px" }}
+                  height="auto"
+                  flexShrink={0}
+                  filter={AIRCRAFT_ICON_FILTER}
+                  opacity={0.95}
+                />
+              )}
+              <Text
+                fontFamily="mono"
+                fontSize="2xs"
+                fontWeight="600"
+                letterSpacing="0.12em"
+                textTransform="uppercase"
+                textShadow="0 1px 4px rgba(0,0,0,0.8)"
+                lineClamp={1}
+                title={route.aircraft_names}
+              >
+                {firstAircraft || "—"}
+              </Text>
+            </HStack>
+          </VStack>
+
+          <HStack gap={{ base: 2, xl: 3 }}>
+            <Button
+              as={NoPrefetchLink}
+              href={fileHref}
+              flex="1"
+              size="sm"
+              variant="outline"
+              borderRadius="lg"
+              borderStyle="dashed"
+              borderColor="whiteAlpha.400"
+              bg="whiteAlpha.200"
+              color="white"
+              fontWeight="bold"
+              letterSpacing="0.06em"
+              _hover={{ bg: "whiteAlpha.300" }}
+            >
+              FILE
+            </Button>
+            <Button
+              as={NoPrefetchLink}
+              href={fplHref}
+              flex="1"
+              size="sm"
+              variant="outline"
+              borderRadius="lg"
+              borderStyle="dashed"
+              borderColor="whiteAlpha.400"
+              bg="whiteAlpha.200"
+              color="white"
+              fontWeight="bold"
+              letterSpacing="0.06em"
+              _hover={{ bg: "whiteAlpha.300" }}
+            >
+              FPL
+            </Button>
+          </HStack>
+        </Box>
+      </Flex>
+    </Box>
+  );
+}
+
 export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
   const { data: session } = useSession();
 
@@ -209,8 +510,8 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
       const [ fn, dep, arr, h, m, ac ] = line.split("\t");
       return {
         flight_number: fn,
-        departure_icao: dep,
-        arrival_icao: arr,
+        departure_icao: cleanIcao(dep),
+        arrival_icao: cleanIcao(arr),
         flight_time_hours: Number(h) || 0,
         flight_time_minutes: Number(m) || 0,
         aircraft_names: ac || "",
@@ -256,6 +557,25 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
 
   // AI flight recommendations (calls the Cloudflare recommender via /api proxy).
   const recommender = useFlightRecommender();
+
+  // Always render the default view on the server and on the first client paint,
+  // then adopt the stored preference in an effect — reading localStorage during
+  // render would mismatch the server HTML and blow up hydration.
+  const [ view, setView ] = useState(VIEW_LIST);
+
+  useEffect(() => {
+    setView(readStoredView());
+  }, []);
+
+  const handleViewChange = (nextView) => {
+    if (nextView !== VIEW_LIST && nextView !== VIEW_GALLERY) return;
+    setView(nextView);
+    try {
+      window.localStorage.setItem(VIEW_STORAGE_KEY, nextView);
+    } catch {
+      // Storage unavailable — the toggle still works for this session.
+    }
+  };
 
   const [ isRequestOpen, setRequestOpen ] = useState(false);
   const [ requestForm, setRequestForm ] = useState(EMPTY_ROUTE_REQUEST);
@@ -366,11 +686,56 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
     }
   };
 
-  const paginatedData = filtered.slice(
-    (page - 1) * ITEMS_PER_PAGE,
-    page * ITEMS_PER_PAGE
+  // Memoised so the backdrop effect below keys off a stable array rather than
+  // re-running on every unrelated render.
+  const paginatedData = useMemo(
+    () => filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE),
+    [ filtered, page ]
   );
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+
+  // Arrival-airport photos for the gallery view, fetched a page at a time.
+  // Nothing is requested until the pilot actually switches to the gallery, and
+  // each airport is asked for once per session — the server caches them per
+  // ICAO for days on top of that, so this is usually a cache read.
+  const [ backdrops, setBackdrops ] = useState({});
+  const requestedIcaos = useRef(new Set());
+
+  const pageIcaos = useMemo(
+    () => [ ...new Set(paginatedData.map((r) => r.arrival_icao).filter(Boolean)) ],
+    [ paginatedData ]
+  );
+  const pageIcaoKey = pageIcaos.join(",");
+
+  useEffect(() => {
+    if (view !== VIEW_GALLERY) return;
+
+    const needed = pageIcaos.filter((icao) => !requestedIcaos.current.has(icao));
+    if (!needed.length) return;
+    needed.forEach((icao) => requestedIcaos.current.add(icao));
+
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`/api/routes/backdrops?icaos=${needed.join(",")}`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`Backdrop request failed (${res.status})`);
+        const { backdrops: resolved } = await res.json();
+        setBackdrops((prev) => ({ ...prev, ...resolved }));
+      } catch (err) {
+        if (err.name === "AbortError") return;
+        // Un-mark them so revisiting the page retries; the cards just keep the
+        // gradient in the meantime, which is a complete card either way.
+        needed.forEach((icao) => requestedIcaos.current.delete(icao));
+        console.error("Error fetching route backdrops:", err);
+      }
+    })();
+
+    return () => controller.abort();
+    // pageIcaoKey is the value identity of pageIcaos — it's what actually changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ view, pageIcaoKey ]);
 
   return (
     <VStack spacing={6} align="stretch">
@@ -704,12 +1069,58 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
         </Card.Root>
       )}
 
-      {/* Results Count */}
-      <Box textAlign="center">
-        <Text fontSize="sm" color="gray.500">
+      {/* Results Count + View Toggle */}
+      <Flex align="center" justify="space-between" gap={3}>
+        {/* Empty flex peer so the count stays optically centred against the toggle */}
+        <Box flex="1" minW={0} display={{ base: "none", sm: "block" }} />
+        <Text fontSize="sm" color="gray.500" textAlign="center">
           Showing {(page - 1) * ITEMS_PER_PAGE + 1}-{(page - 1) * ITEMS_PER_PAGE + paginatedData.length} of {filtered.length} routes
         </Text>
-      </Box>
+        <Flex flex="1" minW={0} justify="flex-end">
+          <SegmentGroup.Root
+            value={view}
+            onValueChange={({ value }) => handleViewChange(value)}
+            size="sm"
+            borderRadius="full"
+            p="1"
+            bg={{ base: "gray.50", _dark: "whiteAlpha.50" }}
+            borderWidth="1px"
+            borderColor={{ base: "gray.200", _dark: "whiteAlpha.200" }}
+          >
+            <SegmentGroup.Indicator
+              borderRadius="full"
+              bg={{ base: "white", _dark: "whiteAlpha.200" }}
+              boxShadow="sm"
+            />
+            <SegmentGroup.Item
+              value={VIEW_GALLERY}
+              px="3"
+              borderRadius="full"
+              cursor="pointer"
+              title="Gallery view"
+              aria-label="Gallery view"
+            >
+              <SegmentGroup.ItemText display="inline-flex" alignItems="center">
+                <FiImage size={16} />
+              </SegmentGroup.ItemText>
+              <SegmentGroup.ItemHiddenInput />
+            </SegmentGroup.Item>
+            <SegmentGroup.Item
+              value={VIEW_LIST}
+              px="3"
+              borderRadius="full"
+              cursor="pointer"
+              title="Compact view"
+              aria-label="Compact view"
+            >
+              <SegmentGroup.ItemText display="inline-flex" alignItems="center">
+                <FiList size={13} />
+              </SegmentGroup.ItemText>
+              <SegmentGroup.ItemHiddenInput />
+            </SegmentGroup.Item>
+          </SegmentGroup.Root>
+        </Flex>
+      </Flex>
 
       {/* Alert for no results (Chakra v3) */}
       {filtered.length === 0 && (
@@ -725,9 +1136,17 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
         gap={6}
       >
         {paginatedData.map((route, index) => {
-          const firstAircraft = route.aircraft_names.split(',')[ 0 ]?.trim() || '';
-          const aircraftIcao = aircraftICAOCodes[ firstAircraft ] || firstAircraft;
-          const fplLink = `/crew/plan/simbrief?orig=${route.departure_icao}&dest=${route.arrival_icao}&type=${aircraftIcao}&fltnum=${encodeURIComponent(route.flight_number)}`;
+          if (view === VIEW_GALLERY) {
+            return (
+              <GalleryRouteCard
+                key={index}
+                route={route}
+                backdrop={backdrops[ route.arrival_icao ] || null}
+              />
+            );
+          }
+
+          const { fileHref, fplHref } = buildRouteLinks(route);
           return (
             <Card.Root
               key={index}
@@ -764,7 +1183,7 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
                   <HStack spacing={2} pt={2}>
                     <Button
                       as={NoPrefetchLink}
-                      href={`/crew/pireps/file?flightNumber=${encodeURIComponent(route.flight_number)}&departureIcao=${route.departure_icao}&arrivalIcao=${route.arrival_icao}&aircraft=${encodeURIComponent(route.aircraft_names.split(',')[ 0 ]?.trim() || '')}`}
+                      href={fileHref}
                       size="sm"
                       colorPalette="blue"
                       variant="solid"
@@ -774,7 +1193,7 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
                     </Button>
                     <Button
                       as={NoPrefetchLink}
-                      href={fplLink}
+                      href={fplHref}
                       size="sm"
                       colorPalette="purple"
                       variant="outline"
