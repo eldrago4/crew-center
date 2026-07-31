@@ -5,15 +5,9 @@ export default function robots() {
                 userAgent: '*',
                 allow: '/',
                 disallow: [
-                    '/crew/dashboard',
-                    '/crew/pireps/',
-                    '/crew/admin/',
-                    '/crew/plan/',
-                    '/crew/gates/',
-                    '/crew/community/',
-                    '/crew/resources/',
-                    '/crew/routes',
-                    '/crew/career',
+                    // The whole crew area, not a hand-maintained list of its
+                    // sections — new /crew/* pages were shipping crawlable.
+                    '/crew',
                     '/api/',
                     '/ifc-name',
                     '/maintenance',
