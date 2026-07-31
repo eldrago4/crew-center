@@ -101,11 +101,28 @@ export default function AdminRoutesClient({ initialFleet }) {
 
     // Save edited route
     const handleSaveEditRoute = async () => {
+        // flightNumber is the primary key, so the row has to be identified by the
+        // number it had when the dialog opened — sending the edited one as the
+        // lookup key meant a rename either 404'd (losing every other field edited
+        // alongside it) or overwrote whichever route already owned that number.
+        const lookupFlightNumber = originalFlightNumber ?? editRoute?.flightNumber;
+        const nextFlightNumber = String(editRoute?.flightNumber || '').trim();
+
+        if (!nextFlightNumber) {
+            toaster.create({ title: 'Error', description: 'Flight number cannot be empty', type: 'error' });
+            return;
+        }
+
         try {
             // Always send aircraft as comma-separated string
+            const aircraft = Array.isArray(editRoute.aircraft)
+                ? editRoute.aircraft.join(', ')
+                : editRoute.aircraft;
             const payload = {
                 ...editRoute,
-                aircraft: Array.isArray(editRoute.aircraft) ? editRoute.aircraft.join(', ') : editRoute.aircraft
+                flightNumber: lookupFlightNumber,
+                newFlightNumber: nextFlightNumber,
+                aircraft,
             };
             const res = await fetch('/api/routes', {
                 method: 'PATCH',
@@ -116,13 +133,22 @@ export default function AdminRoutesClient({ initialFleet }) {
                 const errorData = await res.json().catch(() => ({}));
                 throw new Error(errorData.error || 'Failed to update route');
             }
+            const saved = await res.json().catch(() => null);
             toaster.create({
                 title: 'Success',
                 description: 'Route updated successfully',
                 type: 'success',
             });
-            // Update the route in state without refetching
-            setRoutes(prev => prev.map(route => route.flightNumber === editRoute.flightNumber ? { ...route, ...editRoute } : route));
+            // Match on the ORIGINAL number — after a rename the edited one finds
+            // nothing (or, worse, the unrelated route that already had it). Prefer
+            // the row the server echoes back so local state holds the same shape
+            // the table renders from, with aircraft as a string rather than the
+            // dialog's array.
+            setRoutes(prev => prev.map(route => (
+                route.flightNumber === lookupFlightNumber
+                    ? (saved || { ...route, ...editRoute, flightNumber: nextFlightNumber, aircraft })
+                    : route
+            )));
             setEditDialogOpen(false);
         } catch (err) {
             toaster.create({

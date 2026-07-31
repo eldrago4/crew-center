@@ -280,10 +280,22 @@ function largestAircraft(names) {
 
 // Manufacturer prefixes are dead weight in a 10px mono label that has to sit
 // between an icon and its balancing spacer — "Boeing 777-300ER" becomes
-// "777-300ER", which is how pilots say it anyway. The full list stays in the
-// element's title.
+// "777-300ER", which is how pilots say it anyway. The unabbreviated list stays
+// in the element's title.
 function shortAircraftLabel(name) {
   return String(name || "").replace(/^(Boeing|Airbus|Bombardier)\s+/i, "");
+}
+
+// Every type cleared for the route, shortened. The card lists all of them — a
+// route open to three airframes is information a pilot picking a flight wants —
+// while the silhouette beside them shows the largest, since only one can be
+// drawn.
+function aircraftLabelList(names) {
+  return String(names || "")
+    .split(",")
+    .map((name) => shortAircraftLabel(name.trim()))
+    .filter(Boolean)
+    .join(", ");
 }
 
 // Aircraft silhouettes (public/aircraft/*.webp). Six drawings have to stand in
@@ -325,8 +337,10 @@ const BACKDROP_FALLBACK = "linear-gradient(145deg, #1a2233 0%, #2c1620 55%, #0d1
 
 function GalleryRouteCard({ route, backdrop }) {
   const { fileHref, fplHref } = buildRouteLinks(route);
-  const headlineAircraft = largestAircraft(route.aircraft_names);
-  const aircraftIcon = aircraftIconFor(headlineAircraft);
+  // The silhouette can only show one airframe, so it shows the biggest; the
+  // label lists every type the route is cleared for.
+  const aircraftIcon = aircraftIconFor(largestAircraft(route.aircraft_names));
+  const aircraftLabel = aircraftLabelList(route.aircraft_names);
 
   // The photo arrives after the card has already rendered on its gradient, so
   // it's faded in on load rather than popping in. Keyed on the URL below so a
@@ -486,19 +500,28 @@ function GalleryRouteCard({ route, backdrop }) {
                   flexShrink={0}
                   filter={AIRCRAFT_ICON_FILTER}
                   opacity={0.95}
+                  // Centring it against the label leaves it sitting low — the
+                  // drawing's mass is its fuselage, well under the tall tail, so
+                  // the optical centre is above the geometric one. Lifted to
+                  // match the first line of type.
+                  transform="translateY(-4px)"
                 />
               )}
               <Text
                 fontFamily="mono"
                 fontSize="2xs"
                 fontWeight="600"
-                letterSpacing="0.12em"
+                letterSpacing="0.06em"
                 textTransform="uppercase"
                 textShadow="0 1px 4px rgba(0,0,0,0.8)"
-                lineClamp={1}
+                textAlign="center"
+                // Two lines, because three types don't fit on one in a 3-up
+                // column. Anything longer still truncates rather than pushing
+                // the buttons off the card — the full list is in the title.
+                lineClamp={2}
                 title={route.aircraft_names}
               >
-                {shortAircraftLabel(headlineAircraft) || "—"}
+                {aircraftLabel || "—"}
               </Text>
               {aircraftIcon && (
                 <Box
@@ -607,6 +630,26 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
     rank: "",
   }));
   const [ page, setPage ] = useState(1);
+
+  // Paging swaps 15 cards out from under the reader, who is usually at the
+  // BOTTOM of the list when they hit next — so without this they land mid-way
+  // through the new page and have to scroll back up to find its start.
+  //
+  // Deliberately only wired to the pagination control, not to setPage generally:
+  // the filters also reset to page 1, and yanking the view down to the results
+  // while someone is still typing in a filter box would be worse than doing
+  // nothing at all.
+  const resultsRef = useRef(null);
+
+  const goToPage = (nextPage) => {
+    setPage(nextPage);
+    const prefersReducedMotion = typeof window !== "undefined"
+      && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    resultsRef.current?.scrollIntoView({
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+      block: "start",
+    });
+  };
   const [ randomRoute, setRandomRoute ] = useState(null);
   const [ loading, setLoading ] = useState(false);
 
@@ -1137,7 +1180,17 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
       )}
 
       {/* Results Count + View Toggle */}
-      <Flex align="center" justify="space-between" gap={3}>
+      <Flex
+        ref={resultsRef}
+        // The nav is position:fixed, so a plain scrollIntoView would park this
+        // underneath it. scroll-margin-top is what scrollIntoView honours —
+        // matching the shell's own top padding (60px desktop / 8.5em mobile,
+        // where the mobile sidebar sits under the nav) plus a little air.
+        scrollMarginTop={{ base: "9.5em", md: "76px" }}
+        align="center"
+        justify="space-between"
+        gap={3}
+      >
         {/* Empty flex peer so the count stays optically centred against the toggle */}
         <Box flex="1" minW={0} display={{ base: "none", sm: "block" }} />
         <Text fontSize="sm" color="gray.500" textAlign="center">
@@ -1283,7 +1336,7 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
             count={totalPages}
             pageSize={1}
             page={page}
-            onPageChange={(e) => setPage(e.page)}
+            onPageChange={(e) => goToPage(e.page)}
           >
             <ButtonGroup variant="outline" size="sm">
               <Pagination.PrevTrigger asChild>

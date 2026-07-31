@@ -176,19 +176,39 @@ export async function PATCH(request) {
         if (error) return error;
 
         const body = await request.json();
-        const { flightNumber, departureIcao, arrivalIcao, flightTime, aircraft } = body;
+        const { flightNumber, newFlightNumber, departureIcao, arrivalIcao, flightTime, aircraft } = body;
         if (!flightNumber) {
             return NextResponse.json(
                 { error: 'Flight number is required for update' },
                 { status: 400 }
             );
         }
-        // Only update provided fields
+
+        // `flightNumber` identifies the row to update and is NEVER the new value.
+        // Renaming goes through `newFlightNumber`, because flightNumber is the
+        // primary key: when the client sent the edited number as the lookup key,
+        // a rename either matched nothing (404, silently discarding every other
+        // field edited in the same dialog) or — if that number already belonged
+        // to another route — updated THAT route with this one's data.
         const updateData = {};
         if (departureIcao !== undefined) updateData.departureIcao = departureIcao;
         if (arrivalIcao !== undefined) updateData.arrivalIcao = arrivalIcao;
         if (flightTime !== undefined) updateData.flightTime = flightTime;
         if (aircraft !== undefined) updateData.aircraft = aircraft;
+
+        if (newFlightNumber !== undefined && newFlightNumber !== flightNumber) {
+            const trimmed = String(newFlightNumber).trim();
+            if (!trimmed) {
+                return NextResponse.json(
+                    { error: 'Flight number cannot be empty' },
+                    { status: 400 }
+                );
+            }
+            // A collision raises 23505 on the primary key, which the catch below
+            // reports as 'Flight number already exists' rather than clobbering
+            // the other route.
+            updateData.flightNumber = trimmed;
+        }
         if (Object.keys(updateData).length === 0) {
             return NextResponse.json(
                 { error: 'No fields to update' },
