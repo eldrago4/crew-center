@@ -1,14 +1,14 @@
 export const metadata = {
   title: 'Terms of Service',
   description: 'Terms of Service for Indian Virtual — the rules and conditions governing use of the Crew Center platform.',
-  alternates: { canonical: 'https://indianvirtual.site/terms' },
+  alternates: { canonical: 'https://indianvirtual.com/terms' },
 }
 
 import { Box, Heading, Text, VStack, Flex } from '@chakra-ui/react'
 
 const LAST_UPDATED = 'May 9, 2026'
-const CONTACT = 'ceo@indianvirtual.site'
-const SITE = 'https://indianvirtual.site'
+const CONTACT = 'ceo@indianvirtual.com'
+const SITE = 'https://indianvirtual.com'
 
 function Section({ title, children }) {
   return (

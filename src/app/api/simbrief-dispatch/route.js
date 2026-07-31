@@ -30,7 +30,7 @@ export async function POST(request) {
     if (!type) return NextResponse.json({ error: 'Aircraft type required' }, { status: 400 })
     if (orig.toUpperCase() === dest.toUpperCase()) return NextResponse.json({ error: 'Origin and destination cannot be the same' }, { status: 400 })
 
-    const outputPageFull = 'https://indianvirtual.site/crew/plan/simbrief'
+    const outputPageFull = 'https://indianvirtual.com/crew/plan/simbrief'
     // SimBrief requires outputpage without protocol for both the API code hash and the param
     const outputPage = outputPageFull.replace(/^https?:\/\//, '')
     const timestamp = Math.floor(Date.now() / 1000)

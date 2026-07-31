@@ -20,7 +20,7 @@ export default function robots() {
                 ],
             },
         ],
-        sitemap: 'https://indianvirtual.site/sitemap.xml',
-        host: 'https://indianvirtual.site',
+        sitemap: 'https://indianvirtual.com/sitemap.xml',
+        host: 'https://indianvirtual.com',
     }
 }

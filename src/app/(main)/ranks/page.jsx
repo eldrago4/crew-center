@@ -489,7 +489,7 @@ export default function RanksPage() {
                 <Box mt={20} borderTop="1px solid" borderColor="gray.200" pt={10}>
                     <Grid templateColumns={{ base: '1fr', md: 'repeat(3, 1fr)' }} gap={8} textAlign="center">
                         {[
-                            { val: '160+', label: 'Active Pilots' },
+                            { val: '200+', label: 'Active Pilots' },
                             { val: '141k', label: 'Flight Hours Logged' },
                             { val: '2,153', label: 'Global Destinations' },
                         ].map(({ val, label }) => (

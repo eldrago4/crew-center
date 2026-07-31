@@ -1,4 +1,4 @@
-const BASE = 'https://indianvirtual.site'
+const BASE = 'https://indianvirtual.com'
 
 import { cacheLife } from 'next/cache'
 

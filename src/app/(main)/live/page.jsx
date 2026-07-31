@@ -5,9 +5,9 @@ export const metadata = {
     openGraph: {
         title: 'Live Map | Indian Virtual',
         description: 'Track Indian Virtual pilots flying live on Infinite Flight in real time.',
-        url: 'https://indianvirtual.site/live',
+        url: 'https://indianvirtual.com/live',
     },
-    alternates: { canonical: 'https://indianvirtual.site/live' },
+    alternates: { canonical: 'https://indianvirtual.com/live' },
 }
 
 import { Box } from "@chakra-ui/react"
@@ -22,7 +22,7 @@ export default function LivePage() {
             bg="black"
         >
             <iframe
-                src="https://live.indianvirtual.site/"
+                src="https://live.indianvirtual.com/"
                 style={{ width: '100%', height: '700px', border: 'none', display: 'block' }}
                 title="Indian Virtual Live"
                 allow="fullscreen"

@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/apiAuth';
 
 // Server-side proxy to the Cloudflare flight-recommender worker
-// (api.indianvirtual.site). The worker's Bearer token stays here on the server
+// (api.indianvirtual.com). The worker's Bearer token stays here on the server
 // and is never exposed to the browser; the pilot is identified by their own
 // session callsign (= users.id), so a signed-in pilot can only ever ask for
 // their own recommendations.
 
-const RECS_API_URL = process.env.RECS_API_URL || 'https://api.indianvirtual.site';
+const RECS_API_URL = process.env.RECS_API_URL || 'https://api.indianvirtual.com';
 const VALID_MODES = ['trend', 'discover', 'rank'];
 
 export async function GET(request) {

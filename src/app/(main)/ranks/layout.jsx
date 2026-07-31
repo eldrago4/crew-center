@@ -5,9 +5,9 @@ export const metadata = {
     openGraph: {
         title: 'Pilot Ranks | Indian Virtual',
         description: 'Discover the rank structure at Indian Virtual — from Cadet to Captain on Infinite Flight.',
-        url: 'https://indianvirtual.site/ranks',
+        url: 'https://indianvirtual.com/ranks',
     },
-    alternates: { canonical: 'https://indianvirtual.site/ranks' },
+    alternates: { canonical: 'https://indianvirtual.com/ranks' },
 }
 
 export default function RanksLayout({ children }) {

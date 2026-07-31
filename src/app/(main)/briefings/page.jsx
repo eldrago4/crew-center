@@ -5,9 +5,9 @@ export const metadata = {
     openGraph: {
         title: 'Briefings | Indian Virtual',
         description: 'Operational briefings and NOTAMs for Indian Virtual Infinite Flight pilots.',
-        url: 'https://indianvirtual.site/briefings',
+        url: 'https://indianvirtual.com/briefings',
     },
-    alternates: { canonical: 'https://indianvirtual.site/briefings' },
+    alternates: { canonical: 'https://indianvirtual.com/briefings' },
 }
 
 import { Box, Text } from '@chakra-ui/react'

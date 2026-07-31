@@ -1,13 +1,13 @@
 export const metadata = {
     title: 'Routes',
-    description: 'Browse Indian Virtual\'s full route network on Infinite Flight. Explore domestic and international routes operated by our virtual pilots across India and the world.',
-    keywords: ['Indian Virtual routes', 'Infinite Flight routes India', 'virtual airline route map', 'INVA route network', 'domestic international virtual routes'],
+    description: 'Browse Indian Virtual\'s full route network on Infinite Flight — real scheduled Air India and Air India Express services, domestic and international, flown by our pilots across India and the world.',
+    keywords: ['Indian Virtual routes', 'Infinite Flight routes India', 'virtual airline route map', 'INVA route network', 'Air India Express routes virtual', 'scheduled route network', 'domestic international virtual routes'],
     openGraph: {
         title: 'Routes | Indian Virtual',
-        description: 'Explore Indian Virtual\'s full domestic and international Infinite Flight route network.',
-        url: 'https://indianvirtual.site/operations/routes',
+        description: 'The real scheduled Air India and Air India Express route network, flown on Infinite Flight — domestic and international.',
+        url: 'https://indianvirtual.com/operations/routes',
     },
-    alternates: { canonical: 'https://indianvirtual.site/operations/routes' },
+    alternates: { canonical: 'https://indianvirtual.com/operations/routes' },
 }
 
 import { Box, Flex, Grid, Heading, HStack, Link, Text, VStack } from '@chakra-ui/react'

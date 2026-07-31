@@ -4,7 +4,7 @@ export const DEFAULT_GOALS = [
   {
     id:          'domain',
     label:       'Web Domain',
-    title:       'indianvirtual.site',
+    title:       'indianvirtual.com',
     description: 'Annual renewal of our domain — the address every pilot types to reach home.',
     target:      3600,
     color:       '#6366f1',

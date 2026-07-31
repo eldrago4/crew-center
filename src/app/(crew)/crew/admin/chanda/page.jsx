@@ -5,7 +5,7 @@ import {
   Box, Flex, Text, HStack, Grid, VStack,
   Badge, Separator, Spinner, Input, Textarea,
 } from '@chakra-ui/react';
-import { FiPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiSend, FiRefreshCw, FiArrowUpRight, FiCreditCard, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiSend, FiRefreshCw, FiArrowUpRight, FiCreditCard, FiChevronLeft, FiChevronRight, FiClock } from 'react-icons/fi';
 import { ICON_MAP } from '../../chanda/_iconMap';
 
 const ICON_OPTIONS = Object.keys(ICON_MAP);
@@ -61,6 +61,8 @@ function StyledInput({ value, onChange, placeholder, type = 'text', ...rest }) {
   );
 }
 
+// 24px of padding on each side costs a third of a 360px viewport once the page
+// gutter is added, so every card gets a tighter value on phones.
 function Card({ children, ...rest }) {
   return (
     <Box
@@ -68,7 +70,7 @@ function Card({ children, ...rest }) {
       border="1px solid"
       borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
       borderRadius="2xl"
-      p={6}
+      p={{ base: 4, md: 6 }}
       {...rest}
     >
       {children}
@@ -156,7 +158,7 @@ function ContributionsTable({ contributions, onReverse }) {
 
   return (
     <Card>
-      <Flex justify="space-between" align="center" mb={5}>
+      <Flex justify="space-between" align="center" gap={3} mb={5}>
         <SectionTitle>All Contributions</SectionTitle>
         <Badge fontSize="11px" fontWeight="700" px={2.5} py={1} borderRadius="full"
           bg={{ base: 'gray.100', _dark: 'whiteAlpha.100' }} color={{ base: 'gray.600', _dark: 'gray.400' }}>
@@ -253,29 +255,35 @@ function GoalRow({ goal, onSave, onDelete, saving, deleting }) {
 
   if (!editing) {
     return (
-      <HStack
-        bg={{ base: 'gray.50', _dark: '#1a2332' }} borderRadius="xl" p={4} gap={4}
+      // Was a flat HStack: icon + text + price + two buttons, everything but the
+      // text flexShrink={0}. That left the description ~0px wide on a phone. Now
+      // the price and the buttons travel together as one shrink-proof group that
+      // wraps to a second line, and the text block keeps a 200px floor.
+      <Flex
+        bg={{ base: 'gray.50', _dark: '#1a2332' }} borderRadius="xl"
+        p={{ base: 3, md: 4 }} gap={{ base: 3, md: 4 }}
+        align="center" wrap="wrap"
         border="1px solid" borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.80' }}
       >
         <Flex w="36px" h="36px" borderRadius="10px" align="center" justify="center" flexShrink={0}
           bg={`${goal.color}15`} border="1px solid" borderColor={`${goal.color}25`}>
           <Icon size={16} color={goal.color} />
         </Flex>
-        <Box flex={1} minW={0}>
-          <HStack gap={2} mb={0.5}>
+        <Box flex="1 1 200px" minW={0}>
+          <HStack gap={2} mb={0.5} flexWrap="wrap">
             <Text fontWeight="700" fontSize="sm" color={{ base: 'gray.800', _dark: 'white' }}>{goal.label}</Text>
             <Badge fontSize="10px" px={1.5} py={0} borderRadius="full" bg={`${goal.color}15`} color={goal.color}>{goal.id}</Badge>
           </HStack>
           <Text fontSize="xs" color={{ base: 'gray.500', _dark: 'gray.500' }} isTruncated>{goal.description}</Text>
         </Box>
-        <Text fontWeight="700" fontSize="sm" color={{ base: 'gray.700', _dark: 'gray.300' }} flexShrink={0}>
-          ₹{Number(goal.target).toLocaleString('en-IN')}/yr
-        </Text>
-        <HStack gap={2} flexShrink={0}>
+        <HStack gap={{ base: 3, md: 4 }} flexShrink={0} ml="auto">
+          <Text fontWeight="700" fontSize="sm" color={{ base: 'gray.700', _dark: 'gray.300' }} whiteSpace="nowrap">
+            ₹{Number(goal.target).toLocaleString('en-IN')}/yr
+          </Text>
           <Btn variant="ghost" size="sm" onClick={() => setEditing(true)}><FiEdit2 size={13} /> Edit</Btn>
           <Btn variant="danger" size="sm" onClick={onDelete} loading={deleting}><FiTrash2 size={13} /></Btn>
         </HStack>
-      </HStack>
+      </Flex>
     );
   }
 
@@ -284,7 +292,7 @@ function GoalRow({ goal, onSave, onDelete, saving, deleting }) {
       border="1.5px solid #6366f140">
       <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={3} mb={3}>
         <Field label="Label"><StyledInput value={form.label} onChange={v => upd('label', v)} placeholder="Web Domain" /></Field>
-        <Field label="Title"><StyledInput value={form.title} onChange={v => upd('title', v)} placeholder="indianvirtual.site" /></Field>
+        <Field label="Title"><StyledInput value={form.title} onChange={v => upd('title', v)} placeholder="indianvirtual.com" /></Field>
         <Field label="Target (₹/yr)"><StyledInput value={form.target} onChange={v => upd('target', v)} type="number" placeholder="3600" /></Field>
         <Field label="Color">
           <HStack gap={2}>
@@ -362,7 +370,7 @@ function GoalsSection({ goals, onGoalsChange, showToast }) {
 
   return (
     <Card>
-      <Flex justify="space-between" align="center" mb={5}>
+      <Flex justify="space-between" align="center" gap={3} mb={5}>
         <SectionTitle>Goals</SectionTitle>
         <Btn variant="primary" size="sm" onClick={() => setAdding(a => !a)}>
           <FiPlus size={13} /> Add Goal
@@ -503,52 +511,68 @@ function GoalBalanceStrip({ goals, goalsRaised }) {
   const total = goals.reduce((sum, g) => sum + (goalsRaised[ g.id ] || 0), 0);
 
   return (
-    <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(auto-fit, minmax(180px, 1fr))' }} gap={3}>
-      <Box
-        borderRadius="xl" p={4} position="relative" overflow="hidden"
-        bg="linear-gradient(135deg, #0b1220, #131c2e)"
-        border="1px solid" borderColor="whiteAlpha.100"
-      >
-        <HStack gap={2} mb={2}>
-          <FiCreditCard size={14} color="#94a3b8" />
-          <Text fontSize="10px" fontWeight="700" color="gray.400" textTransform="uppercase" letterSpacing="wider">
-            Treasury Total
+    <VStack align="stretch" gap={2}>
+      <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(auto-fit, minmax(180px, 1fr))' }} gap={3}>
+        <Box
+          borderRadius="xl" p={4} position="relative" overflow="hidden"
+          bg="linear-gradient(135deg, #0b1220, #131c2e)"
+          border="1px solid" borderColor="whiteAlpha.100"
+        >
+          <HStack gap={2} mb={2}>
+            <FiCreditCard size={14} color="#94a3b8" />
+            <Text fontSize="10px" fontWeight="700" color="gray.400" textTransform="uppercase" letterSpacing="wider">
+              Treasury Total
+            </Text>
+          </HStack>
+          <Text fontFamily={MONO_FONT} fontWeight="700" fontSize="2xl" color="white">
+            ₹{total.toLocaleString('en-IN')}
           </Text>
-        </HStack>
-        <Text fontFamily={MONO_FONT} fontWeight="700" fontSize="2xl" color="white">
-          ₹{total.toLocaleString('en-IN')}
-        </Text>
-        <Text fontSize="11px" color="gray.500" mt={1}>Across {goals.length} account{goals.length === 1 ? '' : 's'}</Text>
-      </Box>
-
-      {goals.map(g => {
-        const balance = goalsRaised[ g.id ] || 0;
-        return (
-          <Box
-            key={g.id}
-            borderRadius="xl" p={4} position="relative" overflow="hidden"
-            bg={{ base: 'white', _dark: '#111827' }}
-            border="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
-            borderLeft="3px solid" borderLeftColor={g.color}
-          >
-            <HStack justify="space-between" mb={2}>
-              <Text fontSize="10px" fontWeight="700" color={{ base: 'gray.500', _dark: 'gray.400' }} textTransform="uppercase" letterSpacing="wider" isTruncated>
-                {g.label}
+          <Text fontSize="11px" color="gray.500" mt={1}>Across {goals.length} account{goals.length === 1 ? '' : 's'}</Text>
+        </Box>
+  
+        {goals.map(g => {
+          const balance = goalsRaised[ g.id ] || 0;
+          return (
+            <Box
+              key={g.id}
+              borderRadius="xl" p={4} position="relative" overflow="hidden"
+              bg={{ base: 'white', _dark: '#111827' }}
+              border="1px solid" borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+              borderLeft="3px solid" borderLeftColor={g.color}
+            >
+              <HStack justify="space-between" mb={2}>
+                <Text fontSize="10px" fontWeight="700" color={{ base: 'gray.500', _dark: 'gray.400' }} textTransform="uppercase" letterSpacing="wider" isTruncated>
+                  {g.label}
+                </Text>
+                <Badge fontSize="9px" px={1.5} py={0} borderRadius="full" bg={`${g.color}15`} color={g.color}>
+                  {g.id}
+                </Badge>
+              </HStack>
+              <Text fontFamily={MONO_FONT} fontWeight="700" fontSize="xl" color={{ base: 'gray.900', _dark: 'white' }}>
+                ₹{balance.toLocaleString('en-IN')}
               </Text>
-              <Badge fontSize="9px" px={1.5} py={0} borderRadius="full" bg={`${g.color}15`} color={g.color}>
-                {g.id}
-              </Badge>
-            </HStack>
-            <Text fontFamily={MONO_FONT} fontWeight="700" fontSize="xl" color={{ base: 'gray.900', _dark: 'white' }}>
-              ₹{balance.toLocaleString('en-IN')}
-            </Text>
-            <Text fontSize="11px" color={{ base: 'gray.500', _dark: 'gray.500' }} mt={1}>
-              Available balance
-            </Text>
-          </Box>
-        );
-      })}
-    </Grid>
+              <Text fontSize="11px" color={{ base: 'gray.500', _dark: 'gray.500' }} mt={1}>
+                Available balance
+              </Text>
+            </Box>
+          );
+        })}
+      </Grid>
+
+      {/* The balances above come from /api/chanda/stats, which is cached (1h in the
+          browser, 7d at the edge). The ledger writes land in Redis immediately, so
+          this is a display lag only — worth saying out loud, since otherwise a
+          withdrawal looks like it silently failed. */}
+      <HStack gap={2} align="flex-start" px={1}>
+        <Box pt="2px" flexShrink={0}><FiClock size={12} color="#94a3b8" /></Box>
+        <Text fontSize="11px" color={{ base: 'gray.500', _dark: 'gray.500' }} lineHeight="1.5">
+          Balances are cached. A contribution or withdrawal is applied to the goal straight
+          away, but can take up to <Text as="span" fontWeight="700">1 hour</Text> to show here
+          and up to <Text as="span" fontWeight="700">7 days</Text> on the pilots&rsquo; chanda
+          page. Nothing has gone wrong if the figure above hasn&rsquo;t moved yet.
+        </Text>
+      </HStack>
+    </VStack>
   );
 }
 
@@ -694,7 +718,7 @@ function ExpensesLedgerTable({ expenses, goalsById, onReverse }) {
 
   return (
     <Card>
-      <Flex justify="space-between" align="center" mb={5}>
+      <Flex justify="space-between" align="center" gap={3} mb={5}>
         <SectionTitle>Withdrawal Ledger</SectionTitle>
         <Badge fontSize="11px" fontWeight="700" px={2.5} py={1} borderRadius="full"
           bg="rgba(244,63,94,0.1)" color="#fb7185">
@@ -819,7 +843,7 @@ function LotusAdminSection({ showToast, subscribers }) {
 
   return (
     <Card style={{ background: 'linear-gradient(135deg, #070910 0%, #0d0a1a 100%)', border: '1px solid rgba(201,169,110,0.22)' }}>
-      <Flex justify="space-between" align="flex-start" mb={5}>
+      <Flex justify="space-between" align="flex-start" gap={3} mb={5}>
         <Box>
           <Text fontSize="lg" fontWeight="800" mb={1}
             style={{ background: 'linear-gradient(135deg, #e8c97e, #c9a96e)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -865,7 +889,7 @@ function LotusAdminSection({ showToast, subscribers }) {
             </Field>
           </Grid>
 
-          <HStack justify="flex-end" gap={3}>
+          <HStack justify="flex-end" gap={3} flexWrap="wrap">
             <Btn variant="ghost" size="sm" onClick={resetPlan} loading={resetting}
               style={{ color: 'rgba(201,169,110,0.6)', border: '1.5px solid rgba(201,169,110,0.2)', background: 'transparent' }}>
               <FiRefreshCw size={12} /> Clear Legacy Plan
@@ -987,17 +1011,26 @@ export default function ChandaAdminPage() {
     <Box maxW="960px" mx="auto" px={{ base: 4, md: 6 }} py={{ base: 6, md: 10 }}>
 
       {toast && (
-        <Box position="fixed" bottom="24px" right="24px" zIndex={9998}
+        // Pinned to both edges on phones: a 380px box offset 24px from the right
+        // hangs off the left of a 360px viewport.
+        <Box position="fixed" bottom={{ base: '16px', md: '24px' }}
+          right={{ base: '16px', md: '24px' }} left={{ base: '16px', md: 'auto' }}
+          zIndex={9998}
           bg={toast.ok ? '#10b981' : '#ef4444'} color="white"
           px={5} py={3} borderRadius="xl" fontSize="sm" fontWeight="600"
-          boxShadow="0 8px 30px rgba(0,0,0,0.25)" maxW="380px">
+          boxShadow="0 8px 30px rgba(0,0,0,0.25)" maxW={{ base: 'none', md: '380px' }}>
           {toast.msg}
         </Box>
       )}
 
-      {/* Header */}
-      <Flex justify="space-between" align="flex-start" mb={8}>
-        <Box>
+      {/* Header — side by side from sm up; stacked on phones, where the title and
+          the two stat blocks otherwise squeeze each other into unreadable columns. */}
+      <Flex
+        direction={{ base: 'column', sm: 'row' }}
+        justify="space-between" align={{ base: 'stretch', sm: 'flex-start' }}
+        gap={4} mb={{ base: 6, md: 8 }}
+      >
+        <Box minW={0}>
           <Text fontSize={{ base: 'xl', md: '2xl' }} fontWeight="800" color={{ base: 'gray.900', _dark: 'white' }} mb={1}>
             Contributions Admin
           </Text>
@@ -1005,7 +1038,7 @@ export default function ChandaAdminPage() {
             Manage funding goals, record manual payments, and configure Lotus Privé.
           </Text>
         </Box>
-        <HStack gap={3}>
+        <HStack gap={3} flexShrink={0} justify={{ base: 'flex-start', sm: 'flex-end' }}>
           <Box textAlign="center">
             <Text fontWeight="800" fontSize="xl" color={{ base: 'gray.900', _dark: 'white' }}>{stats.contributors}</Text>
             <Text fontSize="10px" color={{ base: 'gray.500', _dark: 'gray.500' }} textTransform="uppercase" letterSpacing="wider">Contributors</Text>

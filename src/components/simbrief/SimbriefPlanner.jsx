@@ -12,7 +12,7 @@ import {
     TbRoute, TbCalendar, TbSettings, TbChevronDown,
     TbChevronUp, TbDroplet, TbUsers, TbPackage,
     TbSend, TbFileText, TbAlertTriangle, TbCheck,
-    TbExternalLink, TbDownload, TbWorldWww, TbUpload,
+    TbExternalLink, TbDownload, TbWorldWww, TbUpload, TbPrinter,
 } from 'react-icons/tb';
 import { toaster } from '@/components/ui/toaster';
 
@@ -241,9 +241,123 @@ function PillButton({ active, onClick, children }) {
 
 // ── OFP Display ────────────────────────────────────────────────────────────
 
+// SimBrief's plan_html is a bare `<div><pre>…</pre></div>` fragment with no
+// document, charset or styling of its own. Wrap it so the iframe renders the
+// fixed-width OFP in a monospace face, keeps the chart/wind images inside the
+// column, and can report its height back for auto-sizing.
+function buildOfpDocument(planHtml, token) {
+    return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<base target="_blank">
+<style>
+  html { background:#fff; }
+  body {
+    margin:0; padding:20px 22px; background:#fff; color:#16181d;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono","Courier New",monospace;
+  }
+  pre { margin:0; font-family:inherit; font-size:12.5px; line-height:1.35; white-space:pre; }
+  b { font-weight:700; color:#000; }
+  a { color:#1c64f2; text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  img {
+    max-width:100%; height:auto; display:block; margin:10px 0;
+    border:1px solid #dfe3e8; border-radius:6px; background:#fff;
+  }
+  /* SimBrief uses empty page-break headings as section separators */
+  h2 { margin:20px 0; height:0; overflow:hidden; border-top:1px dashed #c9d1da; }
+  .bkmk { display:block; height:0; scroll-margin-top:14px; }
+  @media (max-width:720px) { body { padding:14px; } pre { font-size:10px; line-height:1.3; } }
+  @media print {
+    body { padding:0; }
+    h2 { border:0; page-break-after:always; }
+  }
+</style>
+</head>
+<body>
+${planHtml}
+<script>
+(function () {
+  var TOKEN = ${JSON.stringify(token)};
+  var last = 0;
+  function send() {
+    // body.scrollHeight only — documentElement.scrollHeight is floored at the
+    // viewport, which would feed the frame's own height back as content height
+    var h = document.body.scrollHeight;
+    if (Math.abs(h - last) < 2) return;
+    last = h;
+    parent.postMessage({ token: TOKEN, type: 'ofp-height', height: h }, '*');
+  }
+  window.addEventListener('load', send);
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(send).observe(document.body);
+  send();
+  window.addEventListener('message', function (e) {
+    var d = e.data || {};
+    if (d.token !== TOKEN) return;
+    if (d.type === 'ofp-scroll') {
+      var el = document.getElementById(d.id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (d.type === 'ofp-print') {
+      window.focus();
+      window.print();
+    }
+  });
+})();
+<\/script>
+</body>
+</html>`;
+}
+
 function OFPDisplay({ ofpData, onClose }) {
     const planHtml = ofpData?.planHtml;
-    const planText = ofpData?.planText;    
+    const planText = ofpData?.planText;
+    const bookmarks = ofpData?.bookmarks ?? [];
+    const frameRef   = useRef(null);
+    const [ contentHeight, setContentHeight ] = useState(0);
+    const [ viewportCap, setViewportCap ]     = useState(900);
+
+    // Namespaced per OFP so a stale frame can't drive the current one
+    const token = useMemo(
+        () => `ofp-${Math.random().toString(36).slice(2)}`,
+        [planHtml],
+    );
+    const srcDoc = useMemo(
+        () => (planHtml ? buildOfpDocument(planHtml, token) : ''),
+        [planHtml, token],
+    );
+
+    useEffect(() => {
+        setContentHeight(0);
+        const onMessage = event => {
+            const data = event.data;
+            if (!data || data.token !== token || data.type !== 'ofp-height') return;
+            const next = Number(data.height);
+            if (Number.isFinite(next) && next > 0) setContentHeight(next);
+        };
+        window.addEventListener('message', onMessage);
+        return () => window.removeEventListener('message', onMessage);
+    }, [token]);
+
+    // A full OFP is ~35 000px tall, so the frame is capped to the viewport and
+    // scrolls internally — that also keeps the section jumps working.
+    useEffect(() => {
+        const measure = () => setViewportCap(Math.max(560, Math.round(window.innerHeight * 0.82)));
+        measure();
+        window.addEventListener('resize', measure);
+        return () => window.removeEventListener('resize', measure);
+    }, []);
+
+    const height = contentHeight
+        ? Math.min(contentHeight + 4, viewportCap)
+        : viewportCap;
+
+    const post = useCallback(message => {
+        frameRef.current?.contentWindow?.postMessage({ token, ...message }, '*');
+    }, [token]);
+
     return (
         <Box
             borderWidth="1px"
@@ -276,29 +390,79 @@ function OFPDisplay({ ofpData, onClose }) {
                         variant="solid"
                         size="xs"
                     >
-                        Generated
+                        {ofpData?.layout || 'Generated'}
                     </Badge>
                 </HStack>
 
-                <Button
-                    size="xs"
-                    variant="ghost"
-                    color="gray.400"
-                    _hover={{ color: "white" }}
-                    onClick={onClose}
-                >
-                    Close
-                </Button>
+                <HStack gap={1}>
+                    {planHtml && (
+                        <Button
+                            size="xs"
+                            variant="ghost"
+                            color="gray.400"
+                            _hover={{ color: "white" }}
+                            onClick={() => post({ type: 'ofp-print' })}
+                        >
+                            <Icon as={TbPrinter} boxSize={3.5} />
+                            Print
+                        </Button>
+                    )}
+                    <Button
+                        size="xs"
+                        variant="ghost"
+                        color="gray.400"
+                        _hover={{ color: "white" }}
+                        onClick={onClose}
+                    >
+                        Close
+                    </Button>
+                </HStack>
             </Flex>
+
+            {planHtml && bookmarks.length > 0 && (
+                <HStack
+                    gap={1}
+                    px={4}
+                    py={2}
+                    overflowX="auto"
+                    borderBottomWidth="1px"
+                    borderColor={{ base: "gray.200", _dark: "whiteAlpha.100" }}
+                    bg={{ base: "gray.50", _dark: "blackAlpha.300" }}
+                    css={{ scrollbarWidth: 'thin' }}
+                >
+                    {bookmarks.map(mark => (
+                        <Button
+                            key={mark.id}
+                            size="xs"
+                            variant="ghost"
+                            flexShrink={0}
+                            fontSize="11px"
+                            fontWeight={mark.level === 0 ? 'bold' : 'medium'}
+                            color={mark.level === 0
+                                ? { base: 'gray.800', _dark: 'gray.100' }
+                                : { base: 'gray.600', _dark: 'gray.400' }}
+                            onClick={() => post({ type: 'ofp-scroll', id: mark.id })}
+                        >
+                            {mark.title}
+                        </Button>
+                    ))}
+                </HStack>
+            )}
 
             {planHtml ? (
                 <Box bg="white">
                     <iframe
+                        ref={frameRef}
                         title="SimBrief OFP"
-                        srcDoc={planHtml}
+                        srcDoc={srcDoc}
+                        // srcDoc without allow-same-origin keeps the frame on an
+                        // opaque origin; scripts only auto-size and print it.
+                        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-modals"
+                        referrerPolicy="no-referrer"
                         style={{
+                            display: "block",
                             width: "100%",
-                            height: "900px",
+                            height: `${height}px`,
                             border: "none",
                             background: "white"
                         }}

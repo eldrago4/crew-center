@@ -164,8 +164,6 @@ export default function CrewLoginClient() {
           p={8}
           bg="whiteAlpha.100"
           borderRadius="xl"
-          backdropFilter="auto"
-          backdropBlur="xl"
           mt="37px"
           w="full"
           maxW="sm"
@@ -212,7 +210,7 @@ export default function CrewLoginClient() {
               </Button>
               <Text fontSize="sm" color="whiteAlpha.700">
                 Don&apos;t have an account?{' '}
-                <Text as="a" href="https://indianvirtual.site/apply" color="blue.300" _hover={{ color: "blue.200" }}>
+                <Text as="a" href="https://indianvirtual.com/apply" color="blue.300" _hover={{ color: "blue.200" }}>
                   Apply here
                 </Text>
               </Text>

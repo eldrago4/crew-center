@@ -1,7 +1,13 @@
 export const metadata = {
   title: 'Fleet — Indian Virtual',
-  description: 'The complete Indian Virtual fleet — Air India, Air India Express, and Vistara liveries operated across the virtual skies of Infinite Flight.',
-  alternates: { canonical: 'https://indianvirtual.site/fleet' },
+  description: 'The complete Indian Virtual fleet — Air India, Air India Express, and Vistara liveries flown across the virtual skies of Infinite Flight, mirroring the aircraft types of the real Air India Group operation.',
+  keywords: ['Indian Virtual fleet', 'Air India livery Infinite Flight', 'Air India Express fleet virtual', 'Vistara livery', 'INVA aircraft', 'virtual airline fleet India'],
+  openGraph: {
+    title: 'Fleet | Indian Virtual',
+    description: 'Air India, Air India Express, and Vistara liveries flown in the virtual skies of Infinite Flight.',
+    url: 'https://indianvirtual.com/fleet',
+  },
+  alternates: { canonical: 'https://indianvirtual.com/fleet' },
 }
 
 import Image from 'next/image'

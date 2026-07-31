@@ -5,9 +5,9 @@ export const metadata = {
     openGraph: {
         title: 'Pilot Statistics | Indian Virtual',
         description: 'Leaderboards and statistics for Indian Virtual pilots on Infinite Flight.',
-        url: 'https://indianvirtual.site/stats',
+        url: 'https://indianvirtual.com/stats',
     },
-    alternates: { canonical: 'https://indianvirtual.site/stats' },
+    alternates: { canonical: 'https://indianvirtual.com/stats' },
 }
 
 export default function StatsLayout({ children }) {

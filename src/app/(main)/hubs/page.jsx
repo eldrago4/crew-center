@@ -1,13 +1,13 @@
 export const metadata = {
     title: 'Hubs',
-    description: 'Explore Indian Virtual hubs across India, from Delhi and Mumbai to Bengaluru, Chennai, Hyderabad and Kolkata. Discover the operational character behind each gateway.',
-    keywords: ['Indian Virtual hubs', 'Air India hubs Infinite Flight', 'Indian virtual airline airports', 'INVA bases', 'India flight simulation hubs'],
+    description: 'Explore Indian Virtual hubs across India — Delhi, Mumbai, Bengaluru, Chennai, Hyderabad and Kolkata — the Air India Group gateways our scheduled network is built around.',
+    keywords: ['Indian Virtual hubs', 'Air India hubs Infinite Flight', 'Air India Express bases', 'Indian virtual airline airports', 'INVA bases', 'India flight simulation hubs'],
     openGraph: {
         title: 'Hubs | Indian Virtual',
-        description: 'Discover the Indian Virtual hub network and the airport gateways that shape our operations.',
-        url: 'https://indianvirtual.site/hubs',
+        description: 'The Indian Virtual hub network — the Air India Group gateways that shape our scheduled operations.',
+        url: 'https://indianvirtual.com/hubs',
     },
-    alternates: { canonical: 'https://indianvirtual.site/hubs' },
+    alternates: { canonical: 'https://indianvirtual.com/hubs' },
 }
 
 import { Box, Flex, Grid, Heading, HStack, Text, VStack } from '@chakra-ui/react'

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { Redis } from '@upstash/redis'
+import {
+    extractField, extractBlock, extractPlanHtml,
+    extractBookmarks, annotateBookmarks, htmlToText,
+} from '@/lib/simbrief'
 
 
 let _redis = null
@@ -11,21 +15,6 @@ function getRedis() {
 const EXISTS_TTL_SECONDS = 10 * 60
 const MISSING_TTL_SECONDS = 12
 const OFP_TTL_SECONDS = 24 * 60 * 60
-
-function extractField(xml, tag) {
-    const m = xml.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, 'i'))
-    if (!m) return null
-    return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim()
-}
-
-function extractPlanHtml(xml) {
-    // Match <![CDATA[...]]> inside <plan_html> — non-greedy on ]]> which won't appear in HTML
-    const cdata = xml.match(/<plan_html[^>]*>\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*<\/plan_html>/i)
-    if (cdata) return cdata[1].trim()
-    // Fallback: plain content (no CDATA wrapper)
-    const plain = xml.match(/<plan_html[^>]*>([\s\S]*?)<\/plan_html>/i)
-    return plain ? plain[1].trim() : ''
-}
 
 export async function GET(request) {
     const session = await auth()
@@ -42,7 +31,9 @@ export async function GET(request) {
     const normalizedOfpId = ofpId.toUpperCase()
     const xmlUrl = `https://www.simbrief.com/ofp/flightplans/xml/${normalizedOfpId}.xml`
     const existsCacheKey = `simbrief:ofp:${normalizedOfpId}:exists`
-    const dataCacheKey = `simbrief:ofp:${normalizedOfpId}:data`
+    // v2: previous cache entries hold entity-escaped plan_html (rendered as raw
+    // tag source in the viewer); bump the key so they are not served.
+    const dataCacheKey = `simbrief:ofp:${normalizedOfpId}:data:v2`
 
     if (check) {
         try {
@@ -87,21 +78,20 @@ export async function GET(request) {
 
         const get = (tag) => extractField(xml, tag)
 
-        // Extract plan_html directly with a CDATA-aware extractor to avoid
-        // false early-termination when the HTML contains XML-like tags
-        const planHtml = extractPlanHtml(xml)
-
-        // Clean plan text: strip HTML tags, decode entities
-        const planText = planHtml
-            .replace(/<br\s*\/?>/gi, '\n')
-            .replace(/<[^>]+>/g, '')
-            .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
-            .trim()
+        // plan_html is entity-encoded in the feed; extractPlanHtml decodes it so
+        // the viewer gets real markup instead of escaped tag source
+        const rawPlanHtml = extractPlanHtml(xml)
+        const planHtml = annotateBookmarks(rawPlanHtml)
+        const planText = htmlToText(rawPlanHtml)
 
         const payload = {
             planHtml,
             planText,
-            origin: get('icao_code') || '',
+            bookmarks: extractBookmarks(rawPlanHtml),
+            layout: get('ofp_layout') || '',
+            // <icao_code> repeats per airport, so scope these to their block
+            origin: extractField(extractBlock(xml, 'origin'), 'icao_code') || '',
+            destination: extractField(extractBlock(xml, 'destination'), 'icao_code') || '',
             flightNumber: get('flight_number') || '',
             route: get('route') || '',
             flightTime: get('est_time_enroute') || '',

@@ -7,9 +7,13 @@ import {
     Fieldset,
     HStack,
     Icon,
+    IconButton,
     Input,
+    InputGroup,
+    Menu,
     Portal,
     Select,
+    Spinner,
     createListCollection,
     SimpleGrid,
     Stack,
@@ -19,7 +23,7 @@ import {
 } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { MdCloudDownload } from 'react-icons/md';
+import { MdCloudDownload, MdSearch } from 'react-icons/md';
 import { toaster } from '@/components/ui/toaster';
 import { matchTrailCode, TRAIL_MULTIPLIER } from '@/app/shared/trails';
 
@@ -69,6 +73,13 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
     const aircraftOptions = (initialAircraft || []).map(opt => typeof opt === 'string' ? { label: opt, value: opt } : opt);
     const aircraftCollection = createListCollection({ items: aircraftOptions });
     const [ aircraft, setAircraft ] = useState(aircraftOptions.length > 0 ? aircraftOptions[ 0 ].value : '');
+    // The select above starts pre-filled with the FIRST fleet entry (the A318) even
+    // though the pilot never touched it, so "aircraft is non-empty" is not the same
+    // as "the pilot picked an aircraft". The flight-number lookup below needs the
+    // real answer — searching the route DB for an A318 nobody selected returns
+    // nothing useful — so track explicit selections (pilot, ACARS import or URL
+    // prefill) separately. Re-selecting the A318 on purpose still counts.
+    const [ aircraftChosen, setAircraftChosen ] = useState(false);
     const operatorOptions = (initialOperators || []).map(opt => typeof opt === 'string' ? { label: opt, value: opt } : opt);
     const operatorCollection = createListCollection({ items: operatorOptions });
     const [ operator, setOperator ] = useState(operatorOptions.length > 0 ? operatorOptions[ 0 ].value : '');
@@ -126,6 +137,7 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
 
             if (exactMatch) {
                 setAircraft(exactMatch.value);
+                setAircraftChosen(true);
             } else {
                 const partialMatch = aircraftOptions.find(ac =>
                     ac.value.toLowerCase().includes(urlAircraft.toLowerCase())
@@ -133,10 +145,63 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
 
                 if (partialMatch) {
                     setAircraft(partialMatch.value);
+                    setAircraftChosen(true);
                 }
             }
         }
     }, [ searchParams, aircraftOptions, flightNumber, departureIcao, arrivalIcao, aircraft ]);
+
+    // --- Flight-number lookup (magnifier inside the Flight Number field) ---
+    const [ lookupOpen, setLookupOpen ] = useState(false);
+    const [ lookupLoading, setLookupLoading ] = useState(false);
+    const [ lookupResults, setLookupResults ] = useState([]);
+    // Identifies the leg+aircraft the results in state belong to. Reopening the
+    // dropdown for the same three values just replays them — no second request,
+    // including when the answer was "no routes" (an empty list is a real result,
+    // so it can't be told apart from "never searched" by lookupResults alone).
+    const [ lookupKey, setLookupKey ] = useState(null);
+
+    // Enabled only once both ICAOs are complete AND an aircraft was actually
+    // picked — the three inputs the route lookup filters on.
+    const canLookupFlightNumbers =
+        departureIcao.length === 4 && arrivalIcao.length === 4 && aircraftChosen && Boolean(aircraft);
+    const currentLookupKey = `${departureIcao}|${arrivalIcao}|${aircraft}`;
+
+    // Any change to the leg or the aircraft invalidates the flight numbers we
+    // already fetched, so drop them rather than let a stale list be picked from.
+    useEffect(() => {
+        setLookupResults([]);
+        setLookupKey(null);
+        setLookupOpen(false);
+    }, [ departureIcao, arrivalIcao, aircraft ]);
+
+    const lookupFlightNumbers = async () => {
+        if (!canLookupFlightNumbers) return;
+        // Already searched for exactly this combination (or a request is still in
+        // flight) — the trigger opens the menu over the results we have.
+        if (lookupLoading || lookupKey === currentLookupKey) return;
+
+        setLookupLoading(true);
+        setLookupResults([]);
+        try {
+            const params = new URLSearchParams({ departureIcao, arrivalIcao, aircraft });
+            const res = await fetch(`/api/routes/lookup?${params}`);
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                toaster.create({ title: 'Lookup Failed', description: err.error || 'Could not search the route database.', type: 'error', duration: 5000 });
+                setLookupOpen(false);
+                return;
+            }
+            const data = await res.json();
+            setLookupResults(data.routes || []);
+            setLookupKey(currentLookupKey);
+        } catch {
+            toaster.create({ title: 'Lookup Failed', description: 'Could not search the route database.', type: 'error', duration: 5000 });
+            setLookupOpen(false);
+        } finally {
+            setLookupLoading(false);
+        }
+    };
 
     // --- State for IFATC form fields ---
     const [ ifatcDate, setIfatcDate ] = useState(today);
@@ -174,7 +239,10 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                 const match =
                     aircraftOptions.find(o => norm(o.label) === ifNorm || norm(o.value) === ifNorm) ||
                     aircraftOptions.find(o => norm(o.label).includes(ifNorm) || ifNorm.includes(norm(o.label)));
-                if (match) setAircraft(match.value);
+                if (match) {
+                    setAircraft(match.value);
+                    setAircraftChosen(true);
+                }
             }
             if (data.operator) {
                 const match = operatorOptions.find(o => o.label === data.operator || o.value === data.operator);
@@ -468,12 +536,71 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                                 </Field.Root>
                                 <Field.Root required>
                                     <Field.Label>Flight Number <Field.RequiredIndicator /></Field.Label>
-                                    <Input
-                                        placeholder="AI108(A)"
-                                        value={flightNumber}
-                                        onChange={(e) => setFlightNumber(e.target.value.toUpperCase().slice(0, 10))}
-                                        maxLength={10}
-                                    />
+                                    {/* The magnifier searches the route DB for flights matching the
+                                        leg + aircraft below and offers them in a dropdown anchored to
+                                        this field. It stays disabled until all three are filled in. */}
+                                    <InputGroup
+                                        endElement={
+                                            <Menu.Root
+                                                open={lookupOpen}
+                                                onOpenChange={(e) => setLookupOpen(e.open)}
+                                                positioning={{ placement: 'bottom-end', gutter: 6 }}
+                                                onSelect={({ value }) => {
+                                                    setFlightNumber(value);
+                                                    setLookupOpen(false);
+                                                }}
+                                            >
+                                                <Menu.Trigger asChild>
+                                                    <IconButton
+                                                        type="button"
+                                                        aria-label="Find flight numbers for this route"
+                                                        title={canLookupFlightNumbers
+                                                            ? 'Find flight numbers for this route'
+                                                            : 'Fill in both ICAOs and select an aircraft first'}
+                                                        variant="ghost"
+                                                        size="xs"
+                                                        disabled={!canLookupFlightNumbers}
+                                                        onClick={lookupFlightNumbers}
+                                                    >
+                                                        {lookupLoading ? <Spinner size="xs" /> : <Icon as={MdSearch} boxSize={4} />}
+                                                    </IconButton>
+                                                </Menu.Trigger>
+                                                <Portal>
+                                                    <Menu.Positioner>
+                                                        <Menu.Content minW="240px" maxH="260px" overflowY="auto">
+                                                            {lookupLoading && (
+                                                                <Menu.Item value="__loading" disabled>
+                                                                    Searching routes...
+                                                                </Menu.Item>
+                                                            )}
+                                                            {!lookupLoading && lookupResults.length === 0 && (
+                                                                <Menu.Item value="__empty" disabled>
+                                                                    No {aircraft} routes for {departureIcao}–{arrivalIcao}
+                                                                </Menu.Item>
+                                                            )}
+                                                            {!lookupLoading && lookupResults.map((route) => (
+                                                                <Menu.Item key={route.flightNumber} value={route.flightNumber}>
+                                                                    <HStack justify="space-between" w="full">
+                                                                        <Text>{route.flightNumber}</Text>
+                                                                        {route.flightTime && (
+                                                                            <Text fontSize="xs" color="fg.muted">{route.flightTime}</Text>
+                                                                        )}
+                                                                    </HStack>
+                                                                </Menu.Item>
+                                                            ))}
+                                                        </Menu.Content>
+                                                    </Menu.Positioner>
+                                                </Portal>
+                                            </Menu.Root>
+                                        }
+                                    >
+                                        <Input
+                                            placeholder="AI108(A)"
+                                            value={flightNumber}
+                                            onChange={(e) => setFlightNumber(e.target.value.toUpperCase().slice(0, 10))}
+                                            maxLength={10}
+                                        />
+                                    </InputGroup>
                                 </Field.Root>
                                 <Field.Root required>
                                     <Field.Label>Departure (ICAO)<Field.RequiredIndicator /></Field.Label>
@@ -498,7 +625,10 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                                     <Select.Root
                                         collection={aircraftCollection}
                                         value={[ aircraft ]}
-                                        onValueChange={e => setAircraft(e.value[ 0 ])}
+                                        onValueChange={e => {
+                                            setAircraft(e.value[ 0 ]);
+                                            setAircraftChosen(Boolean(e.value[ 0 ]));
+                                        }}
                                         size="sm"
                                         width="100%"
                                     >

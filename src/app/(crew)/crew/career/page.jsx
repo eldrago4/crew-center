@@ -74,7 +74,7 @@ export default function CareerPage() {
                     const tokenRes = await fetch('/api/career-sso');
                     if (tokenRes.ok) {
                         const { token } = await tokenRes.json();
-                        window.location.href = `https://career.indianvirtual.site/login.html?token=${token}`;
+                        window.location.href = `https://career.indianvirtual.com/login.html?token=${token}`;
                         return;
                     }
                 }
@@ -120,7 +120,7 @@ export default function CareerPage() {
                 const tokenRes = await fetch('/api/career-sso');
                 if (!tokenRes.ok) throw new Error('SSO request failed');
                 const { token } = await tokenRes.json();
-                window.location.href = `https://career.indianvirtual.site/login.html?token=${token}`;
+                window.location.href = `https://career.indianvirtual.com/login.html?token=${token}`;
                 return;
             }
 

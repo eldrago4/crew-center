@@ -1,14 +1,14 @@
 export const metadata = {
   title: 'Privacy Policy',
   description: 'Privacy Policy for Indian Virtual — how we collect, use, and protect your personal data.',
-  alternates: { canonical: 'https://indianvirtual.site/privacy' },
+  alternates: { canonical: 'https://indianvirtual.com/privacy' },
 }
 
 import { Box, Heading, Text, VStack, Flex } from '@chakra-ui/react'
 
 const LAST_UPDATED = 'May 9, 2026'
-const CONTACT = 'ceo@indianvirtual.site'
-const SITE = 'https://indianvirtual.site'
+const CONTACT = 'ceo@indianvirtual.com'
+const SITE = 'https://indianvirtual.com'
 
 function Section({ title, children }) {
   return (

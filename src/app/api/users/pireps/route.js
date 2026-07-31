@@ -363,7 +363,7 @@ export async function POST(request) {
       );
       const fileName = prefix ? CODESHARE_EMOJI_FILES[ prefix ] : null;
       const thumbnailUrl = fileName
-        ? `${process.env.NEXT_PUBLIC_APP_URL || "https://indianvirtual.site"}${CODESHARE_EMOJI_BASE}/${fileName}`
+        ? `${process.env.NEXT_PUBLIC_APP_URL || "https://indianvirtual.com"}${CODESHARE_EMOJI_BASE}/${fileName}`
         : null;
 
 
@@ -480,7 +480,7 @@ export async function POST(request) {
               type: 2,
               style: 5,
               label: "Copy PIREP",
-              url: `https://indianvirtual.site/crew/pireps/file?flightNumber=${encodeURI(inserted.flightNumber)}&departureIcao=${encodeURI(inserted.departureIcao)}&arrivalIcao=${encodeURI(inserted.arrivalIcao)}&aircraft=${encodeURI(inserted.aircraft)}`,
+              url: `https://indianvirtual.com/crew/pireps/file?flightNumber=${encodeURI(inserted.flightNumber)}&departureIcao=${encodeURI(inserted.departureIcao)}&arrivalIcao=${encodeURI(inserted.arrivalIcao)}&aircraft=${encodeURI(inserted.aircraft)}`,
             },
           ],
         },

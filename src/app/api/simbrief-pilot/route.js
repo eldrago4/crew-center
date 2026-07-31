@@ -1,15 +1,5 @@
 import { NextResponse } from 'next/server'
-
-function extractField(xml, tag) {
-  const m = xml.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, 'i'))
-  if (!m) return null
-  return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim()
-}
-
-function extractBlock(xml, tag) {
-  const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'))
-  return m ? m[1] : ''
-}
+import { extractField, extractBlock, extractPlanHtml } from '@/lib/simbrief'
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
@@ -43,14 +33,15 @@ export async function GET(request) {
   const fuelBlock    = extractBlock(xml, 'fuel')
   const weightsBlock = extractBlock(xml, 'weights')
   const generalBlock = extractBlock(xml, 'general')
-  const textBlock    = extractBlock(xml, 'text')
   const imagesBlock  = extractBlock(xml, 'images')
 
   // OFP generation Unix timestamp (seconds) — used to detect a new plan after dispatch
   const release = extractField(generalBlock || xml, 'release') || ''
 
-  // Full OFP HTML — may contain CDATA; extractField already strips CDATA wrapper
-  const planHtml = extractField(textBlock || xml, 'plan_html') || ''
+  // Full OFP HTML — entity-encoded in the feed, so it must be decoded. Scanned
+  // over the whole document: SIGMET entries also carry <text> nodes, so
+  // scoping to the <text> block matches a SIGMET instead of the OFP body.
+  const planHtml = extractPlanHtml(xml)
 
   // Extract map URLs from <link> children inside <images>
   const mapUrls = []
@@ -67,7 +58,8 @@ export async function GET(request) {
     pax: extractField(xml, 'pax_count_actual') || extractField(xml, 'pax_count') || '0',
     cargo: extractField(weightsBlock || xml, 'cargo_hold_weight') || '0',
     fuelRamp: extractField(fuelBlock || xml, 'plan_ramp') || '0',
-    fuelBurn: extractField(fuelBlock || xml, 'plan_burn') || '0',
+    // <fuel> exposes the trip burn as enroute_burn; there is no plan_burn
+    fuelBurn: extractField(fuelBlock || xml, 'enroute_burn') || '0',
     origRunway: extractField(origBlock || xml, 'plan_rwy') || '',
     destRunway: extractField(destBlock || xml, 'plan_rwy') || '',
     origMetar: extractField(origBlock || xml, 'metar') || '',

@@ -5,9 +5,9 @@ export const metadata = {
   openGraph: {
     title: 'Maharaja Trails | Indian Virtual',
     description: 'Forty hand-picked route itineraries across the Air India Group network — real chained legs, suggested departure times, and a story behind every one.',
-    url: 'https://indianvirtual.site/operations/trails',
+    url: 'https://indianvirtual.com/operations/trails',
   },
-  alternates: { canonical: 'https://indianvirtual.site/operations/trails' },
+  alternates: { canonical: 'https://indianvirtual.com/operations/trails' },
 }
 
 import Image from 'next/image'

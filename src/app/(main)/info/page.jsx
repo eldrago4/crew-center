@@ -1,13 +1,13 @@
 export const metadata = {
     title: 'About Us',
-    description: 'Learn about Indian Virtual — India\'s premier Infinite Flight virtual airline. Discover our history, mission, fleet, and the community behind INVA.',
-    keywords: ['about Indian Virtual', 'INVA history', 'Indian virtual airline community', 'Infinite Flight virtual airline India', 'virtual airline mission'],
+    description: 'Learn about Indian Virtual — a premier virtual airline in India, mirroring the operations of Air India and Air India Express on Infinite Flight. Our history, mission, fleet, and the community behind INVA.',
+    keywords: ['about Indian Virtual', 'INVA history', 'Indian virtual airline community', 'Infinite Flight virtual airline India', 'Air India Group virtual', 'virtual airline mission'],
     openGraph: {
         title: 'About Indian Virtual',
-        description: 'Discover the story behind Indian Virtual — India\'s premier Infinite Flight virtual airline.',
-        url: 'https://indianvirtual.site/info',
+        description: 'The story behind Indian Virtual — a premier virtual airline in India flying the Air India Group network in the virtual skies of Infinite Flight.',
+        url: 'https://indianvirtual.com/info',
     },
-    alternates: { canonical: 'https://indianvirtual.site/info' },
+    alternates: { canonical: 'https://indianvirtual.com/info' },
 }
 
 import { Box, Flex, Grid, Heading, Text, VStack, HStack } from '@chakra-ui/react'

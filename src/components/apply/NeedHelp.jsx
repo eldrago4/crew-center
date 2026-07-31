@@ -20,8 +20,8 @@ const CHANNELS = [
         key: 'email',
         icon: MdEmail,
         title: 'Email us',
-        detail: 'dev@indianvirtual.site',
-        href: 'mailto:dev@indianvirtual.site?subject=Issue%20with%20applying%20through%20website',
+        detail: 'dev@indianvirtual.com',
+        href: 'mailto:dev@indianvirtual.com?subject=Issue%20with%20applying%20through%20website',
         accent: '#EA4335',
     },
     {
