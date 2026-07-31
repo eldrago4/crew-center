@@ -250,6 +250,42 @@ function buildRouteLinks(route) {
   };
 }
 
+// A route's aircraft column is a comma-separated list of every type cleared for
+// it ("A333, A339, Boeing 777-300ER"). The gallery card has room for one, so it
+// shows the largest — ordered here by MTOW, smallest first. Types missing from
+// this list rank below everything (index -1) but are still shown if they're all
+// a route has.
+const AIRCRAFT_BY_SIZE = [
+  "TBM-930", "C208", "Bombardier Dash 8-Q400",
+  "CRJ-700", "ERJ-175", "CRJ-900", "CRJ-1000", "ERJ-190",
+  "A318", "A220-300", "A319", "Boeing 737-700", "A320",
+  "Boeing 737-800", "Boeing 737MAX", "Boeing 737-900", "A321",
+  "Boeing 757-200", "Boeing 767-300", "Boeing 767-300ER",
+  "Boeing 787-8", "A332", "A333", "A339",
+  "Boeing 787-9", "Boeing 787-10",
+  "DC-10", "DC-10F", "A359", "MD-11", "MD-11F",
+  "Boeing 777-200ER", "A35K", "Boeing 777-200LR", "Boeing 777F", "Boeing 777-300ER",
+  "A346", "Boeing 747-400", "Boeing 747-8", "A388",
+];
+
+const aircraftSizeRank = new Map(AIRCRAFT_BY_SIZE.map((name, i) => [ name, i ]));
+
+function largestAircraft(names) {
+  const list = String(names || "").split(",").map((n) => n.trim()).filter(Boolean);
+  if (!list.length) return "";
+  return list.reduce((biggest, name) => (
+    (aircraftSizeRank.get(name) ?? -1) > (aircraftSizeRank.get(biggest) ?? -1) ? name : biggest
+  ));
+}
+
+// Manufacturer prefixes are dead weight in a 10px mono label that has to sit
+// between an icon and its balancing spacer — "Boeing 777-300ER" becomes
+// "777-300ER", which is how pilots say it anyway. The full list stays in the
+// element's title.
+function shortAircraftLabel(name) {
+  return String(name || "").replace(/^(Boeing|Airbus|Bombardier)\s+/i, "");
+}
+
 // Aircraft silhouettes (public/aircraft/*.webp). Six drawings have to stand in
 // for the whole fleet, so routes are matched to the nearest airframe by family
 // rather than exactly — at 60px what reads is the tube length, the engine count
@@ -282,14 +318,15 @@ const AIRCRAFT_ICON_FILTER = "grayscale(1) brightness(3.4)";
 // buttons sit, clearing by two-thirds up so the image still reads as an image.
 const SCRIM = "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.65) 38%, rgba(0,0,0,0.15) 70%, rgba(0,0,0,0.05) 100%)";
 
-// Shown while the arrival airport's photo is still resolving, and permanently if
-// there is no photo for it (PEXELS_API_KEY unset, an unmapped ICAO, or nothing
-// on Pexels) — the card keeps its shape and legibility, just without the picture.
+// Shown before the backdrop resolves, and permanently if there is no photo at
+// all (PEXELS_API_KEY unset, an unmapped ICAO, or nothing on Pexels) — the card
+// keeps its shape and legibility, just without the picture.
 const BACKDROP_FALLBACK = "linear-gradient(145deg, #1a2233 0%, #2c1620 55%, #0d1119 100%)";
 
 function GalleryRouteCard({ route, backdrop }) {
-  const { fileHref, fplHref, firstAircraft } = buildRouteLinks(route);
-  const aircraftIcon = aircraftIconFor(firstAircraft);
+  const { fileHref, fplHref } = buildRouteLinks(route);
+  const headlineAircraft = largestAircraft(route.aircraft_names);
+  const aircraftIcon = aircraftIconFor(headlineAircraft);
 
   // The photo arrives after the card has already rendered on its gradient, so
   // it's faded in on load rather than popping in. Keyed on the URL below so a
@@ -306,17 +343,23 @@ function GalleryRouteCard({ route, backdrop }) {
       borderRadius="2xl"
       overflow="hidden"
       boxShadow="lg"
-      bgImage={BACKDROP_FALLBACK}
+      // Pexels' avg_color for this photo, painted the moment the URL arrives and
+      // before a byte of the image has downloaded. The photo then fades in over
+      // a background that already matches it, so the card settles instead of
+      // flashing from a stock gradient to something unrelated.
+      bg={backdrop?.color || undefined}
+      bgImage={backdrop?.color ? undefined : BACKDROP_FALLBACK}
+      transition="background-color 0.3s ease-out"
     >
       {/* Backdrop: a photo of the arrival city. A plain <img> rather than
           next/image because Pexels already serves it at the size we asked for
           (see lib/pexels.js) — the optimizer would add a transform per photo for
           an identical result. It fades in so a slow photo doesn't pop. */}
-      {backdrop && (
+      {backdrop?.url && (
         <Box
-          key={backdrop}
+          key={backdrop.url}
           as="img"
-          src={backdrop}
+          src={backdrop.url}
           alt=""
           aria-hidden="true"
           loading="lazy"
@@ -424,6 +467,11 @@ function GalleryRouteCard({ route, backdrop }) {
                 {formatTime(route.flight_time_hours, route.flight_time_minutes)}
               </Text>
             </HStack>
+            {/* The silhouette sits left of the type, but the TYPE is what has to
+                line up with the time above it — so the icon is balanced by an
+                invisible box of the same width on the right. Keeping the spacer
+                in flow (rather than positioning the icon absolutely) means a
+                long type name shortens instead of spilling past the card edge. */}
             <HStack gap="2" minW={0} maxW="100%">
               {aircraftIcon && (
                 <Box
@@ -433,7 +481,7 @@ function GalleryRouteCard({ route, backdrop }) {
                   aria-hidden="true"
                   loading="lazy"
                   decoding="async"
-                  width={{ base: "48px", xl: "60px" }}
+                  width={{ base: "44px", xl: "56px" }}
                   height="auto"
                   flexShrink={0}
                   filter={AIRCRAFT_ICON_FILTER}
@@ -450,8 +498,15 @@ function GalleryRouteCard({ route, backdrop }) {
                 lineClamp={1}
                 title={route.aircraft_names}
               >
-                {firstAircraft || "—"}
+                {shortAircraftLabel(headlineAircraft) || "—"}
               </Text>
+              {aircraftIcon && (
+                <Box
+                  width={{ base: "44px", xl: "56px" }}
+                  flexShrink={0}
+                  aria-hidden="true"
+                />
+              )}
             </HStack>
           </VStack>
 
@@ -701,9 +756,21 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
   const [ backdrops, setBackdrops ] = useState({});
   const requestedIcaos = useRef(new Set());
 
+  // Which end of the route the photo shows. Normally the destination — that's
+  // the place you're flying to. But filtering by arrival ICAO pins every card on
+  // the page to the same airport, and fifteen copies of one photo is a wall, so
+  // in that case the card shows where each flight departs from instead. Keyed off
+  // the data rather than the filter state so it also covers a departure filter
+  // that happens to leave one destination.
+  const backdropEnd = useMemo(() => {
+    const arrivals = new Set(paginatedData.map((r) => r.arrival_icao));
+    const departures = new Set(paginatedData.map((r) => r.departure_icao));
+    return arrivals.size === 1 && departures.size > 1 ? "departure_icao" : "arrival_icao";
+  }, [ paginatedData ]);
+
   const pageIcaos = useMemo(
-    () => [ ...new Set(paginatedData.map((r) => r.arrival_icao).filter(Boolean)) ],
-    [ paginatedData ]
+    () => [ ...new Set(paginatedData.map((r) => r[ backdropEnd ]).filter(Boolean)) ],
+    [ paginatedData, backdropEnd ]
   );
   const pageIcaoKey = pageIcaos.join(",");
 
@@ -1141,7 +1208,7 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
               <GalleryRouteCard
                 key={index}
                 route={route}
-                backdrop={backdrops[ route.arrival_icao ] || null}
+                backdrop={backdrops[ route[ backdropEnd ] ] || null}
               />
             );
           }

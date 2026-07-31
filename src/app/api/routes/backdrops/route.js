@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/apiAuth';
-import { fetchAirportBackdrop } from '@/lib/pexels';
+import { requireUser, requireStaff } from '@/lib/apiAuth';
+import { fetchAirportBackdrop, probeAirportBackdrop } from '@/lib/pexels';
 
 // Arrival-airport photos for the gallery view of /crew/routes.
 //
@@ -23,11 +23,35 @@ function normalizeIcao(value) {
     return token ? token[ 0 ] : upper.replace(/[^A-Z]/g, '').slice(0, 4);
 }
 
+const MAX_DEBUG_ICAOS = 5;
+
 export async function GET(request) {
+    const { searchParams } = new URL(request.url);
+
+    // ?debug=1 — staff only. Bypasses the per-ICAO cache and reports how many
+    // results each search tier actually returns, which is the only way to tell a
+    // gradient card caused by "no photos for this city" from one caused by a
+    // rate limit or a missing key. Capped tighter than the normal path because
+    // every probe is a live, uncached call against the Pexels quota.
+    if (searchParams.get('debug')) {
+        const { error: staffError } = await requireStaff();
+        if (staffError) return staffError;
+
+        const icaos = [ ...new Set(
+            (searchParams.get('icaos') || '').split(',').map(normalizeIcao).filter((i) => i.length === 4)
+        ) ].slice(0, MAX_DEBUG_ICAOS);
+
+        if (!icaos.length) {
+            return NextResponse.json({ error: 'icaos is required' }, { status: 400 });
+        }
+
+        const probes = await Promise.all(icaos.map((icao) => probeAirportBackdrop(icao)));
+        return NextResponse.json({ probes }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
     const { error } = await requireUser();
     if (error) return error;
 
-    const { searchParams } = new URL(request.url);
     const requested = (searchParams.get('icaos') || '')
         .split(',')
         .map(normalizeIcao)
