@@ -1,26 +1,15 @@
 'use client'
 
 import { Box } from '@chakra-ui/react'
-import dynamic from 'next/dynamic'
+import DashNav from "@/components/DashNav"
+import SidebarComponent from "@/components/SideBar"
 
-// The top nav (DashNav → pulls in AigChat) and the sidebar (386 lines,
-// react-icons, role selector) are the bulk of the crew shell's SSR render + a
-// big share of the cold-isolate module-init cost — and they render on EVERY
-// /crew page. On a cold isolate that pushes the render past the ~2s CPU limit,
-// which is the dominant source of the 1102 (exceededCpu) errors. They're
-// interactive chrome with no SEO value (authenticated, noindex), and the layout
-// below already reserves their space (60px top / 250px left), so loading them
-// client-only removes them from the worker's cold-start path with no layout
-// shift — they hydrate in a beat later behind fixed-size placeholders.
-const DashNav = dynamic(() => import("@/components/DashNav"), {
-  ssr: false,
-  loading: () => <Box h="60px" w="100%" bg={{ base: "white", _dark: "gray.900" }} />,
-});
-const SidebarComponent = dynamic(() => import("@/components/SideBar"), {
-  ssr: false,
-  loading: () => <Box h="100%" w={{ base: 0, md: "250px" }} />,
-});
-
+// The nav and sidebar used to be dynamic({ssr:false}) individually, to keep them
+// off the Worker's cold-start path. They no longer need to be: this whole
+// component is loaded through CrewChrome, which is itself behind an ssr:false
+// boundary, so nothing here ever reaches the server. Static imports put the nav
+// and sidebar in the same chunk as the layout, which saves the browser two extra
+// round trips after hydration.
 
 export default function ResponsiveCrewLayout({
   children,

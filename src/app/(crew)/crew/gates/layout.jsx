@@ -1,8 +1,7 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
 import { auth } from "@/auth";
-import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
-import { SidebarProvider } from '@/components/SidebarContext';
+import CrewChrome from '@/components/crew-runtime/CrewChrome';
 
 export default async function GatesLayout({ children }) {
     const session = await auth();
@@ -14,16 +13,14 @@ export default async function GatesLayout({ children }) {
     const isAdmin = session.user.permissions?.length > 0 || false;
 
     return (
-        <SidebarProvider>
-            <ResponsiveCrewLayout
-                callsign={session.user.callsign}
-                isAdmin={isAdmin}
-                showSidebar={false}
-            >
-                {React.Children.map(children, child =>
-                    React.cloneElement(child, { session })
-                )}
-            </ResponsiveCrewLayout>
-        </SidebarProvider>
+        <CrewChrome
+            callsign={session.user.callsign}
+            isAdmin={isAdmin}
+            showSidebar={false}
+        >
+            {React.Children.map(children, child =>
+                React.cloneElement(child, { session })
+            )}
+        </CrewChrome>
     );
 }

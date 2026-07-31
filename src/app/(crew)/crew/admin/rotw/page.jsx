@@ -1,15 +1,9 @@
-import { Box, Heading, Container, VStack } from '@chakra-ui/react';
-
-import DatabaseViewer from '@/components/admin/DatabaseViewer';
-import MultipliersManager from '@/components/admin/MultipliersManager';
-import EventsManager from '@/components/admin/EventsManager';
-import NotamsManager from '@/components/admin/NotamsManager';
 import { fetchFleetModule, fetchModuleValue } from '../../pireps/file/fleetModule';
 import { connection } from 'next/server';
 import db from '@/db/client';
 import { notams } from '@/db/schema';
 import { desc } from 'drizzle-orm';
-
+import CrewPage from '@/components/crew-runtime/CrewPage';
 
 export default async function FleetDatabasePage() {
     // Keep this page request-time: its reads (unstable_cache + a direct notams
@@ -39,17 +33,11 @@ export default async function FleetDatabasePage() {
     else console.error("Error fetching initial NOTAMs data on server:", notamsRes.reason);
 
     return (
-        <Box p={{ base: 4, md: 6 }} minH="100vh">
-            <Container maxW="100%" py={{ base: 4, md: 8 }}>
-                <VStack spacing={6} align="stretch">
-                    <Heading size="xl" color="fg">
-                        Multipliers - Regular Flying
-                    </Heading>
-                    <MultipliersManager initialModuleData={initialFleetData} moduleName="multipliers" />
-                    <NotamsManager initialNotams={initialNotamsData} />
-                    <EventsManager initialEventsData={initialEventsData} moduleName="events" />
-                </VStack>
-            </Container>
-        </Box>
+        <CrewPage
+            id="admin-rotw"
+            initialFleetData={initialFleetData}
+            initialEventsData={initialEventsData}
+            initialNotamsData={initialNotamsData}
+        />
     );
 }

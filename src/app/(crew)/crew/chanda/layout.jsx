@@ -7,10 +7,11 @@ export const metadata = {
 
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import { SidebarProvider } from '@/components/SidebarContext';
-import ResponsiveCrewLayout from '@/components/ResponsiveCrewLayout';
-import { Box } from '@chakra-ui/react';
+import CrewChrome from '@/components/crew-runtime/CrewChrome';
 
+// The <Box minH="100vh" bg="bg.default"> that used to wrap this is now applied
+// once for the whole crew app, inside CrewRuntimeInner — a server file must not
+// render Chakra (see CrewRuntime.jsx).
 export default async function ChandaLayout({ children }) {
   const session = await auth();
 
@@ -22,16 +23,12 @@ export default async function ChandaLayout({ children }) {
   const careerMode = session.user.careerMode || false;
 
   return (
-    <Box minH="100vh" bg="bg.default">
-      <SidebarProvider>
-        <ResponsiveCrewLayout
-          callsign={session.user.callsign}
-          isAdmin={isAdmin}
-          careerMode={careerMode}
-        >
-          {children}
-        </ResponsiveCrewLayout>
-      </SidebarProvider>
-    </Box>
+    <CrewChrome
+      callsign={session.user.callsign}
+      isAdmin={isAdmin}
+      careerMode={careerMode}
+    >
+      {children}
+    </CrewChrome>
   );
 }

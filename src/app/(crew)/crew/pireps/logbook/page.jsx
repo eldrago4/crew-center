@@ -1,35 +1,13 @@
-
-import {
-  Box,
-  Container,
-  Text,
-} from '@chakra-ui/react';
+import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import PageTitle from '@/components/PageTitle';
-import PirepListWithPagination from '@/components/pireps/logbook/PirepListWithPagination'; // Import the new Client Component
+import CrewPage from '@/components/crew-runtime/CrewPage';
 
+// The list is client-fetched, so all this page owes it is the callsign. The UI is
+// in ./LogbookView.jsx, loaded client-only through the CrewPage registry — see
+// src/components/crew-runtime/CrewRuntime.jsx.
 export default async function LogbookPage() {
-  const { auth } = await import('@/auth');
   const session = await auth();
+  if (!session?.user) redirect('/crew');
 
-  let initialPireps = [];
-  let initialTotalPireps = 0;
-  const initialPageSize = 8;
-
-  return (
-    <Box>
-      <Container maxW="container.xl" p="4">
-        <Box>
-          <PageTitle>Logbook</PageTitle>
-          {/* Render the Client Component and pass initial data and user ID */}
-          <PirepListWithPagination
-            initialPireps={initialPireps}
-            initialTotalPireps={initialTotalPireps}
-            userId={session.user.callsign}
-          />
-        </Box>
-      </Container>
-    </Box>
-  );
+  return <CrewPage id="pireps-logbook" userId={session.user.callsign} />;
 }
-

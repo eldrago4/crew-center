@@ -1,7 +1,6 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import ResponsiveCrewLayout from '@/components/ResponsiveCrewLayout'
-import { SidebarProvider } from '@/components/SidebarContext'
+import CrewChrome from '@/components/crew-runtime/CrewChrome'
 
 export const metadata = { title: 'Events — Indian Virtual Crew Center' }
 
@@ -13,10 +12,8 @@ export default async function EventsLayout({ children }) {
     const careerMode = session.user.careerMode || false
 
     return (
-        <SidebarProvider>
-            <ResponsiveCrewLayout callsign={session.user.callsign} isAdmin={isAdmin} careerMode={careerMode}>
-                {children}
-            </ResponsiveCrewLayout>
-        </SidebarProvider>
+        <CrewChrome callsign={session.user.callsign} isAdmin={isAdmin} careerMode={careerMode}>
+            {children}
+        </CrewChrome>
     )
 }

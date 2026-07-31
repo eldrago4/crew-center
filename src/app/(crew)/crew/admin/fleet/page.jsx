@@ -1,10 +1,6 @@
-
-import { Box, Heading, Container, VStack } from '@chakra-ui/react';
-
-import DatabaseViewer from '@/components/admin/DatabaseViewer';
 import { fetchFleetModule } from '../../pireps/file/fleetModule';
 import { connection } from 'next/server';
-
+import CrewPage from '@/components/crew-runtime/CrewPage';
 
 export default async function FleetDatabasePage() {
     // Everything this page reads is cached, so the build would otherwise execute
@@ -21,16 +17,5 @@ export default async function FleetDatabasePage() {
         initialFleetData = 'Error loading fleet data.';
     }
 
-    return (
-            <Box p={{ base: 4, md: 6 }} minH="100vh">
-                <Container maxW="100%" py={{ base: 4, md: 8 }}>
-                    <VStack spacing={6} align="stretch">
-                        <Heading size="xl" color="fg">
-                            Fleet Database
-                        </Heading>
-                        <DatabaseViewer initialModuleData={initialFleetData} moduleName="fleet" />
-                    </VStack>
-                </Container>
-            </Box>
-    );
+    return <CrewPage id="admin-fleet" initialFleetData={initialFleetData} />;
 }

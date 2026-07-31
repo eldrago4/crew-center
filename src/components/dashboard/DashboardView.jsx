@@ -1,117 +1,16 @@
-// app/components/dashboard/ProfileContainer.jsx
+'use client'
+
+// The dashboard UI, rendered client-only through the CrewPage registry. All data
+// arrives as plain JSON from dashboardData.loadDashboard() — no fetching here.
 import BasicInfo from './BasicInfo'
 import PirepsTable from './PirepsTable'
-import { Box, Stack, Heading, Text, Button, Link, Badge, HStack, Container, Flex } from '@chakra-ui/react'
 import SignupOrFileButton from './SignupOrFileButton'
-import db from '@/db/client'
-import { users, pireps, notams, crewcenter } from '@/db/schema'
-import { eq, sql } from 'drizzle-orm'
-import { unstable_cache } from 'next/cache'
-import { getLotusStatus } from '@/app/api/chanda/_lotus'
+import { Box, Stack, Heading, Text, Button, Link, Badge, HStack, Container, Flex } from '@chakra-ui/react'
 
-async function getUserData(callsign) {
-  try {
-    // The two reads only depend on the callsign, not on each other, so they go out
-    // together rather than one after the other.
-    const [ userDetails, pirepDetails ] = await Promise.all([
-      db
-        .select({
-          id: users.id,
-          ifcName: users.ifcName,
-          flightTime: users.flightTime,
-          badges: users.badges,
-          careerMode: users.careerMode,
-          rank: users.rank,
-          updatedAt: users.updatedAt
-        })
-        .from(users)
-        .where(eq(users.id, callsign))
-        .limit(1),
-      // PIREPs (latest 5)
-      db
-        .select({
-          pirepId: pireps.pirepId,
-          flightNumber: pireps.flightNumber,
-          date: pireps.date,
-          flightTime: pireps.flightTime,
-          departureIcao: pireps.departureIcao,
-          arrivalIcao: pireps.arrivalIcao,
-          aircraft: pireps.aircraft,
-          multiplier: pireps.multiplier,
-          approved: pireps.valid,
-          comments: pireps.comments,
-          updatedAt: pireps.updatedAt
-        })
-        .from(pireps)
-        .where(eq(pireps.userId, callsign))
-        .orderBy(sql`${pireps.updatedAt} DESC`)
-        .limit(5),
-    ]);
+export default function DashboardView({ data }) {
+  if (!data) return null
 
-    if (!userDetails || userDetails.length === 0) {
-      return null;
-    }
-
-    return {
-      ...userDetails[ 0 ],
-      pireps: pirepDetails
-    };
-  } catch (error) {
-    console.error('Error fetching user data:', error);
-    return null;
-  }
-}
-
-// NOTAMs and the promoted event are the same for every pilot, but the dashboard is
-// auth-gated and therefore dynamic, so each of these ran once per pilot per page
-// load. Caching them here collapses that to once per window for the whole crew.
-const getNotams = unstable_cache(
-  async () => {
-    try {
-      // A count(*) used to run alongside this purely to populate `count`/`cached`,
-      // which nothing downstream reads — the rows are the answer.
-      const allNotams = await db.select().from(notams).orderBy(notams.issued);
-      return { data: allNotams };
-    } catch (error) {
-      console.error('Error fetching NOTAMs:', error);
-      return { data: [] };
-    }
-  },
-  ['dashboard-notams'],
-  { revalidate: 300, tags: ['notams'] },
-);
-
-const getPromotedEvent = unstable_cache(
-  async () => {
-    try {
-      const result = await db.select().from(crewcenter).where(eq(crewcenter.module, 'events'));
-      if (result.length === 0) {
-        return null;
-      }
-      const events = result[ 0 ].value;
-      const promotedEvent = events.find(event => event.promoted);
-      return promotedEvent || null;
-    } catch (error) {
-      console.error('Error fetching promoted event:', error);
-      return null;
-    }
-  },
-  ['dashboard-promoted-event'],
-  { revalidate: 300, tags: ['events'] },
-);
-
-export default async function ProfileContainer({ user }) {
-  if (!user) return null
-  const userDiscordId = user.discordId || user.id
-
-  const [ userData, notamsData, promotedEvent, lotusStatus ] = await Promise.all([
-    getUserData(user.callsign),
-    getNotams(),
-    getPromotedEvent(),
-    userDiscordId ? getLotusStatus(userDiscordId).catch(() => null) : null
-  ])
-
-  if (!userData) return null
+  const { ifcName, image, flightTime, rank, badges, pireps, notams, promotedEvent, lotusStatus } = data
 
   return (
     <>
@@ -141,13 +40,13 @@ export default async function ProfileContainer({ user }) {
         </Container>
       )}
       <BasicInfo
-        ifcName={userData.ifcName}
-        image={user.image}
-        flightTime={userData.flightTime}
-        rank={userData.rank}
-        badgePayload={{ badges: Array.isArray(userData.badges) ? userData.badges : [] }}
+        ifcName={ifcName}
+        image={image}
+        flightTime={flightTime}
+        rank={rank}
+        badgePayload={{ badges }}
         lotusStatus={lotusStatus}
-        notams={notamsData.data}
+        notams={notams}
       />
       {/* Promotional box above PIREPs */}
       {promotedEvent && (
@@ -157,7 +56,7 @@ export default async function ProfileContainer({ user }) {
             overflow="hidden"
             position="relative"
             minH={{ base: '220px', md: '160px' }}
-            bgGradient={user.image ? undefined : 'linear-gradient(135deg, rgba(99,102,241,0.9), rgba(139,92,246,0.85))'}
+            bgGradient={image ? undefined : 'linear-gradient(135deg, rgba(99,102,241,0.9), rgba(139,92,246,0.85))'}
             backgroundImage={promotedEvent.banner ? `url(${promotedEvent.banner})` : `url(/fedex.png)`}
             backgroundSize="cover"
             backgroundPosition="center"
@@ -241,7 +140,7 @@ export default async function ProfileContainer({ user }) {
           </Box>
         </Container>
       )}
-      <PirepsTable pireps={userData.pireps} />
+      <PirepsTable pireps={pireps} />
     </>
   )
 }

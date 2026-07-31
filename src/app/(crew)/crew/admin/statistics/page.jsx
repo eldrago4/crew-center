@@ -1,5 +1,4 @@
-import { Box } from '@chakra-ui/react';
-import StatisticsClient from './StatisticsClient';
+import CrewPage from '@/components/crew-runtime/CrewPage';
 import { connection } from 'next/server';
 import {
     getStatsWeek,
@@ -75,25 +74,24 @@ export default async function StatisticsPage() {
     const priorSummary = combineWeek(neonPrior, careerFlights, prior);
 
     return (
-        <Box p={{ base: '4', md: '6' }}>
-            <StatisticsClient
-                week={{
-                    label: `${formatWeekLabel(week.start)} – ${formatWeekLabel(week.end)}`,
-                    isPreviousWeek: week.isPreviousWeek,
-                }}
-                summary={summary}
-                delta={{
-                    flights: summary.flights - priorSummary.flights,
-                    hours: Math.round((summary.hours - priorSummary.hours) * 10) / 10,
-                    pilots: summary.pilots - priorSummary.pilots,
-                }}
-                topPilots={combineTopPilots(neonPilots, careerFlights, week)}
-                club={club}
-                weekly={buildWeeklySeries(neonDaily, careerFlights, week.start)}
-                monthly={buildMonthlySeries(neonDaily, careerFlights)}
-                failed={failed}
-                careerFailed={careerFailed}
-            />
-        </Box>
+        <CrewPage
+            id="admin-statistics"
+            week={{
+                label: `${formatWeekLabel(week.start)} – ${formatWeekLabel(week.end)}`,
+                isPreviousWeek: week.isPreviousWeek,
+            }}
+            summary={summary}
+            delta={{
+                flights: summary.flights - priorSummary.flights,
+                hours: Math.round((summary.hours - priorSummary.hours) * 10) / 10,
+                pilots: summary.pilots - priorSummary.pilots,
+            }}
+            topPilots={combineTopPilots(neonPilots, careerFlights, week)}
+            club={club}
+            weekly={buildWeeklySeries(neonDaily, careerFlights, week.start)}
+            monthly={buildMonthlySeries(neonDaily, careerFlights)}
+            failed={failed}
+            careerFailed={careerFailed}
+        />
     );
 }

@@ -1,7 +1,7 @@
-import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
 import { auth } from '@/auth';
 import { redirect } from "next/navigation";
-import { SidebarProvider } from '@/components/SidebarContext';
+import CrewChrome from '@/components/crew-runtime/CrewChrome';
+
 export default async function RootLayout({ children }) {
   const session = await auth();
 
@@ -16,9 +16,9 @@ export default async function RootLayout({ children }) {
     redirect('/crew');
   }
 
-  return (<SidebarProvider>
-    <ResponsiveCrewLayout isAdmin={true} callsign={session.user.callsign} ceo={isCEO} careerMode={careerMode}>
+  return (
+    <CrewChrome isAdmin={true} callsign={session.user.callsign} ceo={isCEO} careerMode={careerMode}>
       {children}
-    </ResponsiveCrewLayout></SidebarProvider>
+    </CrewChrome>
   );
 }

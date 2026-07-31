@@ -8,7 +8,7 @@ export const metadata = {
 // Self-contained, dependency-free 404 (no Chakra, no Tailwind runtime) so it renders
 // cheaply and identically regardless of app config. Root-scoped on purpose: an
 // unmatched /crew/* URL falls through here in the bare root layout, skipping
-// CrewProviders/auth() rather than paying for crew chrome on a dead link.
+// the crew runtime/auth() rather than paying for crew chrome on a dead link.
 //
 // Dark/light: this page is reachable from both the always-light public site and the
 // toggleable /crew app, so it can't hardcode one theme. It stays a server component

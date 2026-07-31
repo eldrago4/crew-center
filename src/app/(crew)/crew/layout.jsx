@@ -3,53 +3,21 @@ export const metadata = {
     robots: { index: false, follow: false },
 }
 
-import { Suspense } from 'react'
-import { Providers } from "@/components/CrewProviders"
-import { Box } from '@chakra-ui/react'
+import { auth } from '@/auth'
+import CrewRuntime from '@/components/crew-runtime/CrewRuntime'
 
-// No auth() here: it used to fetch the session and derive callsign/isAdmin that the
-// JSX never used. Gating is done by each section's own layout (dashboard/plan/admin/
-// …), and CrewProviders already resolves the session once to seed SessionProvider.
+// The crew app renders on the client. This layout resolves the session (so
+// SessionProvider is seeded without a round trip) and hands the whole tree to
+// CrewRuntime, which is behind a `dynamic({ ssr: false })` boundary — the Worker
+// therefore renders a plain-CSS spinner for any /crew/* request instead of
+// running Chakra's CSS-in-JS through Emotion. See CrewRuntime.jsx for the full
+// reasoning and the rule it imposes on everything below (/crew server files must
+// never import a Chakra component).
 //
-// Cache Components: CrewProviders (auth() → cookies) and every section layout read
-// runtime data, so the whole crew tree must sit under a Suspense boundary — this one
-// covers all of it. The shell (this fallback) prerenders and is served instantly
-// while the session-dependent UI streams in. The fallback renders OUTSIDE
-// ChakraProvider (it IS the fallback for it), so it styles itself with plain CSS
-// keyed off the `dark` class the root layout's parse-time script sets before paint
-// — the one prerendered shell serves both themes (no hardcoded dark: a light-mode
-// pilot must not get a dark flash before content streams in).
-function CrewShellFallback() {
-  return (
-    <div className="crew-shell-fallback">
-      <div className="crew-shell-spinner" aria-label="Loading" />
-      <style>{`
-        .crew-shell-fallback {
-          min-height: 100vh; display: flex; align-items: center; justify-content: center;
-          background: #fff;
-        }
-        .crew-shell-spinner {
-          width: 36px; height: 36px; border-radius: 50%;
-          border: 3px solid rgba(0,0,0,0.12); border-top-color: #006591;
-          animation: crewspin 0.8s linear infinite;
-        }
-        html.dark .crew-shell-fallback { background: #111; }
-        html.dark .crew-shell-spinner { border-color: rgba(255,255,255,0.15); border-top-color: #89ceff; }
-        @keyframes crewspin { to { transform: rotate(360deg) } }
-      `}</style>
-    </div>
-  )
-}
+// No Suspense boundary is needed any more: the ssr:false gate is the boundary,
+// and its `loading` placeholder is what used to be CrewShellFallback.
+export default async function RootLayout({ children }) {
+    const session = await auth()
 
-export default function RootLayout({ children }) {
-  return (
-    <Suspense fallback={<CrewShellFallback />}>
-      <Providers>
-        <Box minH="100vh" bg="bg.default">
-          {children}
-        </Box>
-      </Providers>
-    </Suspense>
-  )
+    return <CrewRuntime session={session}>{children}</CrewRuntime>
 }
-

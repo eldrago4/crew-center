@@ -212,8 +212,9 @@ Workers **hard‑fails at ~2 s** with a 1102 — but the fixes overlap almost
 entirely, so **write them on `main` and merge them down**:
 
 - Heavy interactive client trees → `next/dynamic(..., { ssr: false })` with a
-  fixed‑size placeholder (DashNav, SideBar, the `/crew` login form). Cuts
-  cold‑start module‑init here, cuts SSR CPU there. Fully portable.
+  fixed‑size placeholder. Cuts cold‑start module‑init here, cuts SSR CPU there.
+  Fully portable. **The whole `/crew` tree now works this way** — see
+  "The crew app renders client‑only" below, and obey its one rule.
 - Shrink server→client payloads (the packed tab/newline routes string). Portable.
 - `CDN-Cache-Control` on any GET with no `auth()` and no per‑user input;
   `Cache-Control: private, max-age=N` on slow‑changing per‑user reads. Both
@@ -248,8 +249,8 @@ revert**. Anything you add to this list should also earn a line here:
 | `src/app/api/aig/chat/route.js` | AI binding instead of REST |
 | `src/app/api/stats/route.js` | `Timestamp` from our firebase shim + lazy Redis |
 | `src/app/api/leaderboard/cron/route.js` | lazy Redis |
-| `ProfileContainer.jsx`, `fleetModule.js`, `admin/statistics/queries.js`, `crew/routes/page.jsx`, `crew/admin/rotw/page.jsx` | Cache Components stripped → `unstable_cache` |
-| `crew/page.jsx` + `CrewLoginClient.jsx`, `ResponsiveCrewLayout.jsx`, `crew/routes/{page,RoutesClient}.jsx` | 1102 cold‑start work (**portable — fold into `main` when convenient and this row goes away**) |
+| `dashboard/dashboardData.js`, `fleetModule.js`, `admin/statistics/queries.js`, `crew/routes/page.jsx`, `crew/admin/rotw/page.jsx` | Cache Components stripped → `unstable_cache` |
+| `src/components/crew-runtime/*`, every `(crew)/**/layout.jsx` + `page.jsx`, the `*View.jsx` files, `ResponsiveCrewLayout.jsx`, `crew/page.jsx` + `CrewLoginClient.jsx` | the client‑only crew runtime — 1102 cold‑start work (**portable — fold into `main` when convenient and this row goes away**) |
 | `worker.js`, `worker.guard.js`, `wrangler*.jsonc`, `open-next.config.ts`, `public/1102.html` | Cloudflare‑only files |
 
 Regenerate it any time with `git diff --stat main..cloudflare`.
@@ -384,6 +385,56 @@ Clients built **inside a function** or as a **default parameter**
 (`function f(redis = Redis.fromEnv())`) are evaluated per‑call (request time) and
 do not need changing — e.g. `src/lib/maintenance-flag.js`,
 `src/app/api/get-avatar/route.js`, the `src/app/api/chanda/*` helpers.
+
+---
+
+## The crew app renders client‑only
+
+`/crew/*` is authenticated and `noindex`, so server rendering buys it nothing —
+and it cost the Worker everything. Two separate CPU bills were being paid on
+every request:
+
+1. **Render.** Chakra v3 is CSS‑in‑JS, so each `<Box>` recomputes styles through
+   Emotion during the SSR pass. A crew page renders hundreds of them; that was
+   the ~270 ms of warm CPU per request.
+2. **Module init.** React's Flight client evaluates **every client module the RSC
+   payload references**, rendered or not — `requireModule` runs as the payload's
+   `I` rows are parsed. So merely *naming* a Chakra‑importing component in the
+   payload dragged Chakra, Emotion, react‑icons and recharts into a cold isolate.
+   That was the ~2 s spike, and it is why per‑component `ssr: false` alone never
+   fixed `/crew/dashboard`.
+
+`src/components/crew-runtime/` closes both. Three `dynamic(..., { ssr: false })`
+gates — `CrewRuntime` (providers), `CrewChrome` (nav + sidebar), `CrewPage` (a
+registry of every page body) — plus `CareerChrome` for career mode. The Worker
+renders a plain‑CSS skeleton from `skeletons.jsx` and nothing else; the browser
+loads the real UI. Server files still do `auth()`, the redirects and the DB
+reads, and hand plain JSON across the boundary, so gating and first‑paint data
+are unchanged.
+
+**The rule this imposes — the whole thing rests on it:**
+
+> Every client component a `/crew` **server** file references must be a tiny gate
+> module. A layout or page that imports a Chakra component directly — even one
+> `<Box>` — re‑introduces the module‑init cost for its entire route.
+
+So a crew `page.jsx` is server‑only and ends in `<CrewPage id="…" …props />`; its
+markup lives in a sibling `*View.jsx` registered in `CrewPage.jsx`. Adding a page
+means adding a registry entry, not an import.
+
+Verify after any crew change — this is the cheap, decisive check:
+
+```bash
+npm run build
+python3 - <<'EOF'
+import glob, re
+for p in sorted(glob.glob(".next/server/app/(crew)/**/page_client-reference-manifest.js", recursive=True)):
+    mods = set(re.findall(r'"([^"]*node_modules[^"]*?)"', open(p, encoding='utf8', errors='ignore').read()))
+    bad = {m for m in mods if 'chakra' in m or 'emotion' in m}
+    print(len(bad), p)
+EOF
+# every crew route must print 0
+```
 
 ---
 

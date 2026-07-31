@@ -1,7 +1,8 @@
-"use client";
+import CrewPage from '@/components/crew-runtime/CrewPage'
 
-import AirportGates from "@/airport-gates";
-
-export default function GatesPage() {
-  return <AirportGates />;
+// Server entry: the UI lives in @/airport-gates, loaded client-only through the CrewPage
+// registry so the Worker never renders Chakra for this route.
+// See src/components/crew-runtime/CrewRuntime.jsx.
+export default function Page() {
+  return <CrewPage id="gates" />
 }

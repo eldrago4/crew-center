@@ -1,7 +1,6 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
-import { SidebarProvider } from '@/components/SidebarContext';
+import CrewChrome from '@/components/crew-runtime/CrewChrome'
 
 export default async function RootLayout({ children }) {
   const session = await auth();
@@ -14,14 +13,12 @@ export default async function RootLayout({ children }) {
   const careerMode = session.user.careerMode || false;
 
   return (
-    <SidebarProvider>
-      <ResponsiveCrewLayout
-        callsign={session.user.callsign}
-        isAdmin={isAdmin}
-        careerMode={careerMode}
-      >
-        {children}
-      </ResponsiveCrewLayout>
-    </SidebarProvider>
+    <CrewChrome
+      callsign={session.user.callsign}
+      isAdmin={isAdmin}
+      careerMode={careerMode}
+    >
+      {children}
+    </CrewChrome>
   );
 }

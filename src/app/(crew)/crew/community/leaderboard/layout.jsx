@@ -1,8 +1,8 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
 import { auth } from "@/auth";
-import ResponsiveCrewLayout from "@/components/ResponsiveCrewLayout";
-import { SidebarProvider } from '@/components/SidebarContext';
+import CrewChrome from '@/components/crew-runtime/CrewChrome';
+
 export default async function RootLayout({ children }) {
     const session = await auth();
 
@@ -13,8 +13,8 @@ export default async function RootLayout({ children }) {
     const isAdmin = session.user.permissions?.length > 0 || false;
     const careerMode = session.user.careerMode || false;
 
-    return (<SidebarProvider>
-        <ResponsiveCrewLayout
+    return (
+        <CrewChrome
             callsign={session.user.callsign}
             isAdmin={isAdmin}
             careerMode={careerMode}
@@ -22,6 +22,6 @@ export default async function RootLayout({ children }) {
             {React.Children.map(children, child =>
                 React.cloneElement(child, { session })
             )}
-        </ResponsiveCrewLayout>
-    </SidebarProvider>);
+        </CrewChrome>
+    );
 }

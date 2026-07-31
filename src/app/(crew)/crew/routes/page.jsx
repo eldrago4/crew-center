@@ -1,13 +1,11 @@
-import { Box, Grid, Skeleton, Stack } from "@chakra-ui/react";
-import { Suspense } from "react";
 import { connection } from "next/server";
 import { unstable_cache } from "next/cache";
 import db from "@/db/client";
 import { routes } from "@/db/schema";
 import { fetchFleetModule } from "@/app/(crew)/crew/pireps/file/fleetModule";
-import RoutesClient from "./RoutesClient";
+import CrewPage from "@/components/crew-runtime/CrewPage";
 
-// Routes are rendered SERVER-side (no browser-callable data endpoint), but packed
+// Routes are read SERVER-side (no browser-callable data endpoint), but packed
 // into ONE tab/newline-delimited string that's cached daily. Passing a single
 // string across the RSC boundary is far cheaper to serialize than ~2,294 nested
 // objects — that per-object Flight encoding was this page's SSR CPU cost and the
@@ -37,17 +35,24 @@ const getRoutesPacked = unstable_cache(
   { revalidate: 86400, tags: [ "routes" ] },
 );
 
-// The data-dependent subtree, streamed under Suspense so the page shell + skeleton
-// flush immediately while the (cached) data resolves. Fleet is small + cached and
-// fetched alongside. The try/catch stays OUTSIDE the cached function so a transient
-// error is never pinned in the cache for a day.
-async function RoutesData() {
+// The Suspense boundary + Chakra skeleton this page used to stream are gone: the
+// UI is now client-only (CrewPage → RoutesView), so the Worker would only have
+// rendered the skeleton, and CrewPage's own placeholder already covers the wait.
+// Both reads are cached, so awaiting them here costs a cache hit, not a query.
+export default async function RoutesPage() {
+  // Keep this request-time (the crew layout no longer forces the group dynamic);
+  // without it the cached read could run against the build-time DB.
+  await connection();
+
+  // The try/catch stays OUTSIDE the cached function so a transient error is never
+  // pinned in the cache for a day.
   let packed = "";
   try {
     packed = await getRoutesPacked();
   } catch (error) {
     console.error("Error fetching routes:", error);
   }
+
   let fleet;
   try {
     fleet = await fetchFleetModule("fleet");
@@ -55,32 +60,12 @@ async function RoutesData() {
     console.error("Error fetching fleet:", error);
     fleet = [];
   }
-  return <RoutesClient packedRoutes={packed} fleet={Array.isArray(fleet) ? fleet : []} />;
-}
-
-function RoutesSkeleton() {
-  return (
-    <Stack gap={6}>
-      <Skeleton height="44px" maxW="520px" borderRadius="md" />
-      <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }} gap={6}>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} height="180px" borderRadius="lg" />
-        ))}
-      </Grid>
-    </Stack>
-  );
-}
-
-export default async function RoutesPage() {
-  // Keep this request-time (the crew layout no longer forces the group dynamic);
-  // without it the cached read could run against the build-time DB.
-  await connection();
 
   return (
-    <Box p={{ base: 4, md: 4 }} flex="1">
-      <Suspense fallback={<RoutesSkeleton />}>
-        <RoutesData />
-      </Suspense>
-    </Box>
+    <CrewPage
+      id="routes"
+      packedRoutes={packed}
+      fleet={Array.isArray(fleet) ? fleet : []}
+    />
   );
 }

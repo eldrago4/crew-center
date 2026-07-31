@@ -1,8 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
-import { CareerProviders } from "@/components/CareerProviders"
-import CareerNavBar from "@/components/CareerNavBar"
-import { Box } from "@chakra-ui/react"
+import CareerChrome from '@/components/crew-runtime/CareerChrome'
 
 export default async function CareerLayout({ children }) {
     const session = await auth()
@@ -11,12 +9,5 @@ export default async function CareerLayout({ children }) {
         redirect('/api/career-sso-redirect')
     }
 
-    return (
-        <CareerProviders>
-            <CareerNavBar />
-            <Box>
-                {children}
-            </Box>
-        </CareerProviders>
-    )
+    return <CareerChrome session={session}>{children}</CareerChrome>
 }

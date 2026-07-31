@@ -1,25 +1,7 @@
-import { Box, Heading, Container, VStack } from '@chakra-ui/react';
-import { redirect } from 'next/navigation';
+import CrewPage from '@/components/crew-runtime/CrewPage';
 
-import PirepsTabsClient from '@/components/admin/PirepsTabsClient';
-
-function PirepsTabsWrapper() {
-    return <PirepsTabsClient />;
-}
-
-export default async function AdminPirepsPage() {
-
-
-    return (
-        <Box p={{ base: 4, md: 6 }} minH="100vh">
-            <Container maxW="100%" py={{ base: 4, md: 8 }}>
-                <VStack spacing={6} align="stretch">
-                    <Heading size="xl" color="fg">
-                        Admin PIREP Review
-                    </Heading>
-                    <PirepsTabsWrapper />
-                </VStack>
-            </Container>
-        </Box>
-    );
+// Staff-only access is enforced by the admin layout; the review tabs fetch their
+// own data. UI in ./AdminPirepsView.jsx, loaded client-only.
+export default function AdminPirepsPage() {
+    return <CrewPage id="admin-pireps" />;
 }

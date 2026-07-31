@@ -1,8 +1,8 @@
-import FlyingManualContainer from '@/components/FlyingManualContainer'
+import CrewPage from '@/components/crew-runtime/CrewPage'
 
-// Gating (login + ifc-name) is handled by resources/flying-manual/layout.jsx; this
-// page's auth() result was never used. The manual content is fetched client-side.
-export default function FlyingManualPage() {
-  return <FlyingManualContainer />;
+// Server entry: the UI lives in @/components/FlyingManualContainer, loaded client-only through the CrewPage
+// registry so the Worker never renders Chakra for this route.
+// See src/components/crew-runtime/CrewRuntime.jsx.
+export default function Page() {
+  return <CrewPage id="flying-manual" />
 }
-

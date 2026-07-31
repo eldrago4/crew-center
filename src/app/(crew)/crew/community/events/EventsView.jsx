@@ -1,0 +1,385 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import {
+    Box, Flex, Stack, HStack, VStack, Text, Badge,
+    Icon, Button, Spinner, Separator,
+} from '@chakra-ui/react'
+import {
+    TbCalendarEvent, TbClock, TbPlane, TbArrowRight,
+    TbStar, TbUsers, TbExternalLink, TbCheck, TbCalendarPlus,
+} from 'react-icons/tb'
+import SignupOrFileButton from '@/components/dashboard/SignupOrFileButton'
+import PageTitle from '@/components/PageTitle'
+
+function fmtPushback(iso) {
+    if (!iso) return null
+    try {
+        const normalized = iso.replace(/([+-])(\d)(:)/, '$10$2$3')
+        const d = new Date(normalized)
+        if (isNaN(d)) return null
+        return {
+            date: d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }),
+            time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) + ' IST',
+        }
+    } catch {
+        return null
+    }
+}
+
+function buildGCalUrl(event) {
+    if (!event.pushbackIso) return null
+    try {
+        const normalized = event.pushbackIso.replace(/([+-])(\d)(:)/, '$10$2$3')
+        const start = new Date(normalized)
+        if (isNaN(start.getTime())) return null
+        const durationHours = Number(event.flightTime) || 2
+        const end = new Date(start.getTime() + durationHours * 3600 * 1000)
+        const fmt = d => d.toISOString().replace(/[-:]/g, '').replace('.000Z', 'Z')
+        const params = new URLSearchParams({
+            action: 'TEMPLATE',
+            text: event.title || `${event.departureIcao || ''} → ${event.arrivalIcao || ''}`,
+            dates: `${fmt(start)}/${fmt(end)}`,
+            details: [
+                event.flightNumber && `Flight: ${event.flightNumber}`,
+                event.aircraft && `Aircraft: ${event.aircraft}`,
+                event.signupUrl && `Sign up: ${event.signupUrl}`,
+            ].filter(Boolean).join('\n'),
+        })
+        return `https://calendar.google.com/calendar/render?${params}`
+    } catch {
+        return null
+    }
+}
+
+// Parse Discord timestamp tokens to readable strings
+function parseDiscordTimestamps(text) {
+    if (!text) return text
+    return text.replace(/<t:(\d+)(?::([tTdDfFR]))?>/g, (_, unix, fmt) => {
+        const date = new Date(Number(unix) * 1000)
+        if (fmt === 'R') {
+            const diff = date - Date.now()
+            const abs = Math.abs(diff)
+            const future = diff > 0
+            if (abs < 3_600_000) return `${future ? 'in ' : ''}${Math.round(abs / 60_000)} min${future ? '' : ' ago'}`
+            if (abs < 86_400_000) return `${future ? 'in ' : ''}${Math.round(abs / 3_600_000)} hr${future ? '' : ' ago'}`
+            return `${future ? 'in ' : ''}${Math.round(abs / 86_400_000)} day${Math.round(abs / 86_400_000) !== 1 ? 's' : ''}${future ? '' : ' ago'}`
+        }
+        return date.toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    })
+}
+
+// Render inline Discord markdown to React nodes
+const INLINE_RE = /(\*\*(.+?)\*\*|\*(.+?)\*|__(.+?)__|~~(.+?)~~|`(.+?)`|\[([^\]]+)\]\((https?:\/\/[^)]+)\)|(https?:\/\/[^\s<>[\]()]+))/gs
+
+function renderInline(text, keyPrefix) {
+    const nodes = []
+    let last = 0
+    let m
+    INLINE_RE.lastIndex = 0
+    while ((m = INLINE_RE.exec(text)) !== null) {
+        if (m.index > last) nodes.push(text.slice(last, m.index))
+        const k = `${keyPrefix}-${m.index}`
+        if (m[2]) nodes.push(<strong key={k}>{m[2]}</strong>)
+        else if (m[3]) nodes.push(<em key={k}>{m[3]}</em>)
+        else if (m[4]) nodes.push(<u key={k}>{m[4]}</u>)
+        else if (m[5]) nodes.push(<s key={k}>{m[5]}</s>)
+        else if (m[6]) nodes.push(<code key={k} style={{ background: 'rgba(124,58,237,0.08)', borderRadius: '3px', padding: '1px 4px', fontFamily: 'monospace', fontSize: '0.85em' }}>{m[6]}</code>)
+        else if (m[7]) nodes.push(<a key={k} href={m[8]} target="_blank" rel="noopener noreferrer" style={{ color: '#7c3aed', textDecoration: 'underline' }}>{m[7]}</a>)
+        else if (m[9]) nodes.push(<a key={k} href={m[9]} target="_blank" rel="noopener noreferrer" style={{ color: '#7c3aed', textDecoration: 'underline' }}>{m[9]}</a>)
+        last = m.index + m[0].length
+    }
+    if (last < text.length) nodes.push(text.slice(last))
+    return nodes
+}
+
+function renderDiscordMarkdown(text) {
+    if (!text) return null
+    const lines = text.split('\n')
+    return lines.flatMap((line, li) => {
+        let lineNodes
+        if (line.startsWith('> ')) {
+            lineNodes = [
+                <span key={`bq-${li}`} style={{ borderLeft: '3px solid #7c3aed', paddingLeft: '8px', opacity: 0.75, display: 'inline-block' }}>
+                    {renderInline(line.slice(2), `bq-${li}`)}
+                </span>
+            ]
+        } else if (/^#{1,3} /.test(line)) {
+            const content = line.replace(/^#{1,3} /, '')
+            lineNodes = [<strong key={`h-${li}`}>{renderInline(content, `h-${li}`)}</strong>]
+        } else {
+            lineNodes = renderInline(line, String(li))
+        }
+        return li < lines.length - 1 ? [...lineNodes, <br key={`br-${li}`} />] : lineNodes
+    })
+}
+
+function EventCard({ event, discordData, isParticipating }) {
+    const pb = fmtPushback(event.pushbackIso)
+    const description = discordData?.description
+        ? renderDiscordMarkdown(parseDiscordTimestamps(discordData.description))
+        : null
+    const userCount = discordData?.user_count ?? null
+    const gCalUrl = buildGCalUrl(event)
+
+    return (
+        <Box
+            borderRadius="2xl"
+            overflow="hidden"
+            bg={{ base: 'white', _dark: 'gray.900' }}
+            borderWidth="1px"
+            borderColor={{ base: 'gray.200', _dark: 'whiteAlpha.100' }}
+            shadow={{ base: event.promoted ? 'xl' : 'md', _dark: 'none' }}
+            transition="box-shadow 0.2s"
+            _hover={{ shadow: { base: '2xl', _dark: 'none' } }}
+        >
+            {/* ── Banner ── */}
+            <Box position="relative" h={{ base: '220px', md: '340px' }} overflow="hidden">
+                {event.banner ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                        src={event.banner}
+                        alt={event.title}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                ) : (
+                    <Box
+                        w="100%" h="100%"
+                        style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)' }}
+                        display="flex" alignItems="center" justifyContent="center"
+                    >
+                        <Icon as={TbCalendarEvent} boxSize={20} color="whiteAlpha.200" />
+                    </Box>
+                )}
+                {/* Scrim */}
+                <Box position="absolute" inset={0} style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 45%, transparent 75%)' }} />
+
+                {/* Top badges */}
+                <HStack position="absolute" top={4} left={4} gap={2} flexWrap="wrap">
+                    {event.promoted && (
+                        <HStack bg="purple.500" px={3} py={1.5} borderRadius="full" gap={1.5}>
+                            <Icon as={TbStar} boxSize={3} color="white" />
+                            <Text fontSize="xs" fontWeight="bold" color="white" textTransform="uppercase" letterSpacing="wider">Featured</Text>
+                        </HStack>
+                    )}
+                    {userCount != null && (
+                        <HStack bg="blackAlpha.700" backdropFilter="blur(6px)" px={3} py={1.5} borderRadius="full" gap={1.5}>
+                            <Icon as={TbUsers} boxSize={3.5} color="white" />
+                            <Text fontSize="xs" fontWeight="semibold" color="white">{userCount} interested</Text>
+                        </HStack>
+                    )}
+                </HStack>
+
+                {/* Multiplier badge top-right */}
+                {event.multiplier && Number(event.multiplier) > 1 && (
+                    <Box
+                        position="absolute" top={4} right={4}
+                        bg="amber.400" color="gray.900"
+                        px={4} py={1.5} borderRadius="full"
+                        fontSize="lg" fontWeight="black" lineHeight="1"
+                    >
+                        {event.multiplier}×
+                    </Box>
+                )}
+
+                {/* Title on image */}
+                <Box position="absolute" bottom={0} left={0} right={0} px={6} pb={5}>
+                    <Text
+                        fontSize={{ base: '2xl', md: '3xl' }}
+                        fontWeight="bold"
+                        color="white"
+                        lineHeight="1.15"
+                        letterSpacing="tight"
+                        noOfLines={2}
+                    >
+                        {event.title}
+                    </Text>
+                </Box>
+            </Box>
+
+            {/* ── Body ── */}
+            <Stack gap={5} p={6}>
+                {/* Centered route section */}
+                <VStack gap={2} align="center">
+                    {event.flightNumber && (
+                        <Badge
+                            colorPalette="purple"
+                            variant="subtle"
+                            px={3} py={1}
+                            borderRadius="full"
+                            fontSize="sm"
+                            fontFamily="mono"
+                            fontWeight="bold"
+                            letterSpacing="wider"
+                        >
+                            {event.flightNumber}
+                        </Badge>
+                    )}
+                    <HStack
+                        bg={{ base: 'gray.50', _dark: 'whiteAlpha.50' }}
+                        px={6} py={3}
+                        borderRadius="2xl"
+                        borderWidth="1px"
+                        borderColor={{ base: 'gray.150', _dark: 'whiteAlpha.100' }}
+                        gap={4}
+                    >
+                        <Text fontFamily="mono" fontWeight="black" fontSize={{ base: '3xl', md: '4xl' }} color="fg" letterSpacing="widest">
+                            {event.departureIcao || '—'}
+                        </Text>
+                        <Icon as={TbArrowRight} boxSize={6} color="purple.500" />
+                        <Text fontFamily="mono" fontWeight="black" fontSize={{ base: '3xl', md: '4xl' }} color="fg" letterSpacing="widest">
+                            {event.arrivalIcao || '—'}
+                        </Text>
+                    </HStack>
+                    {(event.aircraft || event.flightTime) && (
+                        <HStack gap={4} color="fg.muted" justify="center" flexWrap="wrap">
+                            {event.aircraft && (
+                                <HStack gap={1.5}>
+                                    <Icon as={TbPlane} boxSize={4} />
+                                    <Text fontSize="sm" fontWeight="medium">{event.aircraft}</Text>
+                                </HStack>
+                            )}
+                            {event.flightTime && (
+                                <HStack gap={1.5}>
+                                    <Icon as={TbClock} boxSize={4} />
+                                    <Text fontSize="sm" fontWeight="medium">{event.flightTime} hrs</Text>
+                                </HStack>
+                            )}
+                        </HStack>
+                    )}
+                </VStack>
+
+                {/* Pushback — clickable → Google Calendar */}
+                {pb && (
+                    <HStack
+                        as={gCalUrl ? 'a' : 'div'}
+                        href={gCalUrl || undefined}
+                        target={gCalUrl ? '_blank' : undefined}
+                        rel={gCalUrl ? 'noopener noreferrer' : undefined}
+                        bg={{ base: 'purple.50', _dark: 'purple.950' }}
+                        px={4} py={3}
+                        borderRadius="xl"
+                        borderWidth="1px"
+                        borderColor={{ base: 'purple.100', _dark: 'purple.800' }}
+                        gap={3}
+                        cursor={gCalUrl ? 'pointer' : 'default'}
+                        _hover={gCalUrl ? { borderColor: { base: 'purple.300', _dark: 'purple.600' } } : {}}
+                        transition="border-color 0.15s"
+                        textDecoration="none"
+                    >
+                        <Icon as={TbCalendarEvent} boxSize={5} color="purple.500" flexShrink={0} />
+                        <Box flex={1}>
+                            <Text fontSize="sm" fontWeight="bold" color={{ base: 'purple.800', _dark: 'purple.200' }}>{pb.date}</Text>
+                            <Text fontSize="xs" color={{ base: 'purple.600', _dark: 'purple.400' }}>{pb.time}</Text>
+                        </Box>
+                        {gCalUrl && (
+                            <Icon as={TbCalendarPlus} boxSize={4} color={{ base: 'purple.400', _dark: 'purple.500' }} flexShrink={0} />
+                        )}
+                    </HStack>
+                )}
+
+                {/* Discord description with markdown rendering */}
+                {description && (
+                    <>
+                        <Separator borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.100' }} />
+                        <Box
+                            fontSize="sm"
+                            color={{ base: 'gray.700', _dark: 'gray.300' }}
+                            lineHeight="1.75"
+                        >
+                            {description}
+                        </Box>
+                    </>
+                )}
+
+                {/* CTA row */}
+                <HStack gap={3} pt={1} flexWrap="wrap">
+                    <SignupOrFileButton
+                        pushbackIso={event.pushbackIso}
+                        flightNumber={event.flightNumber}
+                        departureIcao={event.departureIcao}
+                        arrivalIcao={event.arrivalIcao}
+                        aircraft={event.aircraft}
+                        signupUrl={event.signupUrl}
+                        isParticipating={isParticipating}
+                    />
+                    {event.signupUrl && (
+                        <Button
+                            as="a"
+                            href={event.signupUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            variant="outline"
+                            colorPalette="gray"
+                            size="md"
+                            borderRadius="full"
+                        >
+                            <Icon as={TbExternalLink} boxSize={4} />
+                            View on Discord
+                        </Button>
+                    )}
+                </HStack>
+            </Stack>
+        </Box>
+    )
+}
+
+export default function EventsPage() {
+    const { data: session } = useSession()
+    const userDiscordId = session?.user?.discordId ?? null
+
+    const [events, setEvents] = useState([])
+    const [discordMap, setDiscordMap] = useState({})
+    const [attendeesMap, setAttendeesMap] = useState({})
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        async function load() {
+            const res = await fetch('/api/events/summary').catch(() => null)
+            const data = res?.ok ? await res.json() : null
+            setEvents(Array.isArray(data?.events) ? data.events : [])
+            setDiscordMap(data?.discordMap || {})
+            setAttendeesMap(data?.attendeesMap || {})
+            setLoading(false)
+        }
+        load()
+    }, [])
+
+    return (
+        <Box px={{ base: 4, md: 6 }} py={8} maxW="960px" mx="auto">
+            <Stack gap={1} mb={8}>
+                <PageTitle mb={0}>Events</PageTitle>
+                <Text color="fg.muted">
+                    Multiplier events and community operations · {events.length} active
+                </Text>
+            </Stack>
+
+            {loading && (
+                <Flex justify="center" align="center" h="40vh">
+                    <Spinner size="xl" color="purple.500" />
+                </Flex>
+            )}
+
+            {!loading && events.length === 0 && (
+                <Flex direction="column" align="center" justify="center" h="40vh" gap={3}>
+                    <Icon as={TbCalendarEvent} boxSize={16} color="fg.subtle" />
+                    <Text color="fg.muted" fontWeight="medium">No events right now. Check back soon.</Text>
+                </Flex>
+            )}
+
+            {!loading && events.length > 0 && (
+                <Stack gap={6}>
+                    {events.map(event => (
+                        <EventCard
+                            key={event.id || event.title}
+                            event={event}
+                            discordData={discordMap[event.id]}
+                            isParticipating={!!userDiscordId && (attendeesMap[event.id] || []).includes(String(userDiscordId))}
+                        />
+                    ))}
+                </Stack>
+            )}
+        </Box>
+    )
+}
