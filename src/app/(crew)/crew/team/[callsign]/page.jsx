@@ -22,6 +22,7 @@ async function CrewProfileData({ callsign }) {
       identity={profile.identity}
       edits={profile.edits}
       agg={profile.agg}
+      network={profile.network}
       trails={profile.trails}
       career={profile.career}
       logbook={profile.logbook}

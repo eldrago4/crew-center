@@ -8,6 +8,7 @@
 // A short SETNX lock keeps concurrent viewers of the same stale/missing profile
 // from each kicking off their own Neon+Firestore rebuild.
 
+import { cache } from 'react'
 import { Redis } from '@upstash/redis'
 import { after } from 'next/server'
 import { sql, eq, and, gt } from 'drizzle-orm'
@@ -15,10 +16,18 @@ import db from '@/db/client'
 import { users, pireps } from '@/db/schema'
 import { db as fireDb } from '@/lib/firebase'
 import { TRAIL_META, TRAIL_MULTIPLIER, matchTrailCode } from '@/app/shared/trails'
+import { operatorIdFor } from '@/data/operators'
+import { continentFor } from '@/lib/geo'
 import airportCities from '@/data/airport-cities.json'
+import airportCoords from '@/data/airport-coords.json'
 
 const FRESH_MS = 24 * 60 * 60 * 1000 // "up to a day is fine"
 const LOCK_TTL_SECONDS = 10
+
+// Bump when the shape of the cached object changes — a stored object with an older
+// version is treated as a hard miss and rebuilt from scratch, so new aggregate
+// fields get backfilled instead of staying permanently undefined.
+const SCHEMA_VERSION = 2
 
 let _redis = null
 function getRedis() {
@@ -38,31 +47,12 @@ function lockKey(callsign) {
   return `profile:${callsign}:lock`
 }
 
-// ── Operator bucketing for "Where the hours went" ──────────────────────────────
-// INVA's 3 sub-brands + everything else (real-world codeshare partners flown on
-// INVA). Simpler/coarser than the full per-flight CODESHARE_EMOJI_FILES map in
-// users/pireps/route.js, which exists for a different purpose (thumbnail lookup).
-const OPERATOR_PREFIXES = [
-  ['airIndia', ['AI', 'AIC', 'AIH']],
-  ['airIndiaExpress', ['IX', 'AIX', 'AXB', 'IXH']],
-  ['vistara', ['UK', 'UKH']],
-]
-
-function bucketOperator(flightNumber) {
-  const fn = String(flightNumber || '').toUpperCase().replace(/[\s-]/g, '')
-  for (const [bucket, prefixes] of OPERATOR_PREFIXES) {
-    if (prefixes.some((p) => fn.startsWith(p))) return bucket
-  }
-  return 'other'
-}
-
-// ICAO -> "City|State|Country" (src/data/airport-cities.json) — already has
-// everything "countries" needs, no lat/lon required.
-function countryForIcao(icao) {
+// ICAO -> "City|State|Country" (src/data/airport-cities.json).
+function cityCountryForIcao(icao) {
   const entry = airportCities[icao]
-  if (!entry) return null
+  if (!entry) return { city: null, country: null }
   const parts = entry.split('|')
-  return parts[parts.length - 1] || null
+  return { city: parts[0] || null, country: parts[parts.length - 1] || null }
 }
 
 function hoursFromInterval(interval) {
@@ -70,6 +60,26 @@ function hoursFromInterval(interval) {
   const [h, m, s] = String(interval).split(':').map(Number)
   return (h || 0) + (m || 0) / 60 + (s || 0) / 3600
 }
+
+function monthKey(date) {
+  const d = new Date(date)
+  if (Number.isNaN(d.getTime())) return null
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+function quarterKey(date) {
+  const d = new Date(date)
+  if (Number.isNaN(d.getTime())) return null
+  return `${d.getUTCFullYear()}-Q${Math.floor(d.getUTCMonth() / 3) + 1}`
+}
+
+// Unordered city-pair key so a route and its return leg count as the same sector
+// (matches the design, where VABB–VOCI is one line worth 22 flights).
+function pairKey(a, b) {
+  return [a, b].sort().join('-')
+}
+
+const MAX_RECENT_EVENTS = 6
 
 // ── Neon: identity + rank position ──────────────────────────────────────────────
 
@@ -88,6 +98,7 @@ async function fetchIdentity(callsign) {
         WHERE u2."flightTime" > users."flightTime"
            OR (u2."flightTime" = users."flightTime" AND u2."id" < users."id")
       )`.as('rankPosition'),
+      totalPilots: sql`(SELECT COUNT(*) FROM users)`.as('totalPilots'),
     })
     .from(users)
     .where(eq(users.id, callsign))
@@ -105,6 +116,7 @@ async function fetchIdentity(callsign) {
     flightTime: row.flightTime,
     hours: hoursFromInterval(row.flightTime),
     rankPosition: Number(row.rankPosition),
+    totalPilots: Number(row.totalPilots),
   }
 }
 
@@ -112,14 +124,19 @@ async function fetchIdentity(callsign) {
 
 function emptyAgg() {
   return {
-    airportsVisited: [],
+    airportCounts: {},      // ICAO -> visits (dep+arr), gives count + home hub
     countries: [],
-    uniqueRoutes: [],
+    uniqueRoutes: [],       // ordered "DEP-ARR"
+    routePairs: {},         // unordered "A-B" -> flights, for top routes + map
+    fleetHours: {},         // aircraft -> hours
+    monthlyHours: {},       // "YYYY-MM" -> hours
+    operatorHours: {},      // operator id -> hours
+    eventsByQuarter: {},    // "YYYY-Qn" -> count
+    recentEvents: [],
     approvedCount: 0,
-    longestFlight: null, // { flightNumber, departureIcao, arrivalIcao, hours }
+    longestFlight: null,
     eventsFlown: 0,
     joinedDate: null,
-    operatorHours: { airIndia: 0, airIndiaExpress: 0, vistara: 0, other: 0 },
   }
 }
 
@@ -133,6 +150,7 @@ async function fetchApprovedPireps(callsign, since) {
       flightTime: pireps.flightTime,
       departureIcao: pireps.departureIcao,
       arrivalIcao: pireps.arrivalIcao,
+      aircraft: pireps.aircraft,
       multiplier: pireps.multiplier,
       comments: pireps.comments,
       updatedAt: pireps.updatedAt,
@@ -142,41 +160,107 @@ async function fetchApprovedPireps(callsign, since) {
 }
 
 function mergePirepsIntoAgg(agg, rows) {
-  const airports = new Set(agg.airportsVisited)
   const countries = new Set(agg.countries)
   const routes = new Set(agg.uniqueRoutes)
   let longest = agg.longestFlight
   let lastUpdatedAt = null
 
   for (const row of rows) {
-    airports.add(row.departureIcao)
-    airports.add(row.arrivalIcao)
-    const depCountry = countryForIcao(row.departureIcao)
-    const arrCountry = countryForIcao(row.arrivalIcao)
+    const dep = row.departureIcao
+    const arr = row.arrivalIcao
+
+    agg.airportCounts[dep] = (agg.airportCounts[dep] || 0) + 1
+    agg.airportCounts[arr] = (agg.airportCounts[arr] || 0) + 1
+
+    const depCountry = cityCountryForIcao(dep).country
+    const arrCountry = cityCountryForIcao(arr).country
     if (depCountry) countries.add(depCountry)
     if (arrCountry) countries.add(arrCountry)
-    routes.add(`${row.departureIcao}-${row.arrivalIcao}`)
+
+    routes.add(`${dep}-${arr}`)
+    const pk = pairKey(dep, arr)
+    agg.routePairs[pk] = (agg.routePairs[pk] || 0) + 1
+
     agg.approvedCount += 1
 
     const hrs = hoursFromInterval(row.flightTime)
     if (!longest || hrs > longest.hours) {
-      longest = { flightNumber: row.flightNumber, departureIcao: row.departureIcao, arrivalIcao: row.arrivalIcao, hours: hrs }
+      longest = { flightNumber: row.flightNumber, departureIcao: dep, arrivalIcao: arr, hours: hrs }
     }
 
-    const isEvent = Number(row.multiplier) > 3 || !!matchTrailCode(row.comments)
-    if (isEvent) agg.eventsFlown += 1
+    if (row.aircraft) agg.fleetHours[row.aircraft] = (agg.fleetHours[row.aircraft] || 0) + hrs
 
-    const bucket = bucketOperator(row.flightNumber)
-    agg.operatorHours[bucket] = (agg.operatorHours[bucket] || 0) + hrs
+    const mk = monthKey(row.date)
+    if (mk) agg.monthlyHours[mk] = (agg.monthlyHours[mk] || 0) + hrs
+
+    const opId = operatorIdFor(row.flightNumber)
+    agg.operatorHours[opId] = (agg.operatorHours[opId] || 0) + hrs
+
+    // Event heuristic: a boosted multiplier, or a trail code in the comments.
+    const trail = matchTrailCode(row.comments)
+    const multiplier = Number(row.multiplier) || 1
+    const isEvent = multiplier > 3 || !!trail
+    if (isEvent) {
+      agg.eventsFlown += 1
+      const qk = quarterKey(row.date)
+      if (qk) agg.eventsByQuarter[qk] = (agg.eventsByQuarter[qk] || 0) + 1
+      agg.recentEvents.push({
+        date: row.date,
+        name: trail?.name || row.flightNumber,
+        departureIcao: dep,
+        arrivalIcao: arr,
+        aircraft: row.aircraft,
+        hours: hrs,
+        multiplier,
+      })
+    }
 
     if (!lastUpdatedAt || (row.updatedAt && row.updatedAt > lastUpdatedAt)) lastUpdatedAt = row.updatedAt
   }
 
-  agg.airportsVisited = Array.from(airports)
   agg.countries = Array.from(countries)
   agg.uniqueRoutes = Array.from(routes)
   agg.longestFlight = longest
+  agg.recentEvents = agg.recentEvents
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, MAX_RECENT_EVENTS)
+
   return lastUpdatedAt
+}
+
+// Derives the map payload from the aggregate — only the pilot's own airports and
+// sectors, so the 5,800-entry coords table stays server-side and the client gets a
+// few dozen points instead.
+function buildNetwork(agg) {
+  const airports = {}
+  const continents = new Set()
+
+  for (const icao of Object.keys(agg.airportCounts)) {
+    const entry = airportCoords[icao]
+    if (!entry) continue
+    const [lng, lat, cc] = entry
+    airports[icao] = [lng, lat]
+    const continent = continentFor(cc)
+    if (continent) continents.add(continent)
+  }
+
+  const sectors = Object.entries(agg.routePairs)
+    .map(([pk, count]) => {
+      const [from, to] = pk.split('-')
+      return { from, to, count }
+    })
+    .filter((s) => airports[s.from] && airports[s.to])
+    .sort((a, b) => b.count - a.count)
+
+  const hub = Object.entries(agg.airportCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
+  return {
+    airports,
+    sectors,
+    hub,
+    hubCity: hub ? cityCountryForIcao(hub).city : null,
+    continents: continents.size,
+  }
 }
 
 // ── Redis: trails progress, pipelined ────────────────────────────────────────────
@@ -197,7 +281,7 @@ async function fetchTrailsProgress(callsign) {
 // ── Neon: logbook (last 3 approved pireps — top-N, not incrementally merged) ────
 
 async function fetchLogbook(callsign) {
-  return db
+  const rows = await db
     .select({
       flightNumber: pireps.flightNumber,
       date: pireps.date,
@@ -205,11 +289,27 @@ async function fetchLogbook(callsign) {
       departureIcao: pireps.departureIcao,
       arrivalIcao: pireps.arrivalIcao,
       aircraft: pireps.aircraft,
+      multiplier: pireps.multiplier,
+      comments: pireps.comments,
     })
     .from(pireps)
     .where(and(eq(pireps.userId, callsign), eq(pireps.valid, true)))
     .orderBy(sql`${pireps.updatedAt} DESC`)
     .limit(3)
+
+  return rows.map((r) => {
+    const trail = matchTrailCode(r.comments)
+    return {
+      flightNumber: r.flightNumber,
+      date: r.date,
+      flightTime: r.flightTime,
+      departureIcao: r.departureIcao,
+      arrivalIcao: r.arrivalIcao,
+      aircraft: r.aircraft,
+      multiplier: Number(r.multiplier) || 1,
+      trailName: trail?.name || null,
+    }
+  })
 }
 
 // ── Firestore: career panel ──────────────────────────────────────────────────────
@@ -219,13 +319,16 @@ async function fetchCareer(callsign) {
     const snapshot = await fireDb.collection('users').where('callsign', '==', callsign).limit(1).get()
     if (snapshot.empty) return null
     const data = snapshot.docs[0].data()
+    const homeBase = data.currentLocation ?? data.homeBase ?? null
     return {
       flightHours: data.flightHours ?? 0,
       rank: data.rank ?? null,
-      homeBase: data.currentLocation ?? data.homeBase ?? null,
+      homeBase,
+      homeBaseCity: homeBase ? cityCountryForIcao(homeBase).city : null,
       typeRatings: Array.isArray(data.typeRatings) ? data.typeRatings : [],
       totalFlights: data.totalFlights ?? 0,
       careerEarnings: data.careerEarnings ?? 0,
+      completedEvents: Array.isArray(data.completedEvents) ? data.completedEvents.length : 0,
     }
   } catch (err) {
     console.error('Career panel fetch failed (non-fatal):', err)
@@ -239,14 +342,40 @@ async function rebuildProfile(callsign, previous) {
   const redis = getRedis()
   const lock = lockKey(callsign)
   const gotLock = await redis.set(lock, '1', { nx: true, ex: LOCK_TTL_SECONDS })
-  if (!gotLock) return previous // someone else is already rebuilding
+
+  if (!gotLock) {
+    // Someone else is rebuilding. If we have something to show, show it. On a hard
+    // miss there's nothing yet — briefly poll for the winner's write rather than
+    // returning null, which would otherwise render a spurious "pilot not found"
+    // (this is exactly what made generateMetadata and the page body disagree).
+    if (previous) return previous
+    for (let i = 0; i < 12; i++) {
+      await new Promise((r) => setTimeout(r, 250))
+      const raw = await redis.get(profileKey(callsign))
+      if (raw) return typeof raw === 'string' ? JSON.parse(raw) : raw
+    }
+    return null
+  }
 
   try {
     const identity = await fetchIdentity(callsign)
     if (!identity) return null
 
     const since = previous?.lastPirepUpdatedAt ? new Date(previous.lastPirepUpdatedAt) : null
-    const agg = previous?.agg ? { ...previous.agg, operatorHours: { ...previous.agg.operatorHours } } : emptyAgg()
+    const agg = previous?.agg
+      ? {
+          ...emptyAgg(),
+          ...previous.agg,
+          airportCounts: { ...previous.agg.airportCounts },
+          routePairs: { ...previous.agg.routePairs },
+          fleetHours: { ...previous.agg.fleetHours },
+          monthlyHours: { ...previous.agg.monthlyHours },
+          operatorHours: { ...previous.agg.operatorHours },
+          eventsByQuarter: { ...previous.agg.eventsByQuarter },
+          recentEvents: [...(previous.agg.recentEvents || [])],
+        }
+      : emptyAgg()
+
     const rows = await fetchApprovedPireps(callsign, since)
     const lastRowUpdatedAt = mergePirepsIntoAgg(agg, rows)
 
@@ -265,6 +394,7 @@ async function rebuildProfile(callsign, previous) {
     ])
 
     const next = {
+      version: SCHEMA_VERSION,
       computedAt: Date.now(),
       lastPirepUpdatedAt: lastRowUpdatedAt
         ? new Date(lastRowUpdatedAt).toISOString()
@@ -272,6 +402,7 @@ async function rebuildProfile(callsign, previous) {
       identity,
       edits: previous?.edits ?? {},
       agg,
+      network: buildNetwork(agg),
       trails,
       career,
       logbook,
@@ -286,10 +417,13 @@ async function rebuildProfile(callsign, previous) {
 
 // ── Public entrypoint ────────────────────────────────────────────────────────────
 
-export async function getProfileData(callsign) {
+// react `cache()` dedupes within a single request, so generateMetadata and the page
+// body share one resolution instead of racing each other into two rebuilds.
+export const getProfileData = cache(async function getProfileData(callsign) {
   const redis = getRedis()
   const raw = await redis.get(profileKey(callsign))
-  const cached = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null
+  const stored = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null
+  const cached = stored?.version === SCHEMA_VERSION ? stored : null
 
   if (cached && Date.now() - cached.computedAt < FRESH_MS) {
     return cached
@@ -301,15 +435,15 @@ export async function getProfileData(callsign) {
     return cached
   }
 
-  // Hard miss: nothing to serve yet, must rebuild inline.
+  // Hard miss (or a superseded schema): nothing usable to serve, rebuild inline.
   return rebuildProfile(callsign, null)
-}
+})
 
 // Used by PATCH /api/users/profile — merges only the `edits` sub-object into the
 // cached profile object and writes it straight back, so a display-name/bio/aircraft
 // change is visible on the very next render without touching computedAt/agg/trails.
 export async function updateProfileEdits(callsign, patch) {
-  const current = (await getProfileData(callsign)) || (await rebuildProfile(callsign, null))
+  const current = await getProfileData(callsign)
   if (!current) return null
 
   const next = { ...current, edits: { ...current.edits, ...patch } }

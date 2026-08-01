@@ -1,24 +1,30 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import styles from './pilotProfile.module.css'
+import { profileFontClass } from './fonts'
 import EditProfileModal from './EditProfileModal'
-import { getAircraftById, getAirlineById } from '@/data/fleet'
-import { TRAIL_META } from '@/app/shared/trails'
+import { getAircraftById, getAircraftByCode, getAirlineById } from '@/data/fleet'
+import { OPERATOR_BY_ID, OTHER_OPERATOR } from '@/data/operators'
+import { TRAIL_META, TRAIL_MULTIPLIER } from '@/app/shared/trails'
+import { profileShareUrl } from '@/lib/profileLink'
 import {
   RANKS, RAJMATYA_HOURS, AKASHARATHA_HOURS,
   getRankBg, getRankColor, getRankProgress,
 } from '@/lib/ranks'
 import { getCurrentSeason, loadPixelFont, drawDynamicBadge, BADGE_DEFINITIONS, BADGE_INDEX_TO_ID } from '@/lib/badgeArt'
 
+const NetworkMap = dynamic(() => import('./NetworkMap'), { ssr: false })
+
 // ── Formatting helpers ────────────────────────────────────────────────────────
 
-function fmtHoursMin(hours) {
-  const h = Math.floor(hours)
-  const m = Math.round((hours - h) * 60)
-  return { h, m }
+// Decimal hours -> "H:MM", the mono format the design uses everywhere.
+function hm(hours) {
+  const total = Math.max(0, Math.round((Number(hours) || 0) * 60))
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
 }
 
 function fmtInterval(interval) {
@@ -27,7 +33,7 @@ function fmtInterval(interval) {
   return `${parseInt(h) || 0}:${String(parseInt(m) || 0).padStart(2, '0')}`
 }
 
-function fmtDate(value) {
+function fmtMonthYear(value) {
   if (!value) return '—'
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return String(value)
@@ -38,17 +44,62 @@ function fmtDateLong(value) {
   if (!value) return '—'
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return String(value)
-  return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
-const OPERATOR_META = [
-  { key: 'airIndia', label: 'Air India', color: '#C9A96E' },
-  { key: 'airIndiaExpress', label: 'Air India Express', color: '#5FAFB8' },
-  { key: 'vistara', label: 'Vistara', color: '#8B7FD1' },
-  { key: 'other', label: 'Other / codeshare', color: '#3A4A50' },
-]
+function fmtDateShort(value) {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return String(value)
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).toUpperCase()
+}
+
+const MONTH_INITIALS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 
 // ── Badge rendering (client canvas compositing, reused from badgeArt.js) ────────
+//
+// Badge art ships at very different canvas ratios, so each tile is normalised by
+// ART, not by file (this is the design's own note): badge1/badge2/lotus are wide and
+// short -> fit to WIDTH. The two round medals are matched on HEIGHT so their discs
+// come out the same diameter — badge3.webp is a 2:1 two-sided sheet (front = left
+// half, disc ~94% of sheet height) and badge4a.webp is a ~1.43:1 canvas whose disc
+// fills ~95% of the height but only ~66% of the width, so object-fit:contain renders
+// it ~30% shorter than badge3 until it's fitted to height with the padding clipped.
+function badgeImgStyle(badge, side = 'front') {
+  if (badge.isCombinedDoubleSided) {
+    // 2:1 sheet — show one half, fitted to height.
+    return {
+      width: '200%',
+      height: '100%',
+      objectFit: 'cover',
+      objectPosition: side === 'back' ? 'right' : 'left',
+    }
+  }
+  if (badge.id === 'badge4') {
+    // Fit to HEIGHT so its disc matches badge3's; the empty side padding clips.
+    return { height: '100%', width: 'auto', maxWidth: 'none', objectFit: 'cover' }
+  }
+  // Wings / rosette art — fit to WIDTH. badge1 and badge2 are the widest and
+  // shortest in the set, so fitting to width alone leaves them reading much
+  // smaller than the round medals; scale them up to the same optical weight.
+  // Their faces don't clip (see badgeFaceClip), so the overflow is free.
+  const scale = badge.id === 'badge1' || badge.id === 'badge2' ? 1.35 : 1
+  return {
+    width: '100%',
+    height: 'auto',
+    maxHeight: '100%',
+    objectFit: 'contain',
+    transform: scale === 1 ? undefined : `scale(${scale})`,
+    transformOrigin: 'center',
+  }
+}
+
+// Only the two round medals need their art clipped to the tile (badge3 shows one
+// half of a 2:1 sheet, badge4 has its side padding cropped off). The wide art can
+// overflow so it isn't boxed in.
+function badgeNeedsClip(badge) {
+  return badge.isCombinedDoubleSided || badge.id === 'badge4'
+}
 
 function ProfileBadge({ badge, ifcName, season, size = 78 }) {
   const [flipped, setFlipped] = useState(false)
@@ -78,6 +129,7 @@ function ProfileBadge({ badge, ifcName, season, size = 78 }) {
         })
         .catch((e) => console.error('Badge3 draw failed:', e))
     } else {
+      // badge4: keep the face stable (static front art) and composite the back only.
       loadPixelFont().then(() =>
         Promise.all([
           Promise.resolve(badge.image),
@@ -91,45 +143,38 @@ function ProfileBadge({ badge, ifcName, season, size = 78 }) {
   }, [badge, ifcName, season])
 
   const canFlip = badge.hasBack
-  const isWide = badge.isCombinedDoubleSided
+  const isLotus = badge.id === 'badge5'
 
   return (
     <button
       type="button"
-      className={styles.cabinetTile}
+      className={styles.badgeTile}
       onClick={() => canFlip && setFlipped((p) => !p)}
-      title={badge.label}
-      style={{ width: size, height: size, position: 'relative', perspective: 800, background: 'none', border: 'none', padding: 0 }}
+      title={canFlip ? `${badge.label} — click to flip` : badge.label}
+      aria-label={badge.label}
+      style={{ width: size, height: size, cursor: canFlip ? 'pointer' : 'default' }}
     >
-      <div style={{ width: '100%', height: '100%', position: 'relative', transformStyle: 'preserve-3d', transition: 'transform 400ms ease', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
-        <img
-          src={frontSrc}
-          alt={badge.label}
-          style={{
-            position: 'absolute', inset: 0, width: isWide ? '200%' : '100%', height: '100%',
-            objectFit: isWide ? 'cover' : 'contain', objectPosition: isWide ? 'left' : undefined,
-            backfaceVisibility: 'hidden',
-          }}
-        />
+      {isLotus && <span className={styles.lotusGlow} aria-hidden="true" />}
+      <span
+        className={styles.badgeFlipper}
+        style={{ transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+      >
+        <span className={`${styles.badgeFace} ${badgeNeedsClip(badge) ? styles.badgeFaceClip : ''}`}>
+          <img src={frontSrc} alt={badge.label} style={badgeImgStyle(badge, 'front')} />
+        </span>
         {canFlip && backSrc && (
-          <img
-            src={backSrc}
-            alt={`${badge.label} back`}
-            style={{
-              position: 'absolute', inset: 0, width: isWide ? '200%' : '100%', height: '100%',
-              objectFit: isWide ? 'cover' : 'contain', objectPosition: isWide ? 'right' : undefined,
-              backfaceVisibility: 'hidden', transform: 'rotateY(180deg)',
-            }}
-          />
+          <span className={`${styles.badgeFace} ${styles.badgeFaceBack} ${badgeNeedsClip(badge) ? styles.badgeFaceClip : ''}`}>
+            <img src={backSrc} alt={`${badge.label} back`} style={badgeImgStyle(badge, 'back')} />
+          </span>
         )}
-      </div>
+      </span>
     </button>
   )
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function PilotProfile({ callsign, identity, edits, agg, trails, career, logbook, viewer = {} }) {
+export default function PilotProfile({ callsign, identity, edits, agg, network, trails, career, logbook, viewer = {} }) {
   const router = useRouter()
   const [editOpen, setEditOpen] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(null)
@@ -147,11 +192,18 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
       .catch(() => {})
   }, [identity.discordId])
 
-  const isActive = identity.lastActive
-    ? Date.now() - new Date(identity.lastActive).getTime() < 15 * 60 * 1000
-    : false
+  // users.lastActive is a timezone-less Postgres timestamp string ("2026-08-01
+  // 12:34:56"); Safari returns Invalid Date for that form, so normalise to ISO-UTC
+  // before comparing. "Active" uses the same 30-day window the admin roster does.
+  const isActive = useMemo(() => {
+    if (!identity.lastActive) return false
+    const raw = String(identity.lastActive).trim()
+    const iso = raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`
+    const t = new Date(iso).getTime()
+    if (Number.isNaN(t)) return false
+    return Date.now() - t < 30 * 24 * 60 * 60 * 1000
+  }, [identity.lastActive])
 
-  const { h, m } = fmtHoursMin(identity.hours)
   const rankProgress = getRankProgress(identity.hours)
   const rankColor = getRankColor(identity.rank)
   const rankBg = getRankBg(identity.rank)
@@ -159,29 +211,108 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
   const badgeList = BADGE_DEFINITIONS.filter((b) => identity.badges.includes(BADGE_INDEX_TO_ID.indexOf(b.id)))
   const aircraft = edits?.favAircraft ? getAircraftById(edits.favAircraft) : null
   const airline = aircraft ? getAirlineById(aircraft.airline) : null
+  const favAircraftHours = aircraft ? (agg.fleetHours?.[aircraft.code] ?? agg.fleetHours?.[aircraft.type]) : null
 
   const isRajmatya = identity.hours >= RAJMATYA_HOURS
   const isAakashratha = identity.hours >= AKASHARATHA_HOURS
+  const aakashrathaPct = Math.min(100, Math.round((identity.hours / AKASHARATHA_HOURS) * 100))
 
-  const operatorTotal = OPERATOR_META.reduce((sum, o) => sum + (agg.operatorHours?.[o.key] || 0), 0)
-  let acc = 0
-  const donutStops = OPERATOR_META.map((o) => {
-    const val = agg.operatorHours?.[o.key] || 0
-    const pct = operatorTotal > 0 ? (val / operatorTotal) * 100 : 0
-    const from = acc
-    acc += pct
-    return { ...o, val, pct, from, to: acc }
-  })
-  const donutGradient = operatorTotal > 0
-    ? `conic-gradient(${donutStops.map((s) => `${s.color} ${s.from}% ${s.to}%`).join(', ')})`
+  // ── Where the hours went: top 4 operators, rest folded into "Other" ──
+  const operatorSlices = useMemo(() => {
+    const entries = Object.entries(agg.operatorHours || {})
+      .map(([id, hours]) => ({ ...(OPERATOR_BY_ID[id] || OTHER_OPERATOR), id, hours }))
+      .filter((o) => o.hours > 0)
+      .sort((a, b) => b.hours - a.hours)
+
+    const top = entries.slice(0, 4)
+    const restHours = entries.slice(4).reduce((sum, o) => sum + o.hours, 0)
+    if (restHours > 0) top.push({ ...OTHER_OPERATOR, hours: restHours })
+
+    const total = top.reduce((sum, o) => sum + o.hours, 0)
+    let acc = 0
+    return {
+      total,
+      slices: top.map((o) => {
+        const pct = total > 0 ? (o.hours / total) * 100 : 0
+        const from = acc
+        acc += pct
+        return { ...o, pct, from, to: acc }
+      }),
+    }
+  }, [agg.operatorHours])
+
+  const donutGradient = operatorSlices.total > 0
+    ? `conic-gradient(${operatorSlices.slices.map((s) => `${s.color} ${s.from}% ${s.to}%`).join(', ')})`
     : '#1C2830'
 
-  const sortedTrails = Object.entries(TRAIL_META)
-    .map(([slug, meta]) => ({ slug, ...meta, done: trails?.[slug] || 0 }))
-    .sort((a, b) => (b.done / b.legs) - (a.done / a.legs))
-  const trailsCompleted = sortedTrails.filter((t) => t.done >= t.legs).length
+  // ── Hours filed, last 12 months ──
+  const monthly = useMemo(() => {
+    const now = new Date()
+    const months = []
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1))
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+      months.push({ key, month: d.getUTCMonth(), year: d.getUTCFullYear(), hours: agg.monthlyHours?.[key] || 0 })
+    }
+    const max = Math.max(...months.map((m) => m.hours), 1)
+    const avg = months.reduce((s, m) => s + m.hours, 0) / 12
+    const best = months.reduce((a, b) => (b.hours > a.hours ? b : a), months[0])
+    const thisMonth = months[months.length - 1]
 
-  const publicUrl = `https://indianvirtual.com/team/${callsign}`
+    // Consecutive months ending now with at least one filed hour.
+    let streak = 0
+    for (let i = months.length - 1; i >= 0; i--) {
+      if (months[i].hours > 0) streak++
+      else break
+    }
+    return { months, max, avg, best, thisMonth, streak }
+  }, [agg.monthlyHours])
+
+  // ── Fleet time ──
+  const fleet = useMemo(() => {
+    const entries = Object.entries(agg.fleetHours || {})
+      .map(([type, hours]) => ({ type, hours }))
+      .sort((a, b) => b.hours - a.hours)
+    return { entries: entries.slice(0, 6), total: entries.length, max: entries[0]?.hours || 1 }
+  }, [agg.fleetHours])
+
+  // ── Top routes ──
+  const topRoutes = useMemo(() => {
+    const entries = Object.entries(agg.routePairs || {})
+      .map(([pair, count]) => ({ pair: pair.replace('-', '–'), count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 4)
+    return { entries, max: entries[0]?.count || 1 }
+  }, [agg.routePairs])
+
+  // ── Trails ──
+  const trailStats = useMemo(() => {
+    const all = Object.entries(TRAIL_META)
+      .map(([slug, meta]) => ({ slug, ...meta, done: trails?.[slug] || 0 }))
+      .sort((a, b) => (b.done / b.legs) - (a.done / a.legs) || b.done - a.done)
+    const done = all.filter((t) => t.done >= t.legs).length
+    const open = all.filter((t) => t.done > 0 && t.done < t.legs).length
+    return { all, done, open, untouched: all.length - done - open, total: all.length }
+  }, [trails])
+
+  // ── Events by quarter (last 5) ──
+  const eventQuarters = useMemo(() => {
+    const now = new Date()
+    const out = []
+    for (let i = 4; i >= 0; i--) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i * 3, 1))
+      const key = `${d.getUTCFullYear()}-Q${Math.floor(d.getUTCMonth() / 3) + 1}`
+      out.push({ key, label: `Q${Math.floor(d.getUTCMonth() / 3) + 1} ${String(d.getUTCFullYear()).slice(-2)}`, count: agg.eventsByQuarter?.[key] || 0 })
+    }
+    const max = Math.max(...out.map((q) => q.count), 1)
+    const avgMultiplier = agg.recentEvents?.length
+      ? agg.recentEvents.reduce((s, e) => s + (e.multiplier || 1), 0) / agg.recentEvents.length
+      : 0
+    return { quarters: out, max, thisQuarter: out[out.length - 1].count, avgMultiplier }
+  }, [agg.eventsByQuarter, agg.recentEvents])
+
+  const airportsVisited = Object.keys(agg.airportCounts || {}).length
+  const publicUrl = profileShareUrl(callsign)
 
   const copyLink = () => {
     navigator.clipboard?.writeText(publicUrl).then(() => {
@@ -191,11 +322,13 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
   }
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${profileFontClass}`}>
       <div className={`${styles.tierBg} ${styles.base}`} />
-      <div className={`${styles.tierBg}`} style={{ background: rankBg }} />
+      <div className={styles.tierBg} style={{ background: rankBg }} />
 
-      <div className={styles.inner}>
+      {/* The public site's mobile navbar is position:fixed, so the public variant
+          needs top clearance under 705px; the crew variant has no navbar. */}
+      <div className={`${styles.inner} ${showBack ? '' : styles.underNavbar}`}>
         {showBack && (
           <div className={styles.backRow}>
             <button type="button" className={styles.backBtn} onClick={() => router.back()}>
@@ -206,24 +339,24 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
 
         {/* ── Header ── */}
         <div className={styles.header}>
-          <div>
+          <div className={styles.headerLeft}>
             <div className={styles.eyebrow}>Total Flight Time</div>
             <div className={styles.statLine}>
-              <span className={`${styles.mono} ${styles.big}`}>{h}</span>
-              <span className={styles.unit}>h {m}m</span>
+              <span className={`${styles.mono} ${styles.big}`}>{Math.floor(identity.hours)}</span>
+              <span className={styles.unit}>h {Math.round((identity.hours % 1) * 60)}m</span>
             </div>
             <div className={styles.rule} />
             <div className={styles.metaRow}>
               <div className={styles.metaItem}>
                 <div className={`${styles.mono} ${styles.val}`}>#{identity.rankPosition}</div>
-                <div className={styles.lbl}>leaderboard rank</div>
+                <div className={styles.lbl}>of {identity.totalPilots ?? '—'} pilots</div>
               </div>
               <div className={styles.metaItem}>
                 <div className={`${styles.mono} ${styles.val}`}>{agg.approvedCount}</div>
                 <div className={styles.lbl}>approved flights</div>
               </div>
               <div className={styles.metaItem}>
-                <div className={`${styles.mono} ${styles.val}`}>{fmtDate(agg.joinedDate)}</div>
+                <div className={`${styles.mono} ${styles.val}`}>{fmtMonthYear(agg.joinedDate)}</div>
                 <div className={styles.lbl}>joined</div>
               </div>
             </div>
@@ -234,7 +367,9 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
             <div className={styles.avatarRing}>
               <div className={styles.ringOuter} />
               <div className={styles.ringInner}>
-                {avatarUrl && <img src={avatarUrl} alt={displayName} />}
+                {avatarUrl
+                  ? <img src={avatarUrl} alt={displayName} />
+                  : <span className={styles.mono} style={{ fontSize: 9.5, color: '#6E7C82', letterSpacing: '0.1em' }}>PHOTO</span>}
               </div>
               {isActive && (
                 <div className={styles.activeDot}>
@@ -245,8 +380,10 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
             </div>
 
             <div className={styles.nameRow}>
-              <span className={styles.callsignChip}>{callsign}</span>
-              <span className={styles.name}>{displayName}</span>
+              <span className={styles.nameLockup}>
+                <span className={styles.callsignChip}>{callsign}</span>
+                <span className={styles.name}>{displayName}</span>
+              </span>
             </div>
 
             <div className={styles.rankRow}>
@@ -255,15 +392,13 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
               <span className={styles.bar} />
             </div>
 
-            {badgeList.length > 0 && (
-              <div className={styles.badgeRow}>
-                {badgeList.map((b) => (
-                  <div key={b.id} className={styles.badgeTileSm}>
-                    <img src={b.image} alt={b.label} />
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className={styles.badgeRow}>
+              {badgeList.length > 0
+                ? badgeList.map((b) => (
+                    <ProfileBadge key={b.id} badge={b} ifcName={identity.ifcName} season={season} size={48} />
+                  ))
+                : <span className={styles.noBadges}>No badges earnt</span>}
+            </div>
           </div>
 
           <div className={styles.linksCol}>
@@ -271,10 +406,15 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
               <div className={styles.aircraftCard}>
                 <div className={styles.aircraftHead}>
                   <span className={styles.eyebrow}>Favourite Aircraft</span>
-                  <span className={styles.b612} style={{ color: '#C9A96E' }}>{aircraft.type}{airline ? ` · ${airline.name}` : ''}</span>
+                  <span className={styles.b612} style={{ color: '#C9A96E', fontSize: 15 }}>
+                    {aircraft.type}{airline ? ` · ${airline.name}` : ''}
+                  </span>
                 </div>
                 <div className={styles.aircraftFrame}>
-                  <Image src={aircraft.image} alt={aircraft.type} fill sizes="380px" />
+                  <Image src={aircraft.image} alt={aircraft.type} fill sizes="380px" style={{ objectFit: 'contain', padding: '8%' }} />
+                  {favAircraftHours > 0 && (
+                    <span className={styles.aircraftHours}>{hm(favAircraftHours)} h logged</span>
+                  )}
                 </div>
               </div>
             )}
@@ -282,15 +422,15 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
               <div className={styles.linkGroup}>
                 {identity.discordId && (
                   <a className={styles.linkItem} href={`https://discord.com/users/${identity.discordId}`} target="_blank" rel="noreferrer">
-                    Discord
+                    <img src="/discord-dm.webp" alt="" className={styles.linkIcon} />Discord
                   </a>
                 )}
                 <span className={styles.linkSep} />
                 <a className={styles.linkItem} href={`https://community.infiniteflight.com/new-message?username=${encodeURIComponent(identity.ifcName)}`} target="_blank" rel="noreferrer">
-                  Forum
+                  <img src="/ifc-dm.webp" alt="" className={styles.linkIcon} />Forum
                 </a>
                 <span className={styles.linkSep} />
-                <button type="button" className={styles.linkItem} onClick={copyLink} style={{ flex: '0 0 42px' }}>
+                <button type="button" className={styles.linkItem} onClick={copyLink} title="Copy profile link" style={{ flex: '0 0 42px' }}>
                   {copied ? '✓' : '↗'}
                 </button>
               </div>
@@ -303,7 +443,7 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
           </div>
         </div>
 
-        {/* ── Climb ladder ── */}
+        {/* ── The climb ── */}
         <div className={styles.section}>
           <div className={styles.sectionHead}>
             <div className={styles.sectionTitle}>
@@ -312,66 +452,90 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
             </div>
             {rankProgress.nextRank && (
               <span style={{ fontSize: 13, color: 'var(--muted)' }}>
-                {fmtInterval(`${Math.floor(rankProgress.hoursToNext)}:${Math.round((rankProgress.hoursToNext % 1) * 60)}`)}h to <span style={{ color: 'var(--ink)' }}>{rankProgress.nextRank}</span>
+                {hm(rankProgress.hoursToNext)} h to <span style={{ color: 'var(--ink)' }}>{rankProgress.nextRank}</span>
               </span>
             )}
           </div>
           <div className={styles.ladder}>
             {RANKS.map((r, i) => {
               const isCurrent = r.rank === rankProgress.rank
-              const heightPct = 12 + (i / (RANKS.length - 1)) * 88
+              const isFuture = identity.hours < r.hours
+              const height = 12 + (i / (RANKS.length - 1)) * 76
               return (
                 <div key={r.rank} className={isCurrent ? styles.ladderColYou : styles.ladderCol}>
-                  {isCurrent && <div className={styles.ladderYouTag}>YOU ARE HERE · {Math.round(rankProgress.percent)}%</div>}
-                  <div className={styles.ladderBar} style={{ height: `${heightPct}px`, opacity: isCurrent ? 1 : 0.3 + (i / RANKS.length) * 0.4 }} />
+                  {isCurrent && (
+                    <div className={styles.ladderYouTag}>YOU ARE HERE · {Math.round(rankProgress.percent)}%</div>
+                  )}
+                  {isFuture ? (
+                    <div className={styles.ladderTarget} style={{ height }} />
+                  ) : (
+                    <div
+                      className={styles.ladderBar}
+                      style={{ height, opacity: isCurrent ? 1 : 0.34 + (i / RANKS.length) * 0.38, position: 'relative', overflow: 'hidden' }}
+                    >
+                      {isCurrent && (
+                        <div style={{ position: 'absolute', inset: 0, right: `${100 - rankProgress.percent}%`, background: '#E7CE96' }} />
+                      )}
+                    </div>
+                  )}
                   <div className={styles.ladderName} style={{ color: isCurrent ? 'var(--ink)' : undefined }}>{r.rank}</div>
-                  <div className={styles.ladderHours}>{r.hours}h</div>
+                  <div className={styles.ladderHours} style={{ color: isCurrent ? 'var(--gold)' : undefined }}>{r.hours}h</div>
                 </div>
               )
             })}
-            <div className={styles.ladderCol}>
-              <div className={`${styles.ladderBar} ${styles.ladderTarget}`} style={{ height: '96px', background: 'none' }} />
-              <div className={styles.ladderName}>Chhatrapati</div>
-              <div className={styles.ladderHours}>2000h</div>
-            </div>
           </div>
         </div>
 
         {/* ── Clubs + Badge cabinet ── */}
-        <div className={styles.section} style={{ display: 'grid', gridTemplateColumns: badgeList.length > 2 ? '1fr 1fr' : '1fr', gap: 28 }}>
+        <div className={`${styles.section} ${styles.twoCol}`} style={{ gridTemplateColumns: badgeList.length > 2 ? '1fr 1fr' : '1fr' }}>
           <div>
             <div className={styles.eyebrow} style={{ marginBottom: 14 }}>Clubs</div>
             <div className={styles.clubsCol}>
               <div className={`${styles.clubCard} ${isRajmatya ? styles.clubCardMember : ''}`}>
-                <div className={styles.clubDisc} style={{ background: isRajmatya ? 'radial-gradient(circle at 34% 30%, #5E5236, #231F16)' : '#1C2830', border: `1px solid ${isRajmatya ? '#6B5C3C' : '#2A3941'}` }} />
+                <div className={styles.clubDiscGold} />
                 <div style={{ flex: 1 }}>
                   <div className={styles.clubName} style={{ color: isRajmatya ? undefined : 'var(--muted)' }}>Rajmatya Club</div>
                   <div className={styles.clubMeta}>{RAJMATYA_HOURS} h and above</div>
                 </div>
-                <div className={`${styles.clubTag} ${isRajmatya ? styles.clubTagOn : styles.clubTagOff}`}>{isRajmatya ? 'MEMBER' : 'LOCKED'}</div>
+                <div className={`${styles.clubTag} ${isRajmatya ? styles.clubTagOn : styles.clubTagOff}`}>
+                  {isRajmatya ? 'MEMBER' : 'LOCKED'}
+                </div>
               </div>
+
               <div className={`${styles.clubCard} ${isAakashratha ? styles.clubCardMember : ''}`}>
-                <div className={styles.clubDisc} style={{ background: isAakashratha ? 'radial-gradient(circle at 34% 30%, #5E5236, #231F16)' : '#1C2830', border: `1px solid ${isAakashratha ? '#6B5C3C' : '#2A3941'}` }} />
+                {isAakashratha ? (
+                  <div className={styles.clubDiscGold} />
+                ) : (
+                  <div
+                    className={styles.clubDiscProgress}
+                    style={{ background: `conic-gradient(#5FAFB8 0 ${aakashrathaPct}%, #22313A ${aakashrathaPct}% 100%)` }}
+                  >
+                    <div className={styles.clubDiscHole}>{aakashrathaPct}%</div>
+                  </div>
+                )}
                 <div style={{ flex: 1 }}>
                   <div className={styles.clubName} style={{ color: isAakashratha ? undefined : 'var(--muted)' }}>Aakashratha Club</div>
                   <div className={styles.clubMeta}>
-                    {AKASHARATHA_HOURS} h and above{!isAakashratha ? ` · ${(AKASHARATHA_HOURS - identity.hours).toFixed(0)}h remaining` : ''}
+                    {AKASHARATHA_HOURS} h and above
+                    {!isAakashratha && ` · ${hm(AKASHARATHA_HOURS - identity.hours)} h remaining`}
                   </div>
                 </div>
-                <div className={`${styles.clubTag} ${isAakashratha ? styles.clubTagOn : styles.clubTagOff}`}>{isAakashratha ? 'MEMBER' : 'LOCKED'}</div>
+                <div className={`${styles.clubTag} ${isAakashratha ? styles.clubTagOn : styles.clubTagOff}`}>
+                  {isAakashratha ? 'MEMBER' : 'LOCKED'}
+                </div>
               </div>
             </div>
           </div>
 
           {badgeList.length > 2 && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div className={styles.panelHead}>
                 <span className={styles.eyebrow}>Badge cabinet</span>
                 <span className={styles.mono} style={{ fontSize: 9.5, color: 'var(--muted-2)' }}>{badgeList.length} EARNED</span>
               </div>
               <div className={styles.cabinet}>
                 {badgeList.map((b) => (
-                  <ProfileBadge key={b.id} badge={b} ifcName={identity.ifcName} season={season} />
+                  <ProfileBadge key={b.id} badge={b} ifcName={identity.ifcName} season={season} size={86} />
                 ))}
               </div>
             </div>
@@ -380,23 +544,120 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
 
         {/* ── Stats strip ── */}
         <div className={styles.statsStrip}>
-          <div className={styles.statCell}><div className={styles.mono} style={{ fontSize: 23 }}>{agg.airportsVisited.length}</div><div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>airports visited</div></div>
-          <div className={styles.statCell}><div className={`${styles.mono}`} style={{ fontSize: 23 }}>{agg.countries.length}</div><div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>countries</div></div>
-          <div className={styles.statCell}><div className={styles.mono} style={{ fontSize: 23 }}>{agg.uniqueRoutes.length}</div><div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>unique routes</div></div>
-          <div className={styles.statCell}><div className={styles.mono} style={{ fontSize: 23 }}>{agg.eventsFlown}</div><div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>events flown</div></div>
-          <div className={styles.statCell}><div className={styles.mono} style={{ fontSize: 23 }}>{trailsCompleted}<span style={{ color: 'var(--muted-2)', fontSize: 16 }}>/{Object.keys(TRAIL_META).length}</span></div><div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>trails completed</div></div>
+          <div className={styles.statCell}><div className={styles.statNum}>{airportsVisited}</div><div className={styles.statSub}>airports visited</div></div>
+          <div className={styles.statCell}><div className={styles.statNum}>{agg.countries.length}</div><div className={styles.statSub}>countries</div></div>
+          <div className={styles.statCell}><div className={styles.statNum}>{agg.uniqueRoutes.length}</div><div className={styles.statSub}>unique routes</div></div>
+          <div className={styles.statCell}><div className={styles.statNum}>{agg.eventsFlown}</div><div className={styles.statSub}>events flown</div></div>
           <div className={styles.statCell}>
-            <div className={styles.mono} style={{ fontSize: 23 }}>{agg.longestFlight ? fmtInterval(`${Math.floor(agg.longestFlight.hours)}:${Math.round((agg.longestFlight.hours % 1) * 60)}`) : '—'}</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>longest{agg.longestFlight ? ` · ${agg.longestFlight.departureIcao}–${agg.longestFlight.arrivalIcao}` : ''}</div>
+            <div className={styles.statNum}>{trailStats.done}<span style={{ color: 'var(--muted-2)', fontSize: 16 }}>/{trailStats.total}</span></div>
+            <div className={styles.statSub}>trails completed</div>
+          </div>
+          <div className={styles.statCell}>
+            <div className={styles.statNum}>{agg.longestFlight ? hm(agg.longestFlight.hours) : '—'}</div>
+            <div className={styles.statSub}>
+              longest{agg.longestFlight ? ` · ${agg.longestFlight.departureIcao}–${agg.longestFlight.arrivalIcao}` : ''}
+            </div>
           </div>
         </div>
 
-        {/* ── Where the hours went ── */}
-        {operatorTotal > 0 && (
-          <div className={styles.section}>
+        {/* ── Network flown ── */}
+        {network?.sectors?.length > 0 && (
+          <div className={styles.section} style={{ borderTop: 'none' }}>
             <div className={styles.sectionHead}>
-              <div className={styles.sectionTitle}><h2>Where the hours went</h2></div>
+              <div className={styles.sectionTitle}>
+                <h2>Network flown</h2>
+                <span className={styles.sectionSub}>EVERY APPROVED SECTOR</span>
+              </div>
+              <div className={styles.mapLegend}>
+                <span><span className={styles.legendLineGold} />most flown</span>
+                <span><span className={styles.legendLineTeal} />other sectors</span>
+                {network.hub && <span><span className={styles.legendHubRing} />home hub {network.hub}</span>}
+              </div>
             </div>
+            <div className={styles.mapFrame}>
+              <NetworkMap network={network} />
+              <div className={styles.mapStats}>
+                {network.hub && (
+                  <div className={styles.mapStat}>
+                    <div className={styles.mono} style={{ fontSize: 17 }}>{network.hub}</div>
+                    <div className={styles.mapStatSub}>home hub{network.hubCity ? ` · ${network.hubCity}` : ''}</div>
+                  </div>
+                )}
+                {network.sectors[0] && (
+                  <div className={styles.mapStat}>
+                    <div className={styles.mono} style={{ fontSize: 17 }}>{network.sectors[0].from}–{network.sectors[0].to}</div>
+                    <div className={styles.mapStatSub}>most flown · {network.sectors[0].count} sectors</div>
+                  </div>
+                )}
+                <div className={styles.mapStat}>
+                  <div className={styles.mono} style={{ fontSize: 17 }}>{network.continents}</div>
+                  <div className={styles.mapStatSub}>continents touched</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Hours filed + Where the hours went ── */}
+        <div className={styles.gridWide}>
+          <div className={styles.panel}>
+            <div className={styles.panelHead}>
+              <span className={styles.panelTitle}>Hours filed, last 12 months</span>
+              <span className={styles.mono} style={{ fontSize: 9.5, letterSpacing: '0.14em', color: 'var(--muted-2)' }}>
+                AVG {hm(monthly.avg)} / MONTH
+              </span>
+            </div>
+            <div className={styles.barChart}>
+              <div className={styles.avgLine} style={{ bottom: `${(monthly.avg / monthly.max) * 100}%` }}>
+                <span className={styles.avgTag}>avg</span>
+              </div>
+              <div className={styles.bars}>
+                {monthly.months.map((m, i) => {
+                  const isBest = m.key === monthly.best.key && m.hours > 0
+                  const isNow = i === monthly.months.length - 1
+                  return (
+                    <div
+                      key={m.key}
+                      className={styles.bar}
+                      style={{
+                        height: `${Math.max((m.hours / monthly.max) * 100, m.hours > 0 ? 3 : 1)}%`,
+                        background: isNow ? '#C9A96E' : isBest ? '#5FAFB8' : '#2E4A50',
+                      }}
+                      title={`${m.key}: ${hm(m.hours)} h`}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+            <div className={styles.barLabels}>
+              {monthly.months.map((m, i) => {
+                const isBest = m.key === monthly.best.key && m.hours > 0
+                const isNow = i === monthly.months.length - 1
+                return (
+                  <span key={m.key} style={{ color: isNow ? '#C9A96E' : isBest ? '#5FAFB8' : undefined }}>
+                    {MONTH_INITIALS[m.month]}
+                  </span>
+                )
+              })}
+            </div>
+            <div className={styles.panelFooter}>
+              <div>
+                <div className={styles.mono} style={{ fontSize: 16, color: '#5FAFB8' }}>{hm(monthly.best.hours)}</div>
+                <div className={styles.footSub}>best month · {MONTH_INITIALS[monthly.best.month]}{String(monthly.best.year).slice(-2)}</div>
+              </div>
+              <div>
+                <div className={styles.mono} style={{ fontSize: 16 }}>{monthly.streak}</div>
+                <div className={styles.footSub}>month filing streak</div>
+              </div>
+              <div>
+                <div className={styles.mono} style={{ fontSize: 16 }}>{hm(monthly.thisMonth.hours)}</div>
+                <div className={styles.footSub}>this month so far</div>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.panel}>
+            <div className={styles.panelTitle} style={{ marginBottom: 18 }}>Where the hours went</div>
             <div className={styles.donutRow}>
               <div className={styles.donut} style={{ background: donutGradient }}>
                 <div className={styles.donutHole}>
@@ -405,43 +666,97 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
                 </div>
               </div>
               <div className={styles.legend}>
-                {donutStops.filter((s) => s.val > 0).map((s) => (
-                  <div key={s.key} className={styles.legendRow}>
+                {operatorSlices.slices.map((s) => (
+                  <div key={s.id} className={styles.legendRow}>
                     <span className={styles.legendSwatch} style={{ background: s.color }} />
                     <span className={styles.legendLbl}>{s.label}</span>
-                    <span className={styles.legendVal}>{Math.round(s.val)}h</span>
+                    <span className={styles.legendVal}>{hm(s.hours)}</span>
                   </div>
                 ))}
               </div>
             </div>
+            {topRoutes.entries.length > 0 && (
+              <div className={styles.subPanel}>
+                <div className={styles.mono} style={{ fontSize: 9.5, letterSpacing: '0.16em', color: 'var(--muted-2)', marginBottom: 12 }}>
+                  TOP ROUTES
+                </div>
+                <div className={styles.rowList}>
+                  {topRoutes.entries.map((r, i) => (
+                    <div key={r.pair} className={styles.routeRow}>
+                      <span className={styles.mono}>{r.pair}</span>
+                      <div className={styles.miniTrack}>
+                        <div className={styles.miniFill} style={{ width: `${(r.count / topRoutes.max) * 100}%`, opacity: 1 - i * 0.15 }} />
+                      </div>
+                      <span className={styles.miniVal}>{r.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* ── Trails ── */}
-        <div className={styles.section}>
-          <div className={styles.trailsHead}>
-            <img src="/fonts/hero-vistaar.png" alt="" className={styles.trailsWordmark} />
-            <div className={styles.sectionTitle}>
-              <h2>Trails</h2>
-              <span className={styles.sectionSub}>{trailsCompleted} DONE · {Object.keys(TRAIL_META).length - trailsCompleted} OPEN</span>
+        {/* ── Fleet time + Trails ── */}
+        <div className={styles.gridEven}>
+          <div className={styles.panel}>
+            <div className={styles.panelHead}>
+              <span className={styles.panelTitle}>Fleet time</span>
+              <span className={styles.mono} style={{ fontSize: 9.5, letterSpacing: '0.14em', color: 'var(--muted-2)' }}>
+                {fleet.total} TYPES FLOWN
+              </span>
+            </div>
+            <div className={styles.rowList}>
+              {fleet.entries.map((f, i) => (
+                <div key={f.type} className={styles.fleetRow}>
+                  <span className={styles.b612}>{f.type}</span>
+                  <div className={styles.track}>
+                    <div
+                      className={styles.trackFill}
+                      style={{ width: `${(f.hours / fleet.max) * 100}%`, background: i < 2 ? '#C9A96E' : i < 4 ? '#5FAFB8' : '#3A4A50', opacity: 1 - i * 0.08 }}
+                    />
+                  </div>
+                  <span className={styles.fleetVal}>{hm(f.hours)}</span>
+                </div>
+              ))}
+              {fleet.entries.length === 0 && <span className={styles.emptyNote}>No approved flights yet.</span>}
             </div>
           </div>
-          <div className={styles.trailRows}>
-            {sortedTrails.slice(0, 6).map((t) => (
-              <div key={t.slug} className={styles.trailRow}>
-                <span style={{ color: t.done > 0 ? '#CFC6B6' : 'var(--muted-2)' }}>{t.name}</span>
-                <div className={styles.trailBar}>
-                  <div
-                    className={`${styles.trailBarFill} ${t.done >= t.legs ? styles.trailBarFillDone : ''}`}
-                    style={{ width: `${(t.done / t.legs) * 100}%` }}
-                  />
-                </div>
-                <span className={styles.trailCount}>{t.done}/{t.legs}</span>
+
+          <div className={styles.panel}>
+            <div className={styles.panelHead}>
+              <div className={styles.trailsTitle}>
+                <img src="/fonts/hero-vistaar.png" alt="" className={styles.trailsWordmark} />
+                <span className={styles.panelTitle}>Trails</span>
               </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 16, fontSize: 12, color: 'var(--muted)' }}>
-            <a href="/operations/trails">All {Object.keys(TRAIL_META).length} trails →</a>
+              <span className={styles.mono} style={{ fontSize: 9.5, letterSpacing: '0.14em', color: 'var(--muted-2)' }}>
+                {trailStats.done} DONE · {trailStats.total - trailStats.done} REMAINING · ×{TRAIL_MULTIPLIER} PER LEG
+              </span>
+            </div>
+            <div className={styles.trailSegments}>
+              <div style={{ flex: Math.max(trailStats.done, 0.001), background: '#C9A96E' }} />
+              <div style={{ flex: Math.max(trailStats.open, 0.001), background: '#5FAFB8' }} />
+              <div style={{ flex: Math.max(trailStats.untouched, 0.001), background: '#1C2830' }} />
+            </div>
+            <div className={styles.rowList}>
+              {trailStats.all.slice(0, 6).map((t) => {
+                const complete = t.done >= t.legs
+                return (
+                  <div key={t.slug} className={styles.trailRow}>
+                    <span style={{ color: t.done > 0 ? '#CFC6B6' : 'var(--muted-2)' }}>{t.name}</span>
+                    <div className={styles.miniTrack}>
+                      <div
+                        className={styles.miniFill}
+                        style={{ width: `${(t.done / t.legs) * 100}%`, background: complete ? '#C9A96E' : '#5FAFB8' }}
+                      />
+                    </div>
+                    <span className={styles.miniVal} style={{ color: complete ? undefined : '#5FAFB8' }}>{t.done}/{t.legs}</span>
+                  </div>
+                )
+              })}
+            </div>
+            <div className={styles.panelLink}>
+              <a href="/operations/trails">All {trailStats.total} trails <span style={{ color: 'var(--gold)' }}>→</span></a>
+            </div>
           </div>
         </div>
 
@@ -449,38 +764,63 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
         {identity.careerMode && career && (
           <div className={styles.section}>
             <div className={styles.sectionHead}>
-              <span className={styles.archivo} style={{ fontSize: 24, letterSpacing: '-0.02em' }}>Career mode</span>
-              <span className={styles.mono} style={{ fontSize: 10, letterSpacing: '0.14em', color: 'var(--teal)', border: '1px solid rgba(95,175,184,0.4)', padding: '4px 9px', borderRadius: 3 }}>ENROLLED</span>
+              <div className={styles.careerHeading}>
+                <span className={styles.invaCareerMark}>INVACareer</span>
+                <span className={styles.archivo} style={{ fontSize: 25, letterSpacing: '-0.02em' }}>Career mode</span>
+              </div>
+              <span className={styles.enrolledTag}>ENROLLED</span>
             </div>
             <div className={styles.careerGrid}>
               <div className={`${styles.careerCol} ${styles.careerColBordered}`}>
                 <div className={styles.eyebrow}>Home base</div>
-                <div className={styles.mono} style={{ fontSize: 30, marginTop: 6 }}>{career.homeBase || '—'}</div>
-                <div style={{ height: 1, background: 'var(--line-2)', margin: '16px 0' }} />
+                <div className={styles.mono} style={{ fontSize: 34, lineHeight: 1, marginTop: 8 }}>{career.homeBase || '—'}</div>
+                {career.homeBaseCity && <div className={styles.homeBaseCity}>{career.homeBaseCity}</div>}
+                <div className={styles.careerDivider} />
                 <div className={styles.eyebrow} style={{ marginBottom: 10 }}>Type ratings</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {career.typeRatings.length === 0 && <span style={{ fontSize: 12, color: 'var(--muted)' }}>None yet</span>}
-                  {career.typeRatings.map((rating) => (
-                    <div key={rating} className={styles.typeRating}>
-                      <span className={styles.b612} style={{ fontSize: 12.5 }}>{rating}</span>
-                    </div>
-                  ))}
+                <div className={styles.ratingsCol}>
+                  {career.typeRatings.length === 0 && <span className={styles.emptyNote}>None yet</span>}
+                  {career.typeRatings.map((rating) => {
+                    const ac = getAircraftByCode(rating)
+                    return (
+                      <div key={rating} className={styles.typeRating}>
+                        {ac && <img src={ac.image} alt="" className={styles.typeRatingArt} />}
+                        <span className={styles.b612} style={{ fontSize: 12.5 }}>{rating}</span>
+                        <span style={{ flex: 1 }} />
+                        <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>rated</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
+
               <div className={styles.careerCol}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                <div className={styles.careerTopRow}>
                   <div>
                     <div className={styles.eyebrow}>Career rank</div>
-                    <div style={{ fontWeight: 500, fontSize: 26, marginTop: 4 }}>{career.rank || '—'}</div>
+                    <div style={{ fontWeight: 500, fontSize: 28, marginTop: 4 }}>{career.rank || '—'}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div className={styles.mono} style={{ fontSize: 22 }}>{Number(career.flightHours).toFixed(2)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)' }}>career hours</div>
+                    <div className={styles.mono} style={{ fontSize: 24 }}>{hm(career.flightHours)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)' }}>hours of flying experience</div>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--line-2)' }}>
-                  <div><div className={styles.mono} style={{ fontSize: 18 }}>{career.totalFlights}</div><div style={{ fontSize: 10.5, color: 'var(--muted)' }}>career legs</div></div>
-                  <div><div className={styles.mono} style={{ fontSize: 18 }}>₹{Number(career.careerEarnings).toLocaleString('en-IN')}</div><div style={{ fontSize: 10.5, color: 'var(--muted)' }}>career earnings</div></div>
+                <div className={styles.careerStats}>
+                  <div><div className={styles.mono} style={{ fontSize: 19 }}>{career.totalFlights}</div><div className={styles.footSub}>career legs</div></div>
+                  <div><div className={styles.mono} style={{ fontSize: 19 }}>{career.completedEvents}</div><div className={styles.footSub}>events completed</div></div>
+                  <div><div className={styles.mono} style={{ fontSize: 19 }}>{career.typeRatings.length}</div><div className={styles.footSub}>type ratings</div></div>
+                  <div><div className={styles.mono} style={{ fontSize: 19 }}>₹{Number(career.careerEarnings).toLocaleString('en-IN')}</div><div className={styles.footSub}>earnings</div></div>
+                </div>
+              </div>
+
+              <div className={`${styles.careerCol} ${styles.careerColAside}`}>
+                <div className={styles.eyebrow} style={{ marginBottom: 14 }}>Career Power badge</div>
+                <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                  <div style={{ width: 60, height: 60, overflow: 'hidden', flex: 'none' }}>
+                    <img src="/badges/badge3.webp" alt="Career Power" style={{ width: '200%', height: '100%', objectFit: 'cover', objectPosition: 'left' }} />
+                  </div>
+                  <div style={{ fontSize: 12.5, color: '#CFC6B6', lineHeight: 1.4 }}>
+                    Unlocked at 40 career hours — the only badge that crosses the two ledgers.
+                  </div>
                 </div>
               </div>
             </div>
@@ -488,34 +828,101 @@ export default function PilotProfile({ callsign, identity, edits, agg, trails, c
         )}
 
         {/* ── Logbook ── */}
-        <div className={styles.section} style={{ borderBottom: 'none' }}>
+        <div className={styles.section}>
           <div className={styles.sectionTitle} style={{ marginBottom: 16 }}>
             <h2>Logbook</h2>
-            <span className={styles.sectionSub}>LAST {logbook?.length || 0} APPROVED FLIGHTS</span>
+            <span className={styles.sectionSub}>LAST {logbook?.length || 0} FLIGHTS</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className={styles.logList}>
             {(logbook || []).map((p, i) => (
-              <div key={i} className={styles.logRow}>
-                <div style={{ minWidth: 100 }}>
-                  <div className={styles.mono} style={{ fontSize: 15 }}>{p.flightNumber}</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 3 }}>{fmtDateLong(p.date)}</div>
-                </div>
-                <div className={styles.logRoute}>
-                  <span className={styles.mono} style={{ fontSize: 18 }}>{p.departureIcao}</span>
-                  <span className={styles.logDots} />
-                  <span className={styles.mono} style={{ fontSize: 18 }}>{p.arrivalIcao}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--muted)' }}>
-                  <span>{p.aircraft}</span>
-                  <span className={styles.mono}>{fmtInterval(p.flightTime)}h</span>
+              <div key={i} className={styles.logCard}>
+                <div className={styles.logTop}>
+                  <div className={styles.logId}>
+                    <div className={styles.mono} style={{ fontSize: 15 }}>{p.flightNumber}</div>
+                    <div className={styles.logSub}>{fmtDateLong(p.date)}</div>
+                  </div>
+                  <div className={styles.logRoute}>
+                    <span className={styles.mono}>{p.departureIcao}</span>
+                    <span className={styles.logDots} />
+                    <span className={styles.mono}>{p.arrivalIcao}</span>
+                  </div>
+                  <div className={styles.logMeta}>
+                    <div className={styles.mono} style={{ fontSize: 15 }}>
+                      {fmtInterval(p.flightTime)}
+                      {p.multiplier > 1 && <span style={{ color: '#5FAFB8', fontSize: 12 }}> ×{p.multiplier}</span>}
+                    </div>
+                    <div className={styles.logSub}>
+                      <span className={styles.b612}>{p.aircraft}</span>
+                      {p.trailName ? ` · ${p.trailName}` : ''}
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
-            {(!logbook || logbook.length === 0) && (
-              <span style={{ fontSize: 13, color: 'var(--muted)' }}>No approved flights yet.</span>
-            )}
+            {(!logbook || logbook.length === 0) && <span className={styles.emptyNote}>No approved flights yet.</span>}
           </div>
         </div>
+
+        {/* ── Events ── */}
+        {agg.eventsFlown > 0 && (
+          <div className={styles.section} style={{ borderBottom: 'none' }}>
+            <div className={styles.sectionTitle} style={{ marginBottom: 16 }}>
+              <h2>Events</h2>
+              <span className={styles.sectionSub}>{agg.eventsFlown} FLOWN</span>
+            </div>
+            <div className={styles.eventsGrid}>
+              <div className={styles.eventsList}>
+                {(agg.recentEvents || []).map((e, i) => (
+                  <div key={i}>
+                    {i > 0 && <div className={styles.eventDivider} />}
+                    <div className={styles.eventRow}>
+                      <span className={styles.eventDate}>{fmtDateShort(e.date)}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14.5 }}>{e.name}</div>
+                        <div className={styles.eventMeta}>
+                          {e.departureIcao}–{e.arrivalIcao} · <span className={styles.b612}>{e.aircraft}</span> · {hm(e.hours)}
+                        </div>
+                      </div>
+                      <span className={styles.mono} style={{ fontSize: 11, color: 'var(--gold)' }}>×{e.multiplier}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className={styles.eventsAside}>
+                <div className={styles.mono} style={{ fontSize: 9.5, letterSpacing: '0.16em', color: 'var(--muted-2)', marginBottom: 11 }}>
+                  ATTENDANCE BY QUARTER
+                </div>
+                <div className={styles.quarterBars}>
+                  {eventQuarters.quarters.map((q, i) => (
+                    <div
+                      key={q.key}
+                      style={{
+                        flex: 1,
+                        height: `${Math.max((q.count / eventQuarters.max) * 100, 4)}%`,
+                        background: i === eventQuarters.quarters.length - 1 ? '#C9A96E' : '#2E4A50',
+                      }}
+                      title={`${q.label}: ${q.count}`}
+                    />
+                  ))}
+                </div>
+                <div className={styles.quarterLabels}>
+                  <span>{eventQuarters.quarters[0].label}</span>
+                  <span>{eventQuarters.quarters[eventQuarters.quarters.length - 1].label}</span>
+                </div>
+                <div className={styles.quarterFooter}>
+                  <div>
+                    <div className={styles.mono} style={{ fontSize: 17 }}>{eventQuarters.thisQuarter}</div>
+                    <div className={styles.footSub}>this quarter</div>
+                  </div>
+                  <div>
+                    <div className={styles.mono} style={{ fontSize: 17 }}>×{eventQuarters.avgMultiplier.toFixed(2)}</div>
+                    <div className={styles.footSub}>avg multiplier</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {isOwner && editOpen && (

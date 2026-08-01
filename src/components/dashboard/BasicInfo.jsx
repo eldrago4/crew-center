@@ -6,6 +6,7 @@ import Notams from './Notams'
 import { useEffect, useState, useRef } from 'react'
 import { FaShareSquare, FaCheck } from 'react-icons/fa'
 import { getCurrentSeason, loadPixelFont, drawDynamicBadge, BADGE_DEFINITIONS } from '@/lib/badgeArt'
+import { profileShareUrl } from '@/lib/profileLink'
 
 
 // ── BadgeIcon ─────────────────────────────────────────────────────────────────
@@ -428,7 +429,7 @@ export default function BasicInfo({ ifcName, callsign, image, flightTime, rank, 
   const copyProfileLink = async () => {
     if (!callsign) return
     try {
-      await navigator.clipboard.writeText(`https://indianvirtual.com/team/${callsign}`)
+      await navigator.clipboard.writeText(profileShareUrl(callsign))
       setProfileLinkCopied(true)
       setTimeout(() => setProfileLinkCopied(false), 1500)
     } catch (e) {

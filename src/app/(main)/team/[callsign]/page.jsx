@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { connection } from 'next/server'
 import { notFound } from 'next/navigation'
 import { getProfileData } from '@/lib/profile'
+import { profileShareUrl } from '@/lib/profileLink'
 import PilotProfile from '@/components/profile/PilotProfile'
 
 export async function generateMetadata({ params }) {
@@ -12,12 +13,13 @@ export async function generateMetadata({ params }) {
   const name = profile.edits?.displayName || profile.identity.ifcName
   const title = `${name} (${callsign.toUpperCase()}) · Indian Virtual`
   const description = `${name} — ${profile.identity.rank} at Indian Virtual, ${profile.agg.approvedCount} approved flights logged.`
+  const url = profileShareUrl(callsign)
 
   return {
     title,
     description,
-    openGraph: { title, description, url: `https://indianvirtual.com/team/${callsign.toUpperCase()}` },
-    alternates: { canonical: `https://indianvirtual.com/team/${callsign.toUpperCase()}` },
+    openGraph: { title, description, url },
+    alternates: { canonical: url },
   }
 }
 
@@ -31,6 +33,7 @@ async function PublicProfileData({ callsign }) {
       identity={profile.identity}
       edits={profile.edits}
       agg={profile.agg}
+      network={profile.network}
       trails={profile.trails}
       career={profile.career}
       logbook={profile.logbook}

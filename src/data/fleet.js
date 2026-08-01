@@ -215,3 +215,18 @@ export function getAirlineById(id) {
 export function getAircraftById(id) {
   return AIRCRAFT.find((a) => a.id === id) || null
 }
+
+// Resolve a bare type designator (e.g. a career-mode type rating like "A320" or
+// "B738") to a fleet entry so its livery art can be shown inline. Matches the ICAO
+// code first, then the marketing type; where two liveries share a code (A320 flies
+// in both Air India and Vistara colours) the first entry wins, which is the
+// Air India one — the group's primary brand.
+export function getAircraftByCode(code) {
+  if (!code) return null
+  const needle = String(code).trim().toUpperCase().replace(/[\s-]/g, '')
+  return (
+    AIRCRAFT.find((a) => a.code.toUpperCase() === needle) ||
+    AIRCRAFT.find((a) => a.type.toUpperCase().replace(/[\s-]/g, '') === needle) ||
+    null
+  )
+}
