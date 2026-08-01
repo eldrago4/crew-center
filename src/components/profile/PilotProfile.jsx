@@ -58,6 +58,10 @@ function fmtDateShort(value) {
 const MONTH_INITIALS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
+// Where the touchdown dot sits on the runway strip; the roll bar and exit tick
+// are both measured from here.
+const TOUCHDOWN_PCT = 12
+
 // ── Badge rendering (client canvas compositing, reused from badgeArt.js) ────────
 //
 // Badge art ships at very different canvas ratios, so each tile is normalised by
@@ -190,6 +194,12 @@ function FlightTelemetry({ telemetry }) {
   const fpm = landing ? Math.abs(landing.verticalSpeedFpm) : null
   const markerPct = fpm != null ? Math.min(100, Math.max(0, (fpm / 600) * 100)) : null
 
+  // Roll bar scaled so the design's reference figures land where it drew them
+  // (a 780 m roll ≈ 31% of the strip), capped so a very long rollout still fits.
+  const rollPct = Number.isFinite(landing?.groundRollDistanceM)
+    ? Math.min(70, (landing.groundRollDistanceM / 2500) * 100)
+    : null
+
   const dayMin = dayNight?.dayMinutes ?? 0
   const nightMin = dayNight?.nightMinutes ?? 0
   const totalMin = dayMin + nightMin
@@ -230,11 +240,19 @@ function FlightTelemetry({ telemetry }) {
             </div>
             <div className={styles.runway}>
               <span className={styles.runwayCentreline} />
-              {Number.isFinite(landing.groundRollDistanceM) && (
+              {rollPct != null && (
                 <span
                   className={styles.runwayRoll}
-                  style={{ width: `${Math.min(70, (landing.groundRollDistanceM / 3000) * 100)}%`, background: `linear-gradient(90deg, ${landing.grade.color}4D, transparent)` }}
+                  style={{ width: `${rollPct}%`, background: `linear-gradient(90deg, ${landing.grade.color}4D, transparent)` }}
                 />
+              )}
+              {/* Where the aircraft left the runway: touchdown point plus the
+                  distance it rolled, matching the design's exit tick. */}
+              {rollPct != null && (
+                <>
+                  <span className={styles.runwayExit} style={{ left: `${TOUCHDOWN_PCT + rollPct}%` }} />
+                  <span className={styles.runwayExitLabel} style={{ left: `${TOUCHDOWN_PCT + rollPct}%` }}>exit</span>
+                </>
               )}
               <span className={styles.runwayTouch} style={{ background: landing.grade.color }} />
             </div>

@@ -43,9 +43,13 @@ export default function NetworkMap({ network }) {
     let cancelled = false
     let map
 
-    // Dynamic import so maplibre (and its CSS) only load on the profile page.
-    Promise.all([import('maplibre-gl'), import('maplibre-gl/dist/maplibre-gl.css')])
-      .then(([mod]) => {
+    // Stylesheet is fired off separately and deliberately not awaited: if it ever
+    // fails to resolve it must not take the map down with it.
+    import('maplibre-gl/dist/maplibre-gl.css').catch(() => {})
+
+    // Dynamic import so maplibre only loads on the profile page.
+    import('maplibre-gl')
+      .then((mod) => {
         if (cancelled) return
         const maplibregl = mod.default ?? mod
 
@@ -77,6 +81,9 @@ export default function NetworkMap({ network }) {
             container: el,
             style: {
               version: 8,
+              // A style with no `glyphs` cannot render a symbol layer's text —
+              // adding the ICAO labels below would throw without it.
+              glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
               sources: {
                 base: {
                   type: 'raster',
@@ -105,23 +112,45 @@ export default function NetworkMap({ network }) {
         }
 
         mapRef.current = map
-        map.on('error', () => {})
+        // Previously swallowed, which hid exactly the kind of failure that leaves
+        // the basemap up and the data layers missing.
+        map.on('error', (e) => console.warn('[NetworkMap]', e?.error?.message || e))
+
         map.on('load', () => {
           if (cancelled) return
-          map.addSource('lines', { type: 'geojson', data: lines })
-          map.addSource('pts', { type: 'geojson', data: points })
-          map.addLayer({
+
+          // Each layer is added independently: a glyph or font failure on the
+          // labels must not stop the arcs and dots from drawing.
+          const addLayerSafely = (spec) => {
+            try {
+              map.addLayer(spec)
+            } catch (err) {
+              console.warn(`[NetworkMap] layer "${spec.id}" failed:`, err?.message || err)
+            }
+          }
+
+          try {
+            map.addSource('lines', { type: 'geojson', data: lines })
+            map.addSource('pts', { type: 'geojson', data: points })
+          } catch (err) {
+            console.warn('[NetworkMap] source failed:', err?.message || err)
+            return
+          }
+
+          addLayerSafely({
             id: 'arcs',
             type: 'line',
             source: 'lines',
             layout: { 'line-cap': 'round' },
             paint: {
               'line-color': ['case', ['==', ['get', 'top'], 1], '#C9A96E', '#5FAFB8'],
-              'line-width': ['interpolate', ['linear'], ['get', 'w'], 1, 0.6, Math.max(topCount, 2), 2.4],
-              'line-opacity': ['case', ['==', ['get', 'top'], 1], 0.95, 0.5],
+              // Floor of 1.2px: when every sector has been flown once the whole
+              // set sits on the low stop, and sub-pixel lines read as no map at all.
+              'line-width': ['interpolate', ['linear'], ['get', 'w'], 1, 1.2, Math.max(topCount, 2), 3],
+              'line-opacity': ['case', ['==', ['get', 'top'], 1], 0.95, 0.6],
             },
           })
-          map.addLayer({
+          addLayerSafely({
             id: 'dots',
             type: 'circle',
             source: 'pts',
@@ -133,12 +162,13 @@ export default function NetworkMap({ network }) {
               'circle-stroke-color': '#C9A96E',
             },
           })
-          map.addLayer({
+          addLayerSafely({
             id: 'labels',
             type: 'symbol',
             source: 'pts',
             layout: {
               'text-field': ['get', 'code'],
+              'text-font': ['Noto Sans Regular'],
               'text-size': 9.5,
               'text-offset': [0, 1.2],
               'text-anchor': 'top',

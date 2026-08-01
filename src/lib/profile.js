@@ -29,7 +29,7 @@ const LOCK_TTL_SECONDS = 10
 // Bump when the shape of the cached object changes — a stored object with an older
 // version is treated as a hard miss and rebuilt from scratch, so new aggregate
 // fields get backfilled instead of staying permanently undefined.
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 
 let _redis = null
 function getRedis() {
@@ -201,10 +201,11 @@ function mergePirepsIntoAgg(agg, rows) {
     const opId = operatorIdFor(row.flightNumber)
     agg.operatorHours[opId] = (agg.operatorHours[opId] || 0) + hrs
 
-    // Event heuristic: a boosted multiplier, or a trail code in the comments.
+    // Event heuristic: any boosted multiplier (2x and up is already an event
+    // rate at INVA), or a trail code in the comments.
     const trail = matchTrailCode(row.comments)
     const multiplier = Number(row.multiplier) || 1
-    const isEvent = multiplier > 3 || !!trail
+    const isEvent = multiplier >= 2 || !!trail
     if (isEvent) {
       agg.eventsFlown += 1
       const qk = quarterKey(row.date)
@@ -236,11 +237,26 @@ function mergePirepsIntoAgg(agg, rows) {
 // Derives the map payload from the aggregate — only the pilot's own airports and
 // sectors, so the 5,800-entry coords table stays server-side and the client gets a
 // few dozen points instead.
-function buildNetwork(agg) {
+// `careerRoutePairs` folds in the pilot's career-mode sectors from Firestore, so
+// the map is every unique route they've flown across both ledgers rather than the
+// Neon half only.
+function buildNetwork(agg, careerRoutePairs = {}) {
+  const combinedPairs = { ...agg.routePairs }
+  for (const [pk, count] of Object.entries(careerRoutePairs)) {
+    combinedPairs[pk] = (combinedPairs[pk] || 0) + count
+  }
+
+  // Airports come from the sectors themselves, not just Neon's visit counts —
+  // a career-only airport still needs a dot on the map.
+  const airportCodes = new Set(Object.keys(agg.airportCounts))
+  for (const pk of Object.keys(combinedPairs)) {
+    for (const code of pk.split('-')) airportCodes.add(code)
+  }
+
   const airports = {}
   const continents = new Set()
 
-  for (const icao of Object.keys(agg.airportCounts)) {
+  for (const icao of airportCodes) {
     const entry = airportCoords[icao]
     if (!entry) continue
     const [lng, lat, cc] = entry
@@ -249,7 +265,7 @@ function buildNetwork(agg) {
     if (continent) continents.add(continent)
   }
 
-  const sectors = Object.entries(agg.routePairs)
+  const sectors = Object.entries(combinedPairs)
     .map(([pk, count]) => {
       const [from, to] = pk.split('-')
       return { from, to, count }
@@ -327,10 +343,11 @@ async function fetchCareerFlights(pilotId) {
     const snapshot = await fireDb
       .collection('flights')
       .where('pilotId', '==', pilotId)
-      .select('flightTime', 'landingGrade', 'approvedAt')
+      .select('flightTime', 'landingGrade', 'approvedAt', 'departure', 'arrival')
       .get()
 
     const monthlyHours = {}
+    const routePairs = {}
     let graded = 0
     let passed = 0
 
@@ -350,16 +367,24 @@ async function fetchCareerFlights(pilotId) {
         graded += 1
         if (PASSING_GRADES.has(grade)) passed += 1
       }
+
+      const dep = String(d.departure || '').toUpperCase()
+      const arr = String(d.arrival || '').toUpperCase()
+      if (dep && arr) {
+        const pk = pairKey(dep, arr)
+        routePairs[pk] = (routePairs[pk] || 0) + 1
+      }
     })
 
     return {
       monthlyHours,
+      routePairs,
       landingsGraded: graded,
       landingPassRate: graded > 0 ? Math.round((passed / graded) * 100) : null,
     }
   } catch (err) {
     console.warn('Career flight history fetch failed (non-fatal):', err.message)
-    return { monthlyHours: {}, landingsGraded: 0, landingPassRate: null }
+    return { monthlyHours: {}, routePairs: {}, landingsGraded: 0, landingPassRate: null }
   }
 }
 
@@ -472,7 +497,7 @@ async function rebuildProfile(callsign, previous) {
       identity,
       edits: previous?.edits ?? {},
       agg,
-      network: buildNetwork(agg),
+      network: buildNetwork(agg, career?.routePairs),
       trails,
       career,
       logbook,
