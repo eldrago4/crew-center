@@ -194,11 +194,14 @@ function FlightTelemetry({ telemetry }) {
   const fpm = landing ? Math.abs(landing.verticalSpeedFpm) : null
   const markerPct = fpm != null ? Math.min(100, Math.max(0, (fpm / 600) * 100)) : null
 
-  // The strip reads as a ~3,000 m runway: touchdown sits in the touchdown zone at
-  // TOUCHDOWN_PCT and the roll is drawn to the same scale, so the exit tick lands
-  // where the aircraft actually left the surface rather than at an arbitrary spot.
+  // Roll is drawn on a square-root scale against a 2,500 m reference rather than a
+  // linear one. Real rollouts span roughly 300–2,500 m, and mapped linearly the
+  // short end collapses into a sliver — a 341 m roll is 11% of a 3 km strip, which
+  // reads as "no rollout" next to a printed distance that plainly isn't zero.
+  // Square-root keeps the ordering intact (longer roll is always a longer bar)
+  // while giving the short end enough length to be legible.
   const rollPct = Number.isFinite(landing?.groundRollDistanceM)
-    ? Math.min(74, (landing.groundRollDistanceM / 3000) * 100)
+    ? Math.min(74, 74 * Math.sqrt(Math.max(0, landing.groundRollDistanceM) / 2500))
     : null
 
   const dayMin = dayNight?.dayMinutes ?? 0
