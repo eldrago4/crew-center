@@ -1,0 +1,204 @@
+/* Pilot profile — fixed-dark island regardless of the site's light/dark toggle.
+   Palette/typography mirror the imported design (IBM Plex Sans Condensed/Mono,
+   B612 Mono, Archivo Black, gold #C9A96E accent on a near-black ground). */
+
+.page {
+  --gold: #C9A96E;
+  --gold-hi: #E0C68C;
+  --ink: #F1EADC;
+  --muted: #8C9AA0;
+  --muted-2: #6E7C82;
+  --line: #23323A;
+  --line-2: #1C2830;
+  --teal: #5FAFB8;
+  min-height: 100vh;
+  color: var(--ink);
+  font-family: 'IBM Plex Sans Condensed', system-ui, sans-serif;
+  padding-bottom: 40px;
+  position: relative;
+}
+.page * { box-sizing: border-box; }
+.page a { color: var(--gold); text-decoration: none; }
+.page a:hover { color: var(--gold-hi); }
+
+.tierBg { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.base { background: #0E1417; }
+
+.inner { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+
+.mono { font-family: 'IBM Plex Mono', monospace; }
+.b612 { font-family: 'B612 Mono', monospace; font-weight: 700; }
+.archivo { font-family: 'Archivo Black', sans-serif; }
+
+.eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; }
+
+/* ── Back button (crew variant) ─────────────────────────────────────────── */
+.backRow { padding: 20px 0 0; }
+.backBtn {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--muted); background: none; border: none; cursor: pointer;
+  padding: 6px 0;
+}
+.backBtn:hover { color: var(--ink); }
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.header {
+  display: grid;
+  grid-template-columns: 1fr 320px 1fr;
+  gap: 32px;
+  align-items: center;
+  padding: 32px 0 40px;
+}
+@media (max-width: 900px) {
+  .header { grid-template-columns: 1fr; text-align: center; }
+}
+
+.statLine { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
+.statLine .big { font-family: 'IBM Plex Mono', monospace; font-size: 48px; line-height: 0.92; letter-spacing: -0.02em; }
+.statLine .unit { font-size: 20px; color: var(--gold); }
+.rule { height: 1px; background: linear-gradient(90deg, var(--gold), rgba(201,169,110,0) 85%); margin-top: 14px; }
+
+.metaRow { display: flex; gap: 24px; margin-top: 20px; flex-wrap: wrap; }
+.metaItem .val { font-family: 'IBM Plex Mono', monospace; font-size: 20px; }
+.metaItem .lbl { font-size: 11px; color: var(--muted); letter-spacing: 0.05em; }
+
+.bio { margin: 16px 0 0; font-size: 15px; line-height: 1.55; color: #A9B3B6; max-width: 400px; }
+
+.avatarWrap { display: flex; flex-direction: column; align-items: center; }
+.avatarRing { position: relative; width: 172px; height: 172px; }
+.ringOuter { position: absolute; inset: 0; border-radius: 50%; border: 1px solid #2A3941; }
+.ringInner {
+  position: absolute; inset: 9px; border-radius: 50%; overflow: hidden;
+  background: repeating-linear-gradient(135deg, #1B262B 0 7px, #16201F 7px 14px);
+  display: flex; align-items: center; justify-content: center;
+}
+.ringInner img { width: 100%; height: 100%; object-fit: cover; }
+.activeDot {
+  position: absolute; bottom: -2px; left: 50%; transform: translate(-50%, 50%);
+  display: flex; align-items: center; gap: 6px;
+  background: #101A1C; border: 1px solid #2F7A62; border-radius: 999px;
+  padding: 5px 11px 5px 9px; white-space: nowrap;
+}
+.activeDot .dot { width: 6px; height: 6px; border-radius: 50%; background: #57C79A; animation: pulseDot 2.4s ease-in-out infinite; }
+.activeDot span { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.14em; color: #8FD9BC; }
+@keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+.nameRow { display: flex; align-items: center; gap: 12px; margin-top: 18px; flex-wrap: wrap; justify-content: center; }
+.callsignChip {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: var(--gold);
+  border: 1px solid rgba(201,169,110,0.45); border-radius: 3px; padding: 5px 8px; white-space: nowrap;
+}
+.name { font-weight: 600; font-size: 34px; line-height: 1; letter-spacing: -0.005em; }
+
+.rankRow { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.rankRow .bar { height: 1px; width: 28px; background: var(--line); }
+.rankLabel { font-size: 13px; letter-spacing: 0.3em; text-transform: uppercase; }
+
+.badgeRow { display: flex; gap: 12px; margin-top: 20px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.badgeTileSm { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.badgeTileSm img { width: 100%; height: auto; }
+
+.linksCol { display: flex; flex-direction: column; gap: 14px; align-items: flex-end; }
+@media (max-width: 900px) { .linksCol { align-items: center; } }
+.aircraftCard { width: 100%; max-width: 380px; }
+.aircraftHead { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.aircraftFrame {
+  position: relative; aspect-ratio: 16/9; border: 1px solid var(--line); border-radius: 4px; overflow: hidden;
+  background: linear-gradient(160deg, #1A252B, #111A1E 70%);
+}
+.aircraftFrame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 8%; }
+
+.linkBar { width: 100%; max-width: 380px; display: flex; gap: 10px; }
+.linkGroup { flex: 1; display: flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.linkItem {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 0;
+  font-size: 12.5px; color: #CFC6B6; cursor: pointer; background: none; border: none;
+}
+.linkItem:hover { background: rgba(201,169,110,0.1); color: var(--ink); }
+.linkSep { width: 1px; background: #2A3941; }
+.editBtn {
+  display: flex; align-items: center; padding: 0 14px; border: 1px solid rgba(201,169,110,0.5);
+  background: rgba(201,169,110,0.1); border-radius: 3px; font-size: 12.5px; color: var(--gold);
+  white-space: nowrap; cursor: pointer;
+}
+.editBtn:hover { background: rgba(201,169,110,0.18); }
+
+/* ── Section shell ───────────────────────────────────────────────────────── */
+.section { padding: 34px 0 40px; border-top: 1px solid var(--line); }
+.sectionHead { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; gap: 12px; flex-wrap: wrap; }
+.sectionTitle { display: flex; align-items: baseline; gap: 14px; }
+.sectionTitle h2 { font-weight: 500; font-size: 26px; margin: 0; }
+.sectionSub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: var(--muted-2); }
+
+/* ── Climb ladder ────────────────────────────────────────────────────────── */
+.ladder { display: flex; align-items: flex-end; gap: 4px; }
+.ladderCol { flex: 1; position: relative; }
+.ladderColYou { flex: 1.15; }
+.ladderBar { background: var(--gold); }
+.ladderName { font-size: 11.5px; margin-top: 9px; color: var(--muted); }
+.ladderHours { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #5F6B71; }
+.ladderYouTag { position: absolute; top: -24px; left: 0; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.14em; color: var(--gold); white-space: nowrap; }
+.ladderTarget { border: 1px dashed #33454D; background: repeating-linear-gradient(45deg, rgba(201,169,110,0.07) 0 5px, transparent 5px 10px); }
+
+/* ── Clubs ───────────────────────────────────────────────────────────────── */
+.clubsCol { display: flex; flex-direction: column; gap: 12px; }
+.clubCard { border: 1px solid var(--line); border-radius: 4px; padding: 16px 18px; display: flex; gap: 16px; align-items: center; }
+.clubCardMember { border-top: 2px solid var(--gold); background: linear-gradient(160deg, rgba(201,169,110,0.09), rgba(201,169,110,0.02)); }
+.clubDisc { width: 52px; height: 52px; border-radius: 50%; flex: none; }
+.clubName { font-family: 'Archivo Black', sans-serif; font-size: 20px; letter-spacing: -0.02em; }
+.clubMeta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.clubTag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.12em; padding: 4px 8px; border-radius: 3px; white-space: nowrap; }
+.clubTagOn { color: var(--gold); border: 1px solid rgba(201,169,110,0.4); }
+.clubTagOff { color: var(--muted-2); border: 1px dashed #33454D; }
+
+/* ── Badge cabinet ───────────────────────────────────────────────────────── */
+.cabinet {
+  border: 1px solid var(--line); border-radius: 4px;
+  background: linear-gradient(150deg, #16201F, #131C21 60%, #171E26);
+  padding: 22px 18px; display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; align-items: center;
+}
+.cabinetTile { width: 78px; height: 78px; flex: none; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.cabinetTile img { width: 100%; height: auto; }
+
+/* ── Stats strip ─────────────────────────────────────────────────────────── */
+.statsStrip { display: grid; grid-template-columns: repeat(6, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+@media (max-width: 700px) { .statsStrip { grid-template-columns: repeat(2, 1fr); } }
+.statCell { padding: 20px 16px; border-left: 1px solid var(--line-2); }
+.statCell:first-child { border-left: none; }
+.statCell .num { font-family: 'IBM Plex Mono', monospace; font-size: 23px; }
+.statCell .sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+/* ── Donut / operator breakdown ──────────────────────────────────────────── */
+.donutRow { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.donut { width: 130px; height: 130px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; }
+.donutHole { width: 86px; height: 86px; border-radius: 50%; background: #0E1417; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.legend { display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; }
+.legendRow { display: flex; align-items: center; gap: 9px; }
+.legendSwatch { width: 9px; height: 9px; flex: none; }
+.legendLbl { flex: 1; }
+.legendVal { font-family: 'IBM Plex Mono', monospace; color: var(--muted); }
+
+/* ── Trails ──────────────────────────────────────────────────────────────── */
+.trailsHead { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.trailsWordmark { height: 1.4em; width: auto; display: block; }
+.trailBar { height: 9px; background: var(--line-2); overflow: hidden; }
+.trailBarFill { height: 100%; background: var(--teal); }
+.trailBarFillDone { background: var(--gold); }
+.trailRow { display: grid; grid-template-columns: 1fr 70px 40px; gap: 10px; align-items: center; font-size: 12.5px; }
+.trailRows { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.trailCount { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+
+/* ── Career mode ─────────────────────────────────────────────────────────── */
+.careerGrid { display: grid; grid-template-columns: 220px 1fr; gap: 0; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+@media (max-width: 800px) { .careerGrid { grid-template-columns: 1fr; } }
+.careerCol { padding: 22px; }
+.careerColBordered { border-right: 1px solid var(--line-2); }
+.typeRating { display: flex; align-items: center; gap: 10px; border: 1px solid #2A3941; border-radius: 3px; padding: 8px 10px; font-size: 12.5px; }
+
+/* ── Logbook ─────────────────────────────────────────────────────────────── */
+.logRow { border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.logRoute { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 160px; }
+.logDots { width: 70px; height: 6px; flex: none; background: radial-gradient(circle, #33454D 1px, transparent 1.4px) repeat-x center/9px 6px; }
+
+/* ── Edit modal trigger area ─────────────────────────────────────────────── */
+.charCount { font-size: 11px; color: var(--muted); text-align: right; }

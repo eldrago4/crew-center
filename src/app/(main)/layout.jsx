@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { Provider as ChakraProvider } from "@/components/ui/provider"
 import { Toaster, toaster } from "@/components/ui/toaster"
 import Navbar, { MobileNavMenu } from "@/components/NavBar";
@@ -90,17 +91,26 @@ export default function MainLayout({ children }) {
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
             />
-            <ChakraProvider>
-                {/* Pins the whole public site light, including on client-side
-                    navigation back from /crew, where the root theme script never re-runs. */}
-                <LightMode>
-                    <Navbar />
-                    <MobileNavMenu />
-                    {children}
-                    <Toaster />
-                    <Footer />
-                </LightMode>
-            </ChakraProvider>
+            {/* Every existing (main) page is static/cacheable, so this never visibly
+                suspends today. ChakraProvider's ColorModeProvider calls usePathname(),
+                which Cache Components treats as needing a Suspense boundary above it
+                once any (main) route is genuinely dynamic (e.g. /team/[callsign]) —
+                without this, that route's dynamism has nowhere to be caught and blocks
+                the whole layout. Mirrors (crew)/crew/layout.jsx's existing Suspense
+                wrap, which sits above its own Providers for the same reason. */}
+            <Suspense fallback={null}>
+                <ChakraProvider>
+                    {/* Pins the whole public site light, including on client-side
+                        navigation back from /crew, where the root theme script never re-runs. */}
+                    <LightMode>
+                        <Navbar />
+                        <MobileNavMenu />
+                        {children}
+                        <Toaster />
+                        <Footer />
+                    </LightMode>
+                </ChakraProvider>
+            </Suspense>
         </>
     )
 }

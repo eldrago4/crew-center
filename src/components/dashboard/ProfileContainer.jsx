@@ -151,6 +151,7 @@ export default async function ProfileContainer({ user }) {
       )}
       <BasicInfo
         ifcName={userData.ifcName}
+        callsign={user.callsign}
         image={user.image}
         flightTime={userData.flightTime}
         rank={userData.rank}
