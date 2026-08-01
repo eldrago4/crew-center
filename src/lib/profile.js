@@ -18,6 +18,8 @@ import { db as fireDb } from '@/lib/firebase'
 import { TRAIL_META, TRAIL_MULTIPLIER, matchTrailCode } from '@/app/shared/trails'
 import { operatorIdFor } from '@/data/operators'
 import { continentFor } from '@/lib/geo'
+import { PASSING_GRADES } from '@/lib/landingQuality'
+import { attachFlightTelemetry } from '@/lib/ifFlights'
 import airportCities from '@/data/airport-cities.json'
 import airportCoords from '@/data/airport-coords.json'
 
@@ -27,7 +29,7 @@ const LOCK_TTL_SECONDS = 10
 // Bump when the shape of the cached object changes — a stored object with an older
 // version is treated as a hard miss and rebuilt from scratch, so new aggregate
 // fields get backfilled instead of staying permanently undefined.
-const SCHEMA_VERSION = 2
+const SCHEMA_VERSION = 3
 
 let _redis = null
 function getRedis() {
@@ -80,6 +82,9 @@ function pairKey(a, b) {
 }
 
 const MAX_RECENT_EVENTS = 6
+
+// Visits before an airport counts as a base the pilot actually works out of.
+const BASE_VISIT_THRESHOLD = 20
 
 // ── Neon: identity + rank position ──────────────────────────────────────────────
 
@@ -314,12 +319,70 @@ async function fetchLogbook(callsign) {
 
 // ── Firestore: career panel ──────────────────────────────────────────────────────
 
-async function fetchCareer(callsign) {
+// Approved career flights live in the `flights` collection (written at approval by
+// the portal's pirep-actions), which is where the per-flight landingGrade and the
+// month-by-month history come from — the `users` doc only carries totals.
+async function fetchCareerFlights(pilotId) {
+  try {
+    const snapshot = await fireDb
+      .collection('flights')
+      .where('pilotId', '==', pilotId)
+      .select('flightTime', 'landingGrade', 'approvedAt')
+      .get()
+
+    const monthlyHours = {}
+    let graded = 0
+    let passed = 0
+
+    snapshot.forEach((doc) => {
+      const d = doc.data()
+
+      const approvedAt = d.approvedAt?.toDate?.() ?? (d.approvedAt ? new Date(d.approvedAt) : null)
+      if (approvedAt && !Number.isNaN(approvedAt.getTime())) {
+        const key = `${approvedAt.getUTCFullYear()}-${String(approvedAt.getUTCMonth() + 1).padStart(2, '0')}`
+        monthlyHours[key] = (monthlyHours[key] || 0) + (Number(d.flightTime) || 0)
+      }
+
+      // Landings IF never verified are stored as 'unknown' — they'd drag the pass
+      // rate down as if they'd failed, so they're left out of the denominator.
+      const grade = d.landingGrade
+      if (grade && grade !== 'unknown') {
+        graded += 1
+        if (PASSING_GRADES.has(grade)) passed += 1
+      }
+    })
+
+    return {
+      monthlyHours,
+      landingsGraded: graded,
+      landingPassRate: graded > 0 ? Math.round((passed / graded) * 100) : null,
+    }
+  } catch (err) {
+    console.warn('Career flight history fetch failed (non-fatal):', err.message)
+    return { monthlyHours: {}, landingsGraded: 0, landingPassRate: null }
+  }
+}
+
+async function fetchCareer(callsign, agg) {
   try {
     const snapshot = await fireDb.collection('users').where('callsign', '==', callsign).limit(1).get()
     if (snapshot.empty) return null
-    const data = snapshot.docs[0].data()
+    const doc = snapshot.docs[0]
+    const data = doc.data()
     const homeBase = data.currentLocation ?? data.homeBase ?? null
+
+    const history = await fetchCareerFlights(doc.id)
+
+    // "Bases served": an airport the pilot has worked often enough to count as one
+    // — 20+ visits across their approved flying — plus the home base Firestore
+    // records, which counts whether or not it clears the threshold.
+    const bases = new Set(
+      Object.entries(agg?.airportCounts || {})
+        .filter(([, visits]) => visits > BASE_VISIT_THRESHOLD)
+        .map(([icao]) => icao)
+    )
+    if (homeBase) bases.add(homeBase)
+
     return {
       flightHours: data.flightHours ?? 0,
       rank: data.rank ?? null,
@@ -329,6 +392,8 @@ async function fetchCareer(callsign) {
       totalFlights: data.totalFlights ?? 0,
       careerEarnings: data.careerEarnings ?? 0,
       completedEvents: Array.isArray(data.completedEvents) ? data.completedEvents.length : 0,
+      basesServed: bases.size,
+      ...history,
     }
   } catch (err) {
     console.error('Career panel fetch failed (non-fatal):', err)
@@ -387,11 +452,16 @@ async function rebuildProfile(callsign, previous) {
       agg.joinedDate = joined?.[0]?.date ?? null
     }
 
-    const [trails, career, logbook] = await Promise.all([
+    const [trails, career, rawLogbook] = await Promise.all([
       fetchTrailsProgress(callsign),
-      identity.careerMode ? fetchCareer(callsign) : Promise.resolve(null),
+      identity.careerMode ? fetchCareer(callsign, agg) : Promise.resolve(null),
       fetchLogbook(callsign),
     ])
+
+    // Landing telemetry comes from the IF Live API and is matched to these rows by
+    // sector + date; it fails soft, so a missing key or a bad day at IF just means
+    // the logbook renders without its detail panels.
+    const logbook = await attachFlightTelemetry(identity.ifcName, rawLogbook)
 
     const next = {
       version: SCHEMA_VERSION,

@@ -16,6 +16,7 @@ import {
   getRankBg, getRankColor, getRankProgress,
 } from '@/lib/ranks'
 import { getCurrentSeason, loadPixelFont, drawDynamicBadge, BADGE_DEFINITIONS, BADGE_INDEX_TO_ID } from '@/lib/badgeArt'
+import { CAREER_RANKS, getCareerProgress } from '@/lib/careerRanks'
 
 const NetworkMap = dynamic(() => import('./NetworkMap'), { ssr: false })
 
@@ -55,6 +56,7 @@ function fmtDateShort(value) {
 }
 
 const MONTH_INITIALS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 // ── Badge rendering (client canvas compositing, reused from badgeArt.js) ────────
 //
@@ -169,6 +171,106 @@ function ProfileBadge({ badge, ifcName, season, size = 78 }) {
         )}
       </span>
     </button>
+  )
+}
+
+// ── Logbook telemetry ──────────────────────────────────────────────────────────
+//
+// Sourced from the Infinite Flight Live API and matched to the PIREP by sector and
+// date (src/lib/ifFlights.js). Every panel is independently optional: IF doesn't
+// report the same fields for every flight, and a PIREP filed for a flight IF never
+// saw has none at all — in which case the card is just its top row.
+
+function FlightTelemetry({ telemetry }) {
+  if (!telemetry) return null
+  const { landing, dayNight, violations } = telemetry
+  if (!landing && !dayNight && !violations) return null
+
+  // Position on the smooth→hard scale, from the sink rate at touchdown.
+  const fpm = landing ? Math.abs(landing.verticalSpeedFpm) : null
+  const markerPct = fpm != null ? Math.min(100, Math.max(0, (fpm / 600) * 100)) : null
+
+  const dayMin = dayNight?.dayMinutes ?? 0
+  const nightMin = dayNight?.nightMinutes ?? 0
+  const totalMin = dayMin + nightMin
+  const dayPct = totalMin > 0 ? (dayMin / totalMin) * 100 : 0
+
+  const asHm = (mins) => `${Math.floor(mins / 60)}:${String(Math.round(mins % 60)).padStart(2, '0')}`
+
+  return (
+    <>
+      <div className={styles.telemetryRow}>
+        {landing && (
+          <div className={styles.telemetryCard}>
+            <div className={styles.telemetryLabel}>Landing</div>
+            <div className={styles.landingHead}>
+              <span style={{ fontSize: 17, color: landing.grade.color }}>{landing.grade.label}</span>
+              <span className={styles.mono} style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+                {landing.verticalSpeedFpm} fpm
+              </span>
+            </div>
+            <div className={styles.landingScale}>
+              <span className={styles.landingMarker} style={{ left: `${markerPct}%`, background: landing.grade.color }} />
+            </div>
+          </div>
+        )}
+
+        {landing && (Number.isFinite(landing.centerlineDistanceM) || Number.isFinite(landing.groundRollDistanceM)) && (
+          <div className={styles.telemetryCard}>
+            <div className={styles.telemetryLabel}>Touchdown</div>
+            <div style={{ fontSize: 16, margin: '5px 0 11px' }}>
+              {Number.isFinite(landing.centerlineDistanceM)
+                ? `${Math.abs(landing.centerlineDistanceM).toFixed(1)} m off centre`
+                : 'Centreline not reported'}
+              {Number.isFinite(landing.groundRollDistanceM) && (
+                <span style={{ color: 'var(--muted)', fontSize: 12.5 }}>
+                  {' '}· {Math.round(landing.groundRollDistanceM).toLocaleString()} m roll
+                </span>
+              )}
+            </div>
+            <div className={styles.runway}>
+              <span className={styles.runwayCentreline} />
+              {Number.isFinite(landing.groundRollDistanceM) && (
+                <span
+                  className={styles.runwayRoll}
+                  style={{ width: `${Math.min(70, (landing.groundRollDistanceM / 3000) * 100)}%`, background: `linear-gradient(90deg, ${landing.grade.color}4D, transparent)` }}
+                />
+              )}
+              <span className={styles.runwayTouch} style={{ background: landing.grade.color }} />
+            </div>
+            <div className={styles.telemetryFoot}>
+              <span>{landing.maxGForce.toFixed(2)} G</span>
+              {landing.groundSpeedKts != null && (
+                <>
+                  <span style={{ color: '#3A4A50' }}>·</span>
+                  <span>{landing.groundSpeedKts} kt</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {dayNight && (
+          <div className={`${styles.telemetryCard} ${styles.telemetryCardNarrow}`}>
+            <div className={styles.telemetryLabel}>Day / night flying</div>
+            <div className={styles.dayNightBar}>
+              <span style={{ width: `${dayPct}%`, background: 'linear-gradient(180deg, #C9A96E, #8E7548)' }} />
+              <span style={{ width: `${100 - dayPct}%`, background: 'linear-gradient(180deg, #22313A, #161F26)' }} />
+            </div>
+            <div className={styles.mono} style={{ fontSize: 10, color: 'var(--muted)' }}>
+              {dayMin > 0 ? `${asHm(dayMin)} day` : 'no day'} · {nightMin > 0 ? `${asHm(nightMin)} night` : 'no night'}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {violations > 0 && (
+        <div className={styles.violationNote}>
+          <span className={styles.violationDot} />
+          <span>{violations} violation{violations === 1 ? '' : 's'} recorded on this flight</span>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -310,6 +412,30 @@ export default function PilotProfile({ callsign, identity, edits, agg, network, 
       : 0
     return { quarters: out, max, thisQuarter: out[out.length - 1].count, avgMultiplier }
   }, [agg.eventsByQuarter, agg.recentEvents])
+
+  // ── Career ladder + last-6-months chart ──
+  const careerProgress = useMemo(
+    () => getCareerProgress(career?.rank, career?.flightHours),
+    [career?.rank, career?.flightHours]
+  )
+
+  const careerMonthly = useMemo(() => {
+    const now = new Date()
+    const months = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1))
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+      months.push({ key, month: d.getUTCMonth(), year: d.getUTCFullYear(), hours: career?.monthlyHours?.[key] || 0 })
+    }
+    const first = months[0]
+    const last = months[months.length - 1]
+    const label = (m) => `${MONTH_NAMES[m.month]} ${String(m.year).slice(-2)}`
+    return {
+      months,
+      max: Math.max(...months.map((m) => m.hours), 1),
+      rangeLabel: `${label(first)} → ${label(last)}`.toUpperCase(),
+    }
+  }, [career?.monthlyHours])
 
   const airportsVisited = Object.keys(agg.airportCounts || {}).length
   const publicUrl = profileShareUrl(callsign)
@@ -801,14 +927,46 @@ export default function PilotProfile({ callsign, identity, edits, agg, network, 
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div className={styles.mono} style={{ fontSize: 24 }}>{hm(career.flightHours)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)' }}>hours of flying experience</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                      hours of flying experience
+                      {careerProgress.nextRank && ` · ${hm(careerProgress.hoursToNext)} to ${careerProgress.nextRank}`}
+                    </div>
                   </div>
                 </div>
+                {/* Ladder: every rung below the current rank is already achieved,
+                    which is what stands in for a promotion history nobody stores. */}
+                <div className={styles.careerLadder}>
+                  {CAREER_RANKS.map((r, i) => {
+                    const achieved = i <= careerProgress.index
+                    const isCurrent = i === careerProgress.index
+                    return (
+                      <div key={r.rank} className={styles.careerRung}>
+                        <div
+                          className={styles.careerRungBar}
+                          style={{
+                            background: achieved ? 'var(--teal)' : 'var(--line-2)',
+                            height: isCurrent ? 8 : 4,
+                            marginTop: isCurrent ? -2 : 0,
+                          }}
+                        />
+                        <span style={{ fontSize: 11.5, color: isCurrent ? 'var(--ink)' : achieved ? 'var(--muted)' : 'var(--muted-2)' }}>
+                          {r.rank}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+
                 <div className={styles.careerStats}>
                   <div><div className={styles.mono} style={{ fontSize: 19 }}>{career.totalFlights}</div><div className={styles.footSub}>career legs</div></div>
-                  <div><div className={styles.mono} style={{ fontSize: 19 }}>{career.completedEvents}</div><div className={styles.footSub}>events completed</div></div>
-                  <div><div className={styles.mono} style={{ fontSize: 19 }}>{career.typeRatings.length}</div><div className={styles.footSub}>type ratings</div></div>
-                  <div><div className={styles.mono} style={{ fontSize: 19 }}>₹{Number(career.careerEarnings).toLocaleString('en-IN')}</div><div className={styles.footSub}>earnings</div></div>
+                  <div>
+                    <div className={styles.mono} style={{ fontSize: 19 }}>
+                      {career.landingPassRate != null ? `${career.landingPassRate}%` : '—'}
+                    </div>
+                    <div className={styles.footSub}>landing rate pass</div>
+                  </div>
+                  <div><div className={styles.mono} style={{ fontSize: 19 }}>{career.basesServed ?? '—'}</div><div className={styles.footSub}>bases served</div></div>
+                  <div><div className={styles.mono} style={{ fontSize: 19 }}>{careerProgress.promotions}</div><div className={styles.footSub}>promotions</div></div>
                 </div>
               </div>
 
@@ -822,6 +980,29 @@ export default function PilotProfile({ callsign, identity, edits, agg, network, 
                     Unlocked at 40 career hours — the only badge that crosses the two ledgers.
                   </div>
                 </div>
+
+                {careerMonthly.months.some((m) => m.hours > 0) && (
+                  <>
+                    <div className={styles.careerDivider} />
+                    <div className={styles.eyebrow} style={{ marginBottom: 12 }}>Career hours by month</div>
+                    <div className={styles.careerBars}>
+                      {careerMonthly.months.map((m, i) => (
+                        <div
+                          key={m.key}
+                          style={{
+                            flex: 1,
+                            height: `${Math.max((m.hours / careerMonthly.max) * 100, m.hours > 0 ? 4 : 2)}%`,
+                            background: i === careerMonthly.months.length - 1 ? 'var(--teal)' : '#2E4A50',
+                          }}
+                          title={`${m.key}: ${hm(m.hours)} h`}
+                        />
+                      ))}
+                    </div>
+                    <div className={styles.mono} style={{ fontSize: 9, color: 'var(--muted-2)', marginTop: 7 }}>
+                      {careerMonthly.rangeLabel}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -857,6 +1038,7 @@ export default function PilotProfile({ callsign, identity, edits, agg, network, 
                     </div>
                   </div>
                 </div>
+                <FlightTelemetry telemetry={p.telemetry} />
               </div>
             ))}
             {(!logbook || logbook.length === 0) && <span className={styles.emptyNote}>No approved flights yet.</span>}
