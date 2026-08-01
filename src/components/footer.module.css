@@ -39,9 +39,10 @@
   transform-origin: 0 0;
   transform: rotate(90deg) translateY(-100%);
   font-family: var(--font-archivo-black), system-ui, sans-serif;
-  font-size: clamp(44px, 5.5vw, 84px);
-  line-height: 1;
-  letter-spacing: 0.34em;
+  font-size: clamp(96px, 12vw, 168px);
+  /* Sub-1 line-height keeps the rotated band narrow while the glyphs stay big. */
+  line-height: 0.78;
+  letter-spacing: 0.06em;
   color: rgba(255, 255, 255, 0.09);
   user-select: none;
   pointer-events: none;
@@ -171,11 +172,7 @@
       rgba(5, 8, 11, 0.12) 100%),
     url('/globe.webp');
   background-size: cover;
-  /* Anchored to the BOTTOM. The source is a 4.3:1 banner whose top half is empty
-     black sky and whose Earth sits along the bottom edge; `cover` on a strip this
-     shape scales it taller than the strip, so anchoring to the top showed the sky
-     and cropped the Earth away entirely — which read as a black band. */
-  background-position: center bottom;
+  background-position: center top;
   background-repeat: no-repeat;
 }
 

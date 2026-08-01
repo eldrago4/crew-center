@@ -60,7 +60,7 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 
 // Where the touchdown dot sits on the runway strip; the roll bar and exit tick
 // are both measured from here.
-const TOUCHDOWN_PCT = 12
+const TOUCHDOWN_PCT = 10
 
 // ── Badge rendering (client canvas compositing, reused from badgeArt.js) ────────
 //
@@ -194,10 +194,11 @@ function FlightTelemetry({ telemetry }) {
   const fpm = landing ? Math.abs(landing.verticalSpeedFpm) : null
   const markerPct = fpm != null ? Math.min(100, Math.max(0, (fpm / 600) * 100)) : null
 
-  // Roll bar scaled so the design's reference figures land where it drew them
-  // (a 780 m roll ≈ 31% of the strip), capped so a very long rollout still fits.
+  // The strip reads as a ~3,000 m runway: touchdown sits in the touchdown zone at
+  // TOUCHDOWN_PCT and the roll is drawn to the same scale, so the exit tick lands
+  // where the aircraft actually left the surface rather than at an arbitrary spot.
   const rollPct = Number.isFinite(landing?.groundRollDistanceM)
-    ? Math.min(70, (landing.groundRollDistanceM / 2500) * 100)
+    ? Math.min(74, (landing.groundRollDistanceM / 3000) * 100)
     : null
 
   const dayMin = dayNight?.dayMinutes ?? 0
@@ -243,7 +244,7 @@ function FlightTelemetry({ telemetry }) {
               {rollPct != null && (
                 <span
                   className={styles.runwayRoll}
-                  style={{ width: `${rollPct}%`, background: `linear-gradient(90deg, ${landing.grade.color}4D, transparent)` }}
+                  style={{ width: `${rollPct}%`, background: `linear-gradient(90deg, ${landing.grade.color}59, ${landing.grade.color}2E 80%, transparent 100%)` }}
                 />
               )}
               {/* Where the aircraft left the runway: touchdown point plus the
@@ -1041,9 +1042,9 @@ export default function PilotProfile({ callsign, identity, edits, agg, network, 
                     <div className={styles.logSub}>{fmtDateLong(p.date)}</div>
                   </div>
                   <div className={styles.logRoute}>
-                    <span className={styles.mono}>{p.departureIcao}</span>
+                    <span className={`${styles.mono} ${styles.logRouteFrom}`}>{p.departureIcao}</span>
                     <span className={styles.logDots} />
-                    <span className={styles.mono}>{p.arrivalIcao}</span>
+                    <span className={`${styles.mono} ${styles.logRouteTo}`}>{p.arrivalIcao}</span>
                   </div>
                   <div className={styles.logMeta}>
                     <div className={styles.mono} style={{ fontSize: 15 }}>
