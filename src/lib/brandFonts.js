@@ -53,4 +53,4 @@ export const brandFontClass = [
 ].join(' ')
 
 // Just what the footer needs.
-export const footerFontClass = [plexSans.variable, archivoBlack.variable].join(' ')
+export const footerFontClass = [plexSans.variable, plexMono.variable, archivoBlack.variable].join(' ')
