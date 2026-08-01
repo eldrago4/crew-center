@@ -137,12 +137,13 @@
   transition: color 180ms ease;
   text-decoration: none;
 }
-.link::after {
-  content: '→'; opacity: 0; transform: translateX(-6px);
-  transition: opacity 180ms ease, transform 180ms ease; color: var(--gold);
+.linkArrow {
+  flex: none; width: 15px; height: 15px; color: var(--gold);
+  opacity: 0; transform: translateX(-6px);
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 .link:hover { color: var(--ink); }
-.link:hover::after { opacity: 1; transform: translateX(0); }
+.link:hover .linkArrow { opacity: 1; transform: translateX(0); }
 
 .cta {
   margin-top: 26px; display: inline-flex; align-items: center; gap: 10px;

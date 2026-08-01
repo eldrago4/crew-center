@@ -1,4 +1,5 @@
 import NextImage from 'next/image'
+import { RxArrowTopRight } from 'react-icons/rx'
 import styles from './footer.module.css'
 import { footerFontClass } from '@/lib/brandFonts'
 
@@ -56,7 +57,10 @@ export default function Footer() {
             <h2 className={styles.colHead} id="footer-quick-links">Quick Links</h2>
             <div className={styles.links}>
               {QUICK_LINKS.map((l) => (
-                <a key={l.href} className={styles.link} href={l.href}>{l.label}</a>
+                <a key={l.href} className={styles.link} href={l.href}>
+                  {l.label}
+                  <RxArrowTopRight className={styles.linkArrow} aria-hidden="true" />
+                </a>
               ))}
             </div>
           </nav>
@@ -73,6 +77,7 @@ export default function Footer() {
                   rel="noreferrer"
                 >
                   {l.label}
+                  <RxArrowTopRight className={styles.linkArrow} aria-hidden="true" />
                 </a>
               ))}
             </div>
