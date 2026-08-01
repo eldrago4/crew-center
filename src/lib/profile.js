@@ -29,7 +29,7 @@ const LOCK_TTL_SECONDS = 10
 // Bump when the shape of the cached object changes — a stored object with an older
 // version is treated as a hard miss and rebuilt from scratch, so new aggregate
 // fields get backfilled instead of staying permanently undefined.
-const SCHEMA_VERSION = 4
+const SCHEMA_VERSION = 5
 
 let _redis = null
 function getRedis() {
@@ -270,7 +270,10 @@ function buildNetwork(agg, careerRoutePairs = {}) {
       const [from, to] = pk.split('-')
       return { from, to, count }
     })
-    .filter((s) => airports[s.from] && airports[s.to])
+    // Same-airport PIREPs (pattern work, or a leg filed with one field copied)
+    // aren't sectors: they draw as a zero-length arc, and being numerous they
+    // were topping the "most flown" chip as a meaningless VABB–VABB.
+    .filter((s) => s.from !== s.to && airports[s.from] && airports[s.to])
     .sort((a, b) => b.count - a.count)
 
   const hub = Object.entries(agg.airportCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null

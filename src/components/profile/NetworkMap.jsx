@@ -12,8 +12,19 @@ import { useEffect, useRef } from 'react'
 //
 // The named Map import matters too: maplibre-gl v6 ships named exports only, with
 // no default, so reaching for `.default` finds nothing.
-import { Map as MapLibreMap } from 'maplibre-gl'
+import { Map as MapLibreMap, setWorkerUrl } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+
+// MapLibre v6 loads its worker from a separate ESM file whose URL it derives from
+// import.meta.url inside the library. Under Turbopack that points at a bundled
+// chunk path where the worker isn't served, so no worker is ever created — and
+// because GeoJSON is parsed IN that worker, every GeoJSON source hangs unloaded
+// while raster tiles (which need no parsing) draw normally. The result is a
+// basemap with none of our arcs or airport dots on it.
+//
+// scripts/copy-maplibre-worker.mjs puts the worker at a stable public path on
+// every build; this points the library at it.
+setWorkerUrl('/maplibre-gl-worker.mjs')
 
 // Great-circle interpolation between two [lng, lat] points — same maths as the
 // design's own initMap(), so arcs bend the way a real sector does instead of
