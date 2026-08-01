@@ -1,0 +1,183 @@
+/* Site footer — a single near-black slab so it meets the globe strip's own black
+   sky with no visible seam, with the A350 and an oversized INVA wordmark sitting
+   behind the content as quiet brand furniture. Gold is the only accent; the old
+   orange/green pairing (bullets, headings, CTA) is gone. */
+
+.footer {
+  --ink: #F4F1EA;
+  --muted: #98A2AA;
+  --muted-2: #66727C;
+  --gold: #C9A96E;
+  --gold-hi: #E4CB96;
+  --hair: rgba(255, 255, 255, 0.08);
+  position: relative;
+  width: 100%;
+  /* Matches the globe image's black sky so the copyright strip reads as one
+     continuous surface rather than a pasted-on band. */
+  background: #05080B;
+  color: var(--ink);
+  font-family: var(--font-plex-condensed), system-ui, sans-serif;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* ── Background furniture ─────────────────────────────────────────────────── */
+
+/* Oversized wordmark. Sits low and left, cropped by the footer's own bounds —
+   deliberately bled off rather than centred, so it reads as texture. */
+.brandMark {
+  position: absolute;
+  left: -0.06em;
+  bottom: -0.30em;
+  margin: 0;
+  font-family: var(--font-archivo-black), system-ui, sans-serif;
+  font-size: clamp(150px, 27vw, 460px);
+  line-height: 0.8;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.035);
+  user-select: none;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 0;
+}
+
+/* The A350 faces left, so a small counter-clockwise turn lifts the nose. Faded
+   into the ground from the right so it never competes with the link columns. */
+.aircraft {
+  position: absolute;
+  right: -6%;
+  top: 4%;
+  width: min(68%, 900px);
+  transform: rotate(-8deg);
+  transform-origin: 70% 50%;
+  opacity: 0.16;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+  -webkit-mask-image: linear-gradient(to left, #000 45%, transparent 100%);
+  mask-image: linear-gradient(to left, #000 45%, transparent 100%);
+}
+@media (max-width: 900px) {
+  .aircraft { width: 118%; right: -30%; top: auto; bottom: 26%; opacity: 0.1; }
+}
+
+/* ── Main body ─────────────────────────────────────────────────────────────── */
+
+.body {
+  position: relative;
+  z-index: 1;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 92px 24px 72px;
+}
+@media (max-width: 700px) { .body { padding: 64px 18px 52px; } }
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 56px;
+}
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; gap: 44px; } }
+
+.brandRow { display: flex; align-items: center; gap: 16px; }
+.logoRing {
+  width: 62px; height: 62px; flex: none; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hair);
+}
+.wordmark {
+  font-family: var(--font-archivo-black), system-ui, sans-serif;
+  font-size: 27px; letter-spacing: -0.015em; line-height: 1.05; margin: 0;
+}
+.tagline {
+  margin: 6px 0 0; font-size: 13px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--gold);
+}
+
+.blurb {
+  margin: 26px 0 0; max-width: 46ch;
+  font-size: 15.5px; line-height: 1.65; color: var(--muted);
+}
+
+.flagLine {
+  margin-top: 22px; display: inline-flex; align-items: center; gap: 9px;
+  font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-2);
+}
+
+/* Column headings — no colour, just weight and tracking. */
+.colHead {
+  font-family: var(--font-archivo-black), system-ui, sans-serif;
+  font-size: 11.5px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink); margin: 0 0 22px;
+}
+
+.links { display: flex; flex-direction: column; gap: 0; }
+/* Bulletless: each link is a full-width row with a hairline under it, and the
+   gold arrow only appears on hover. */
+.link {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 11px 0; font-size: 14.5px; color: var(--muted);
+  border-bottom: 1px solid var(--hair);
+  transition: color 180ms ease, padding-left 180ms ease;
+  text-decoration: none;
+}
+.link::after {
+  content: '→'; opacity: 0; transform: translateX(-6px);
+  transition: opacity 180ms ease, transform 180ms ease; color: var(--gold);
+}
+.link:hover { color: var(--ink); padding-left: 6px; }
+.link:hover::after { opacity: 1; transform: translateX(0); }
+
+.cta {
+  margin-top: 26px; display: inline-flex; align-items: center; gap: 10px;
+  padding: 13px 22px; border-radius: 2px;
+  background: var(--gold); color: #10131A;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  text-decoration: none; transition: background 180ms ease, transform 180ms ease;
+}
+.cta:hover { background: var(--gold-hi); transform: translateY(-1px); }
+
+/* ── Copyright strip over the globe ───────────────────────────────────────── */
+
+.strip {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--hair);
+  /* The image's black sky is at the top, which is what lets it butt against the
+     slab above without a seam; the Earth limb sits behind the fine print. */
+  background-image: linear-gradient(to bottom, rgba(5, 8, 11, 0.86), rgba(5, 8, 11, 0.35)), url('/globe.webp');
+  background-size: cover;
+  background-position: center top;
+}
+
+.stripInner {
+  max-width: 1240px; margin: 0 auto; padding: 34px 24px 40px;
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 28px;
+  flex-wrap: wrap;
+}
+@media (max-width: 820px) {
+  .stripInner { flex-direction: column; align-items: flex-start; padding: 30px 18px 34px; }
+}
+
+.copy { font-size: 13.5px; color: var(--ink); margin: 0; }
+.credit { font-size: 12.5px; color: var(--muted); margin: 7px 0 0; }
+.credit strong { color: var(--gold); font-weight: 600; }
+
+.legalRow { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+.legalLink {
+  font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted-2); text-decoration: none; transition: color 180ms ease;
+}
+.legalLink:hover { color: var(--gold); }
+.legalDot { color: rgba(255, 255, 255, 0.18); font-size: 11px; }
+
+.disclaimer {
+  max-width: 44ch; font-size: 11.5px; line-height: 1.6;
+  color: var(--muted-2); text-align: right; margin: 0;
+}
+@media (max-width: 820px) { .disclaimer { text-align: left; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .link, .link::after, .cta { transition: none; }
+}
