@@ -216,6 +216,16 @@ export function getAircraftById(id) {
   return AIRCRAFT.find((a) => a.id === id) || null
 }
 
+// Career mode names its type ratings with its own code set:
+//   A320 A321 A350 A359 B38M B738 B744 B77L B77W B788 B789
+// All of those match a fleet `code` directly except these two, which are family
+// designators rather than specific variants and so have no entry of their own.
+// Mapped to the variant INVA actually operates.
+const CODE_ALIASES = {
+  A350: 'A359', // A350 family -> the -900 we fly
+  B737: 'B738', // 737 family  -> the -800 Air India Express flies
+}
+
 // Resolve a bare type designator (e.g. a career-mode type rating like "A320" or
 // "B738") to a fleet entry so its livery art can be shown inline. Matches the ICAO
 // code first, then the marketing type; where two liveries share a code (A320 flies
@@ -223,7 +233,8 @@ export function getAircraftById(id) {
 // Air India one — the group's primary brand.
 export function getAircraftByCode(code) {
   if (!code) return null
-  const needle = String(code).trim().toUpperCase().replace(/[\s-]/g, '')
+  const raw = String(code).trim().toUpperCase().replace(/[\s-]/g, '')
+  const needle = CODE_ALIASES[raw] ?? raw
   return (
     AIRCRAFT.find((a) => a.code.toUpperCase() === needle) ||
     AIRCRAFT.find((a) => a.type.toUpperCase().replace(/[\s-]/g, '') === needle) ||
