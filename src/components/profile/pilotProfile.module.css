@@ -45,6 +45,32 @@
 }
 .emptyNote { font-size: 12.5px; color: var(--muted); }
 
+/* ── Loading skeleton ─────────────────────────────────────────────────────
+   Shown while the profile resolves. It has to occupy roughly a viewport on its
+   own: with an empty fallback the page collapsed to nothing and the site footer
+   rode up under the navbar before any content arrived. */
+.skeleton { min-height: 100vh; }
+.skelBlock {
+  background: linear-gradient(90deg, #141D22 25%, #1B262C 50%, #141D22 75%);
+  background-size: 400% 100%;
+  animation: skelShimmer 1.4s ease infinite;
+  border-radius: 4px;
+}
+@keyframes skelShimmer { from { background-position: 100% 50%; } to { background-position: 0% 50%; } }
+@media (prefers-reduced-motion: reduce) { .skelBlock { animation: none; } }
+.skelCircle { border-radius: 50%; }
+.skelHeader {
+  display: grid; grid-template-columns: 1fr 340px 1fr; gap: 36px;
+  align-items: center; padding: 40px 0 44px;
+}
+@media (max-width: 980px) { .skelHeader { grid-template-columns: 1fr; justify-items: center; } }
+.skelCol { display: flex; flex-direction: column; gap: 14px; width: 100%; }
+.skelCentre { align-items: center; }
+.skelStrip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 18px; padding: 22px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+@media (max-width: 900px) { .skelStrip { grid-template-columns: repeat(3, 1fr); } }
+.skelPanels { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 28px; padding: 34px 0; }
+@media (max-width: 900px) { .skelPanels { grid-template-columns: 1fr; } }
+
 /* ── Back button (crew variant) ─────────────────────────────────────────── */
 .backRow { padding: 20px 0 0; }
 .backBtn {
@@ -306,6 +332,18 @@
   background: rgba(14,20,23,0.82); border-top: 1px solid var(--line); border-right: 1px solid var(--line);
   backdrop-filter: blur(6px); max-width: 100%; overflow-x: auto;
 }
+/* Sits opposite MapLibre's own attribution so the two never collide. */
+.mapToggle {
+  position: absolute; top: 12px; right: 12px; z-index: 2;
+  padding: 7px 12px; border-radius: 3px; cursor: pointer;
+  background: rgba(14, 20, 23, 0.82); border: 1px solid var(--line);
+  backdrop-filter: blur(6px);
+  font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); transition: color 160ms ease, border-color 160ms ease;
+}
+.mapToggle:hover { color: var(--ink); border-color: rgba(201, 169, 110, 0.45); }
+
 .mapStat { padding: 12px 18px; border-left: 1px solid var(--line-2); white-space: nowrap; }
 .mapStat:first-child { border-left: none; }
 .mapStatSub { font-size: 10.5px; color: var(--muted); }

@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import styles from './pilotProfile.module.css'
 // Both imports are static and deliberate. This module is only ever reached via
 // next/dynamic with ssr:false (see PilotProfile), so it never evaluates on the
 // server and the cost still lands in its own client chunk.
@@ -59,6 +60,11 @@ function greatCircle(a, b, n = 64) {
 export default function NetworkMap({ network }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
+  const [showLines, setShowLines] = useState(true)
+  // Mirrored into a ref so the map-creation effect (which depends only on
+  // `network`) can honour the current choice if the style finishes loading after
+  // the user has already toggled.
+  const showLinesRef = useRef(true)
 
   useEffect(() => {
     const el = containerRef.current
@@ -150,7 +156,7 @@ export default function NetworkMap({ network }) {
         id: 'arcs',
         type: 'line',
         source: 'lines',
-        layout: { 'line-cap': 'round' },
+        layout: { 'line-cap': 'round', visibility: showLinesRef.current ? 'visible' : 'none' },
         paint: {
           'line-color': ['case', ['==', ['get', 'top'], 1], '#C9A96E', '#5FAFB8'],
           // Floor of 1.2px: when every sector has been flown once the whole set
@@ -204,14 +210,34 @@ export default function NetworkMap({ network }) {
     }
   }, [network])
 
+  // Toggling visibility rather than removing the layer keeps the parsed source
+  // intact, so flipping it back is instant. Guarded on getLayer because the map
+  // may not have finished loading when this first runs.
+  useEffect(() => {
+    showLinesRef.current = showLines
+    const map = mapRef.current
+    if (!map || !map.getLayer?.('arcs')) return
+    map.setLayoutProperty('arcs', 'visibility', showLines ? 'visible' : 'none')
+  }, [showLines])
+
   return (
-    <div
-      ref={containerRef}
-      style={{
-        height: 430,
-        width: '100%',
-        background: 'repeating-linear-gradient(115deg,#141D22 0 9px,#111A1F 9px 18px)',
-      }}
-    />
+    <div style={{ position: 'relative' }}>
+      <div
+        ref={containerRef}
+        style={{
+          height: 430,
+          width: '100%',
+          background: 'repeating-linear-gradient(115deg,#141D22 0 9px,#111A1F 9px 18px)',
+        }}
+      />
+      <button
+        type="button"
+        className={styles.mapToggle}
+        onClick={() => setShowLines((v) => !v)}
+        aria-pressed={!showLines}
+      >
+        {showLines ? 'Hide routes' : 'Show routes'}
+      </button>
+    </div>
   )
 }

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { getProfileData } from '@/lib/profile'
 import { profileShareUrl } from '@/lib/profileLink'
 import PilotProfile from '@/components/profile/PilotProfile'
+import ProfileSkeleton from '@/components/profile/ProfileSkeleton'
 
 export async function generateMetadata({ params }) {
   const { callsign } = await params
@@ -67,7 +68,7 @@ export default async function PublicPilotProfilePage({ params }) {
   return (
     <>
       <DynamicMarker />
-      <Suspense fallback={null}>
+      <Suspense fallback={<ProfileSkeleton />}>
         <PublicProfileData callsign={upperCallsign} />
       </Suspense>
     </>

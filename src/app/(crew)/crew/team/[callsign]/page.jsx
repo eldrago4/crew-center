@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { auth } from '@/auth'
 import { getProfileData } from '@/lib/profile'
 import PilotProfile from '@/components/profile/PilotProfile'
+import ProfileSkeleton from '@/components/profile/ProfileSkeleton'
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -54,7 +55,7 @@ export default async function CrewPilotProfilePage({ params }) {
   return (
     <>
       <DynamicMarker />
-      <Suspense fallback={null}>
+      <Suspense fallback={<ProfileSkeleton showBack />}>
         <CrewProfileData callsign={upperCallsign} />
       </Suspense>
     </>

@@ -436,18 +436,22 @@ async function rebuildProfile(callsign, previous) {
   const lock = lockKey(callsign)
   const gotLock = await redis.set(lock, '1', { nx: true, ex: LOCK_TTL_SECONDS })
 
+  // Losing the lock is not a reason to fail. If there's something cached, serve it;
+  // otherwise wait briefly for the winner's write, and if that doesn't land, build
+  // it here anyway. Duplicated work on a cold profile is cheap next to rendering a
+  // 404 for a pilot who plainly exists — which is what returning null did, because
+  // the page can't tell "rebuild timed out" from "no such callsign".
   if (!gotLock) {
-    // Someone else is rebuilding. If we have something to show, show it. On a hard
-    // miss there's nothing yet — briefly poll for the winner's write rather than
-    // returning null, which would otherwise render a spurious "pilot not found"
-    // (this is exactly what made generateMetadata and the page body disagree).
     if (previous) return previous
     for (let i = 0; i < 12; i++) {
       await new Promise((r) => setTimeout(r, 250))
       const raw = await redis.get(profileKey(callsign))
-      if (raw) return typeof raw === 'string' ? JSON.parse(raw) : raw
+      if (raw) {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+        if (parsed?.version === SCHEMA_VERSION) return parsed
+      }
     }
-    return null
+    console.warn(`[profile] ${callsign}: lock held elsewhere and nothing written; building without it`)
   }
 
   try {
@@ -509,7 +513,9 @@ async function rebuildProfile(callsign, previous) {
     await redis.set(profileKey(callsign), JSON.stringify(next))
     return next
   } finally {
-    await redis.del(lock).catch(() => {})
+    // Only release a lock we actually hold — the fall-through path above runs
+    // without one, and deleting it there would free the real holder's lock.
+    if (gotLock) await redis.del(lock).catch(() => {})
   }
 }
 

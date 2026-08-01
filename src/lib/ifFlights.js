@@ -14,6 +14,11 @@ const IF_BASE = 'https://api.infiniteflight.com/public/v2'
 // last week's landing to today's row.
 const MATCH_WINDOW_DAYS = 2
 
+// Whole-operation budget. This runs on the cold-profile path, where the pilot is
+// already waiting on a full PIREP scan, and telemetry is a garnish — a slow or
+// hanging IF must never be what keeps the page from rendering.
+const TELEMETRY_BUDGET_MS = 8000
+
 async function ifFetch(url, options = {}) {
   const res = await fetch(url, options)
   if (!res.ok) throw new Error(`IF API HTTP ${res.status}`)
@@ -67,12 +72,29 @@ function dayNight(flight) {
 
 /**
  * Attach landing telemetry to logbook rows.
- * Returns the rows unchanged (minus any `telemetry`) if IF can't be reached.
+ * Returns the rows unchanged (minus any `telemetry`) if IF can't be reached, or if
+ * it doesn't answer inside TELEMETRY_BUDGET_MS.
  */
 export async function attachFlightTelemetry(ifcName, logbook) {
   const apiKey = process.env.INFINITE_FLIGHT_API_KEY
   if (!apiKey || !ifcName || !Array.isArray(logbook) || logbook.length === 0) return logbook
 
+  let timer
+  const budget = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[ifFlights] telemetry budget exceeded for ${ifcName}; rendering logbook without it`)
+      resolve(logbook)
+    }, TELEMETRY_BUDGET_MS)
+  })
+
+  try {
+    return await Promise.race([fetchTelemetry(apiKey, ifcName, logbook), budget])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function fetchTelemetry(apiKey, ifcName, logbook) {
   try {
     const userId = await resolveUserId(apiKey, ifcName)
     if (!userId) return logbook
