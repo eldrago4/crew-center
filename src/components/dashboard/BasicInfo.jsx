@@ -4,7 +4,8 @@ import { Container, Box, Flex, Text, Heading, Stack, Progress, Avatar, Grid, Gri
 import { updateUserRank } from '@/app/actions'
 import Notams from './Notams'
 import { useEffect, useState, useRef } from 'react'
-import { FaShareSquare, FaCheck } from 'react-icons/fa'
+import NextLink from 'next/link'
+import { FaShareSquare, FaCheck, FaEdit } from 'react-icons/fa'
 import { getCurrentSeason, loadPixelFont, drawDynamicBadge, BADGE_DEFINITIONS } from '@/lib/badgeArt'
 import { profileShareUrl } from '@/lib/profileLink'
 
@@ -615,6 +616,23 @@ export default function BasicInfo({ ifcName, callsign, image, flightTime, rank, 
                   >
                     {profileLinkCopied ? <FaCheck size={13} /> : <FaShareSquare size={13} />}
                   </Box>
+                  {callsign && (
+                    <Box
+                      as={NextLink}
+                      href={`/crew/team/${callsign}`}
+                      aria-label="Edit profile"
+                      title="Edit profile"
+                      display="inline-flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      color="fg"
+                      opacity={0.5}
+                      _hover={{ opacity: 1 }}
+                      transition="opacity 150ms ease"
+                    >
+                      <FaEdit size={13} />
+                    </Box>
+                  )}
                 </Heading>
                 <Box>
                   <Text fontSize="xs" color="fg" opacity={0.55} fontWeight="semibold" textTransform="uppercase" letterSpacing="wider">
