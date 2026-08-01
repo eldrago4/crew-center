@@ -24,23 +24,32 @@
 
 /* ── Background furniture ─────────────────────────────────────────────────── */
 
-/* Oversized wordmark. Sits low and left, cropped by the footer's own bounds —
-   deliberately bled off rather than centred, so it reads as texture. */
+/* Wordmark set on its side and run down the footer's left edge, spanning the whole
+   slab — including over the globe strip, which is why it sits above that layer
+   rather than behind everything.
+   The transform reads right-to-left: translateY(-100%) first lifts the box by its
+   own height, then the 90deg turn about the top-left corner drops it back so the
+   text starts at the very top-left and runs downward. Without that lift, rotating
+   about the corner would swing the line box off-canvas to the left. */
 .brandMark {
   position: absolute;
-  left: -0.05em;
-  bottom: -0.22em;
+  left: 0;
+  top: 0;
   margin: 0;
+  transform-origin: 0 0;
+  transform: rotate(90deg) translateY(-100%);
   font-family: var(--font-archivo-black), system-ui, sans-serif;
-  font-size: clamp(84px, 15vw, 240px);
-  line-height: 0.8;
-  letter-spacing: 0.18em;
-  color: rgba(255, 255, 255, 0.075);
+  font-size: clamp(44px, 5.5vw, 84px);
+  line-height: 1;
+  letter-spacing: 0.34em;
+  color: rgba(255, 255, 255, 0.09);
   user-select: none;
   pointer-events: none;
   white-space: nowrap;
-  z-index: 0;
+  z-index: 2;
 }
+/* Narrow viewports have no spare gutter for it — it would sit on the copy. */
+@media (max-width: 1100px) { .brandMark { display: none; } }
 
 /* The A350 faces left, so a POSITIVE (clockwise) turn is what lifts its nose —
    clockwise carries the left-hand end of a horizontal upward. Faded into the
@@ -153,6 +162,7 @@
      slab above without a seam. The scrim stays heavy only for that first strip
      and then thins out fast, so the Earth limb and atmosphere actually read
      instead of being flattened to a dark texture. */
+  background-color: #05080B;
   background-image:
     linear-gradient(to bottom,
       rgba(5, 8, 11, 0.94) 0%,
@@ -161,7 +171,12 @@
       rgba(5, 8, 11, 0.12) 100%),
     url('/globe.webp');
   background-size: cover;
-  background-position: center top;
+  /* Anchored to the BOTTOM. The source is a 4.3:1 banner whose top half is empty
+     black sky and whose Earth sits along the bottom edge; `cover` on a strip this
+     shape scales it taller than the strip, so anchoring to the top showed the sky
+     and cropped the Earth away entirely — which read as a black band. */
+  background-position: center bottom;
+  background-repeat: no-repeat;
 }
 
 .stripInner {
