@@ -59,24 +59,15 @@ function getRedis() {
   return _redis;
 }
 
-// routes.arrivalIcao is free text and ~20 rows carry a routing note rather than a
-// bare code: "EBBR VIA GBYD", "DIAP (VIA DGAA)", "ZSPD (VIA VIDP, VTBS)", plus a
-// few with stray whitespace or a trailing backtick. The destination is always the
-// leading token, and the via-points are deliberate information a pilot entered, so
-// they're read past here rather than scrubbed out of the table.
-//
-// Returns null when there's no 4-letter code to find, so a genuinely junk value
-// falls through to the gradient instead of searching Pexels for nonsense.
-export function normalizeIcao(value) {
-  // Anchored, so only a genuine leading code counts. An unanchored match would
-  // pick the first four letters found anywhere and happily turn "not-an-icao"
-  // into "ICAO".
-  const match = String(value ?? '').trim().toUpperCase().match(/^[A-Z]{4}/);
-  return match ? match[ 0 ] : null;
-}
-
+// Callers pass an already-cleaned code. ~20 rows in the routes table store a
+// routing note rather than a bare ICAO ("EBBR VIA GBYD", "DIAP (VIA DGAA)"), but
+// that's normalised before it ever reaches here — by cleanIcao() in
+// RoutesClient, which is the single definition feeding the display, the filters,
+// the SimBrief deep links and this lookup, and again by the backdrops route,
+// which can't assume the client did it. Deliberately not repeated here: a third
+// copy of the rule is a third chance for the three to disagree.
 export function airportPlace(icao) {
-  const entry = airportCities[ normalizeIcao(icao) ];
+  const entry = airportCities[ icao ];
   if (!entry) return null;
   const [ city, region, country ] = entry.split('|');
   return { city, region: region || '', country: country || '' };
@@ -169,11 +160,9 @@ export async function fetchAirportBackdrop(icao) {
   return null;
 }
 
-// Reads Redis first: one MGET covers the whole page, so a fully warm page costs a
-// single round trip rather than one call per airport.
-// Resolves a set of already-canonical ICAOs. Kept separate from the exported
-// entry point so the cache is only ever keyed by a clean code.
-async function resolveCanonical(icaos) {
+// Resolve a batch, reading Redis first. One MGET covers the whole page, so a
+// fully warm page costs a single round trip rather than one call per airport.
+export async function resolveBackdrops(icaos) {
   const redis = getRedis();
   const resolved = {};
   let unknown = [ ...icaos ];
@@ -230,27 +219,6 @@ async function resolveCanonical(icaos) {
     }));
   }
 
-  return resolved;
-}
-
-// Resolve a batch as the caller asked for it. Each requested value is reduced to
-// its canonical ICAO first, so a row like "EBBR VIA GBYD" shares one cache entry
-// and one Pexels lookup with a plain "EBBR" — before this, those rows matched
-// nothing in the city table and were permanently stuck on the gradient.
-//
-// Results come back keyed by exactly what was passed in, so the caller can look
-// them up with the same strings it holds.
-export async function resolveBackdrops(icaos) {
-  const canonicalOf = new Map(icaos.map((raw) => [ raw, normalizeIcao(raw) ]));
-  const unique = [ ...new Set([ ...canonicalOf.values() ].filter(Boolean)) ];
-
-  const byCanonical = unique.length ? await resolveCanonical(unique) : {};
-
-  const resolved = {};
-  for (const raw of icaos) {
-    const canonical = canonicalOf.get(raw);
-    resolved[ raw ] = canonical ? (byCanonical[ canonical ] ?? null) : null;
-  }
   return resolved;
 }
 
