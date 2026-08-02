@@ -29,7 +29,7 @@ const LOCK_TTL_SECONDS = 10
 // Bump when the shape of the cached object changes — a stored object with an older
 // version is treated as a hard miss and rebuilt from scratch, so new aggregate
 // fields get backfilled instead of staying permanently undefined.
-const SCHEMA_VERSION = 5
+const SCHEMA_VERSION = 6
 
 let _redis = null
 function getRedis() {
@@ -201,11 +201,11 @@ function mergePirepsIntoAgg(agg, rows) {
     const opId = operatorIdFor(row.flightNumber)
     agg.operatorHours[opId] = (agg.operatorHours[opId] || 0) + hrs
 
-    // Event heuristic: any boosted multiplier (2x and up is already an event
-    // rate at INVA), or a trail code in the comments.
+    // Event heuristic: a multiplier above 2x, or a trail code in the comments.
+    // Plain 2x is excluded — it's a common routine bonus rather than an event rate.
     const trail = matchTrailCode(row.comments)
     const multiplier = Number(row.multiplier) || 1
-    const isEvent = multiplier >= 2 || !!trail
+    const isEvent = multiplier > 2 || !!trail
     if (isEvent) {
       agg.eventsFlown += 1
       const qk = quarterKey(row.date)
