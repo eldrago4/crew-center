@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireUser, requireStaff } from '@/lib/apiAuth';
-import { fetchAirportBackdrop, probeAirportBackdrop } from '@/lib/pexels';
+import { resolveBackdrops, probeAirportBackdrop } from '@/lib/pexels';
 
 // Arrival-airport photos for the gallery view of /crew/routes.
 //
@@ -62,24 +62,21 @@ export async function GET(request) {
         return NextResponse.json({ error: 'icaos is required' }, { status: 400 });
     }
 
-    // allSettled, not all: one airport whose lookup fails (or is rate-limited)
-    // must not blank the other fourteen cards on the page.
-    const settled = await Promise.allSettled(icaos.map((icao) => fetchAirportBackdrop(icao)));
-
-    const backdrops = {};
-    settled.forEach((result, i) => {
-        backdrops[ icaos[ i ] ] = result.status === 'fulfilled' ? (result.value || null) : null;
-    });
-
-    const failed = settled.filter((r) => r.status === 'rejected');
-    if (failed.length) {
-        console.error(`Backdrop lookup failed for ${failed.length}/${icaos.length} airports:`, failed[ 0 ].reason?.message);
+    // resolveBackdrops reads the whole batch from Redis in one MGET, resolves
+    // only what's missing (under its own per-request budget), and never throws —
+    // an airport it can't resolve comes back null and the card keeps its
+    // gradient rather than the page losing its other fourteen.
+    let backdrops = {};
+    try {
+        backdrops = await resolveBackdrops(icaos);
+    } catch (error) {
+        console.error('Error resolving route backdrops:', error);
     }
 
     return NextResponse.json({ backdrops }, {
-        // Private — this sits behind the crew session check above. The real
-        // caching is the per-ICAO 'use cache' inside fetchAirportBackdrop; this
-        // just stops a pilot paging back and forth from re-asking every time.
+        // Private — this sits behind the crew session check above. The durable
+        // caching is Redis, keyed per ICAO and outliving deploys; this just stops
+        // a pilot paging back and forth from re-asking every time.
         headers: { 'Cache-Control': 'private, max-age=3600' },
     });
 }
