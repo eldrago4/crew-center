@@ -300,122 +300,41 @@ function GlassBadgeCard({ badge, ifcName, season, size }) {
   )
 }
 
-// ── BladeSeparator ────────────────────────────────────────────────────────────
-// Replaces the old flat 1px gold rule. The divider is an elongated diamond, so
-// both ends converge to needle points and the mid-span carries the full width.
-// On top of the silhouette: a metallic facet across the thickness, a blurred
-// gold silhouette behind it for bleed, a glint that travels the length, and a
-// faceted gem pinned at the widest point.
+// ── GoldSeparator ─────────────────────────────────────────────────────────────
+// The same thin gold rule as before, only the ends taper to a point instead of
+// stopping square. The rule holds its full thickness across the middle and
+// converges over the last ~10% at each end.
 
-const BLADE_CLIP = 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)'
+const TAPER_Y = 'polygon(50% 0%, 100% 10%, 100% 90%, 50% 100%, 0% 90%, 0% 10%)'
+const TAPER_X = 'polygon(0% 50%, 10% 0%, 90% 0%, 100% 50%, 90% 100%, 10% 100%)'
 
-const BLADE_CSS = `
-  @keyframes bladeGlintY {
-    0%   { transform: translate3d(0, -170%, 0); opacity: 0; }
-    12%  { opacity: 1; }
-    88%  { opacity: 1; }
-    100% { transform: translate3d(0, 170%, 0); opacity: 0; }
-  }
-  @keyframes bladeGlintX {
-    0%   { transform: translate3d(-170%, 0, 0); opacity: 0; }
-    12%  { opacity: 1; }
-    88%  { opacity: 1; }
-    100% { transform: translate3d(170%, 0, 0); opacity: 0; }
-  }
-  @keyframes bladeGemPulse {
-    from { opacity: 0.55; transform: translate(-50%, -50%) rotate(45deg) scale(0.88); }
-    to   { opacity: 1;    transform: translate(-50%, -50%) rotate(45deg) scale(1.14); }
-  }
-  .blade-glint-y { animation: bladeGlintY 5s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
-  .blade-glint-x { animation: bladeGlintX 5s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
-  .blade-gem     { animation: bladeGemPulse 2.8s ease-in-out infinite alternate; }
-  @media (prefers-reduced-motion: reduce) {
-    .blade-glint-y, .blade-glint-x { animation: none !important; opacity: 0.25 !important; }
-    .blade-gem { animation: none !important; opacity: 0.9 !important; }
-  }
-`
-
-// axis: 'y' → vertical blade (desktop), 'x' → horizontal blade (mobile).
-function Blade({ axis, ...rest }) {
-  const isVertical = axis === 'y'
-  // The facet runs across the thickness; the glint travels along the length.
-  const facetAxis = isVertical ? 'to right' : 'to bottom'
-  const facet = `linear-gradient(${facetAxis},
-    rgba(104, 74, 14, 0.25) 0%,
-    rgba(176, 138, 44, 0.85) 26%,
-    rgba(255, 243, 196, 0.98) 50%,
-    rgba(176, 138, 44, 0.85) 74%,
-    rgba(104, 74, 14, 0.25) 100%)`
-
-  return (
-    <Box position="absolute" inset="0" pointerEvents="none" {...rest}>
-      {/* Blurred silhouette — gold bleed around the points */}
-      <Box
-        position="absolute"
-        inset="0"
-        style={{
-          clipPath: BLADE_CLIP,
-          background: 'linear-gradient(rgba(212, 175, 55, 0.9), rgba(212, 175, 55, 0.9))',
-          filter: 'blur(5px)',
-          opacity: 0.55,
-        }}
-      />
-
-      {/* Blade body — the glint is clipped to this same silhouette */}
-      <Box
-        position="absolute"
-        inset="0"
-        overflow="hidden"
-        style={{ clipPath: BLADE_CLIP, backgroundImage: facet }}
-      >
-        <Box
-          className={isVertical ? 'blade-glint-y' : 'blade-glint-x'}
-          position="absolute"
-          top={isVertical ? '0' : undefined}
-          left={isVertical ? undefined : '0'}
-          width={isVertical ? '100%' : '34%'}
-          height={isVertical ? '34%' : '100%'}
-          style={{
-            backgroundImage: `linear-gradient(${isVertical ? 'to bottom' : 'to right'},
-              rgba(255, 255, 255, 0) 0%,
-              rgba(255, 255, 255, 0.85) 50%,
-              rgba(255, 255, 255, 0) 100%)`,
-          }}
-        />
-      </Box>
-
-      {/* Gem at the widest point */}
-      <Box
-        className="blade-gem"
-        position="absolute"
-        top="50%"
-        left="50%"
-        width="7px"
-        height="7px"
-        style={{
-          transform: 'translate(-50%, -50%) rotate(45deg)',
-          background: 'linear-gradient(135deg, rgba(255, 248, 214, 1) 0%, rgba(212, 175, 55, 1) 55%, rgba(140, 102, 22, 1) 100%)',
-          boxShadow: '0 0 10px rgba(255, 216, 106, 0.75), 0 0 3px rgba(255, 248, 214, 0.95)',
-        }}
-      />
-    </Box>
-  )
-}
-
-function BladeSeparator() {
+function GoldSeparator() {
   return (
     <Box
       aria-hidden="true"
       flexShrink={0}
       alignSelf="stretch"
       position="relative"
-      w={{ base: '100%', md: '12px' }}
-      h={{ base: '12px', md: 'auto' }}
-      minH={{ md: '96px' }}
+      w={{ base: '100%', md: '2px' }}
+      h={{ base: '2px', md: 'auto' }}
+      minH={{ md: '72px' }}
     >
-      <style>{BLADE_CSS}</style>
-      <Blade axis="x" display={{ base: 'block', md: 'none' }} />
-      <Blade axis="y" display={{ base: 'none', md: 'block' }} />
+      {/* Horizontal rule (mobile) */}
+      <Box
+        position="absolute"
+        inset="0"
+        display={{ base: 'block', md: 'none' }}
+        bg="rgba(212,175,55,0.65)"
+        style={{ clipPath: TAPER_X }}
+      />
+      {/* Vertical rule (desktop) */}
+      <Box
+        position="absolute"
+        inset="0"
+        display={{ base: 'none', md: 'block' }}
+        bg="rgba(212,175,55,0.65)"
+        style={{ clipPath: TAPER_Y }}
+      />
     </Box>
   )
 }
@@ -652,8 +571,8 @@ export default function BasicInfo({ ifcName, callsign, image, flightTime, rank, 
                 </Box>
               </Flex>
 
-              {/* Gold blade divider — vertical on desktop, horizontal on mobile */}
-              <BladeSeparator />
+              {/* Gold divider — vertical on desktop, horizontal on mobile */}
+              <GoldSeparator />
 
               {/* Badges — 2×2 grid, to the right on desktop / below identity on mobile */}
               <Box flex="1" width="100%">
