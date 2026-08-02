@@ -42,6 +42,16 @@ export async function GET(request) {
       ? (sortDir === 'asc' ? sql`${users.lastActive} ASC NULLS FIRST` : sql`${users.lastActive} DESC NULLS LAST`)
       : sql`${users.id} ASC`
 
+    // The admin roster's one search box has to find a pilot by either identifier —
+    // typing a callsign used to return nothing because this only ever matched
+    // ifcName. `id` is char(7), so it's trimmed before comparing: the blank padding
+    // on a shorter callsign would otherwise sit between the value and the trailing
+    // wildcard and stop a prefix match from ever hitting.
+    const searchWhere = sql`(
+      ${users.ifcName} ILIKE ${'%' + nameFilter + '%'}
+      OR TRIM(${users.id}) ILIKE ${'%' + nameFilter + '%'}
+    )`
+
     // If searching by id (callsign), return user or allowed status
     if (idFilter) {
       // Check DB for user
@@ -83,7 +93,7 @@ export async function GET(request) {
                 lastActive: users.lastActive
               })
               .from(users)
-              .where(sql`${users.ifcName} ILIKE ${'%' + nameFilter + '%'}`)
+              .where(searchWhere)
               .orderBy(orderClause)
               .limit(limit)
               .offset(offset)
@@ -91,7 +101,7 @@ export async function GET(request) {
             db
               .select({ count: sql`count(*)` })
               .from(users)
-              .where(sql`${users.ifcName} ILIKE ${'%' + nameFilter + '%'}`)
+              .where(searchWhere)
               .execute()
           ])
           return NextResponse.json({
@@ -157,7 +167,7 @@ export async function GET(request) {
             lastActive: users.lastActive
           })
           .from(users)
-          .where(sql`${users.ifcName} ILIKE ${'%' + nameFilter + '%'}`)
+          .where(searchWhere)
           .orderBy(orderClause)
           .limit(limit)
           .offset(offset)
@@ -165,7 +175,7 @@ export async function GET(request) {
         db
           .select({ count: sql`count(*)` })
           .from(users)
-          .where(sql`${users.ifcName} ILIKE ${'%' + nameFilter + '%'}`)
+          .where(searchWhere)
           .execute()
       ])
       return NextResponse.json({
