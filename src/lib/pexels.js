@@ -4,12 +4,12 @@ import airportCities from '@/data/airport-cities.json';
 // Backdrop photos for the gallery view of /crew/routes: each card shows the
 // place it flies TO. https://www.pexels.com/api/documentation/#photos-search
 //
-// The routes table stores ICAO codes and nothing else, so the place name comes
-// from src/data/airport-cities.json — "ICAO": "City|Region|Country", from the
-// OurAirports dataset (public domain) for every airport the network serves plus
-// every large airport worldwide. It is indexed under both the current ICAO and
-// the legacy ident, because the routes table still uses pre-renaming codes
-// (UAFM, not UCFM).
+// The routes table stores ICAO codes and nothing else, so the place name first
+// comes from src/data/airport-cities.json — "ICAO": "City|Region|Country", from
+// the OurAirports dataset (public domain) for every airport the network serves
+// plus every large airport worldwide. If a newly-added airport is missing from
+// that bundled map, the server falls back to the live OurAirports CSV dumps and
+// caches the resolved city/region/country separately.
 //
 // WHY REDIS AND NOT 'use cache'
 // -----------------------------
@@ -29,6 +29,7 @@ import airportCities from '@/data/airport-cities.json';
 // against.
 
 const PEXELS_SEARCH = 'https://api.pexels.com/v1/search';
+const OURAIRPORTS_BASE = 'https://davidmegginson.github.io/ourairports-data';
 
 // The rendered card is ~400x320 CSS px, so 800x520 is a 2x-ish crop —
 // src.landscape (1200x627) would be ~3x the bytes for no visible gain.
@@ -36,9 +37,12 @@ const SIZE_PARAMS = 'auto=compress&cs=tinysrgb&fit=crop&w=800&h=520';
 
 // Bump the version segment to abandon every stored entry at once — necessary
 // whenever the stored shape or the search strategy changes materially.
-const REDIS_PREFIX = 'route-backdrop:v2:';
+const REDIS_PREFIX = 'route-backdrop:v3:';
 const HIT_TTL_SECONDS = 60 * 60 * 24 * 90;  // a city's photo needn't churn
 const MISS_TTL_SECONDS = 60 * 60 * 6;       // a miss may be a blip; retry sooner
+const MAX_PHOTOS_PER_AIRPORT = 6;
+const PLACE_PREFIX = 'route-backdrop-place:v1:';
+const PLACE_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 // Ceilings for ONE request. Cloudflare Workers allows 50 subrequests per
 // invocation and each unresolved airport can spend up to one per tier, so the
@@ -59,6 +63,88 @@ function getRedis() {
   return _redis;
 }
 
+let _ourAirportsDataPromise;
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[ i ];
+    const next = text[ i + 1 ];
+
+    if (quoted) {
+      if (char === '"' && next === '"') {
+        field += '"';
+        i += 1;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        field += char;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      quoted = true;
+    } else if (char === ',') {
+      row.push(field);
+      field = '';
+    } else if (char === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else if (char !== '\r') {
+      field += char;
+    }
+  }
+
+  if (field || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function rowsByHeader(text) {
+  const [ header = [], ...rows ] = parseCsv(text);
+  return rows.map((row) => Object.fromEntries(header.map((key, i) => [ key, row[ i ] || '' ])));
+}
+
+async function fetchOurAirportsCsv(name) {
+  const res = await fetch(`${OURAIRPORTS_BASE}/${name}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`OurAirports ${name} fetch failed (${res.status})`);
+  return res.text();
+}
+
+async function getOurAirportsData() {
+  if (!_ourAirportsDataPromise) {
+    _ourAirportsDataPromise = (async () => {
+      const [ airportsText, countriesText, regionsText ] = await Promise.all([
+        fetchOurAirportsCsv('airports.csv'),
+        fetchOurAirportsCsv('countries.csv'),
+        fetchOurAirportsCsv('regions.csv'),
+      ]);
+
+      return {
+        airports: rowsByHeader(airportsText),
+        countries: new Map(rowsByHeader(countriesText).map((country) => [ country.code, country.name ])),
+        regions: new Map(rowsByHeader(regionsText).map((region) => [ region.code, region.name ])),
+      };
+    })();
+  }
+  try {
+    return await _ourAirportsDataPromise;
+  } catch (error) {
+    _ourAirportsDataPromise = null;
+    throw error;
+  }
+}
+
 // Callers pass an already-cleaned code. ~20 rows in the routes table store a
 // routing note rather than a bare ICAO ("EBBR VIA GBYD", "DIAP (VIA DGAA)"), but
 // that's normalised before it ever reaches here — by cleanIcao() in
@@ -71,6 +157,55 @@ export function airportPlace(icao) {
   if (!entry) return null;
   const [ city, region, country ] = entry.split('|');
   return { city, region: region || '', country: country || '' };
+}
+
+async function fetchOurAirportsPlace(icao) {
+  const { airports, countries, regions } = await getOurAirportsData();
+  const airport = airports.find((row) => (
+    row.ident === icao || row.gps_code === icao || row.local_code === icao
+  ));
+  if (!airport) return null;
+
+  const city = airport.municipality || airport.name?.replace(/\s+Airport$/i, '') || '';
+  const region = regions.get(airport.iso_region) || '';
+  const country = countries.get(airport.iso_country) || airport.iso_country || '';
+
+  if (!city && !region && !country) return null;
+  return { city, region, country };
+}
+
+async function resolveAirportPlace(icao) {
+  const bundled = airportPlace(icao);
+  if (bundled) return bundled;
+
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const cached = await redis.get(`${PLACE_PREFIX}${icao}`);
+      if (cached === 'none') return null;
+      if (cached?.city || cached?.region || cached?.country) return cached;
+    } catch (error) {
+      console.error(`OurAirports place cache read failed for ${icao}:`, error.message);
+    }
+  }
+
+  let place = null;
+  try {
+    place = await fetchOurAirportsPlace(icao);
+  } catch (error) {
+    console.error(`OurAirports place lookup failed for ${icao}:`, error.message);
+    return null;
+  }
+
+  if (redis) {
+    try {
+      await redis.set(`${PLACE_PREFIX}${icao}`, place ?? 'none', { ex: PLACE_TTL_SECONDS });
+    } catch (error) {
+      console.error(`OurAirports place cache write failed for ${icao}:`, error.message);
+    }
+  }
+
+  return place;
 }
 
 async function searchPexels(query, apiKey, orientation) {
@@ -101,13 +236,44 @@ async function searchPexels(query, apiKey, orientation) {
 // every small airport in that country, so first-result would hand Tirupati,
 // Tiruchirappalli and Porbandar the same photo. Hashing the ICAO spreads them
 // across the result page while staying stable for a given airport.
-function pickPhoto(photos, seed) {
-  if (!photos.length) return null;
+function seedIndex(seed, length) {
+  if (!length) return 0;
   let hash = 0;
   for (let i = 0; i < seed.length; i += 1) {
     hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
   }
-  return photos[ hash % photos.length ];
+  return hash % length;
+}
+
+function pickPhoto(photos, seed) {
+  if (!photos.length) return null;
+  return photos[ seedIndex(seed, photos.length) ];
+}
+
+function pickPhotoSet(photos, seed, limit) {
+  if (!photos.length) return [];
+  const cappedLimit = Math.max(1, Math.min(MAX_PHOTOS_PER_AIRPORT, limit || 1, photos.length));
+  const start = seedIndex(seed, photos.length);
+  return Array.from({ length: cappedLimit }, (_, i) => photos[ (start + i) % photos.length ]);
+}
+
+function normalizeStoredBackdrop(entry, desiredCount) {
+  if (entry === 'none' || entry === null || entry === undefined) {
+    return { value: entry === 'none' ? null : undefined, needsRefresh: entry !== 'none' };
+  }
+
+  const photos = Array.isArray(entry?.photos)
+    ? entry.photos.filter((photo) => photo?.url)
+    : (entry?.url ? [ entry ] : []);
+
+  if (!photos.length) {
+    return { value: null, needsRefresh: false };
+  }
+
+  return {
+    value: { photos },
+    needsRefresh: photos.length < Math.min(desiredCount, MAX_PHOTOS_PER_AIRPORT),
+  };
 }
 
 // Widening tiers, tried in order and only on a miss. The ladder narrows the
@@ -145,26 +311,33 @@ export function searchTiers(place) {
 // Live lookup for one airport, no caching of any kind. Throws on a Pexels
 // failure so the caller can tell "no photo exists" (null) from "we couldn't ask"
 // (throw) — only the former is safe to store.
-export async function fetchAirportBackdrop(icao) {
+export async function fetchAirportBackdrop(icao, photoLimit = 1) {
   const apiKey = process.env.PEXELS_API_KEY;
   if (!apiKey) throw new Error('PEXELS_API_KEY is not set');
 
-  const place = airportPlace(icao);
+  const place = await resolveAirportPlace(icao);
   if (!place) return null;
 
   for (const tier of searchTiers(place)) {
     const { photos } = await searchPexels(tier.query, apiKey, tier.orientation);
-    const photo = pickPhoto(photos, icao);
-    if (photo) return photo;
+    const picked = pickPhotoSet(photos, icao, photoLimit);
+    if (picked.length) return { photos: picked };
   }
   return null;
 }
 
 // Resolve a batch, reading Redis first. One MGET covers the whole page, so a
 // fully warm page costs a single round trip rather than one call per airport.
-export async function resolveBackdrops(icaos) {
+export async function resolveBackdrops(icaoRequests) {
   const redis = getRedis();
   const resolved = {};
+  const desiredCounts = {};
+
+  for (const icao of icaoRequests) {
+    desiredCounts[ icao ] = Math.min(MAX_PHOTOS_PER_AIRPORT, (desiredCounts[ icao ] || 0) + 1);
+  }
+
+  const icaos = Object.keys(desiredCounts);
   let unknown = [ ...icaos ];
 
   if (redis) {
@@ -172,14 +345,15 @@ export async function resolveBackdrops(icaos) {
       const stored = await redis.mget(...icaos.map((icao) => `${REDIS_PREFIX}${icao}`));
       unknown = [];
       icaos.forEach((icao, i) => {
-        const entry = stored?.[ i ];
-        if (entry === null || entry === undefined) {
+        const { value, needsRefresh } = normalizeStoredBackdrop(stored?.[ i ], desiredCounts[ icao ]);
+        if (needsRefresh) {
+          if (value !== undefined) resolved[ icao ] = value;
           unknown.push(icao);
         } else {
           // A stored miss is the string 'none' — distinguishable from "not
           // looked up yet", so a genuinely photo-less airport isn't re-searched
           // on every page view.
-          resolved[ icao ] = entry === 'none' ? null : entry;
+          resolved[ icao ] = value;
         }
       });
     } catch (error) {
@@ -194,7 +368,9 @@ export async function resolveBackdrops(icaos) {
 
   for (let i = 0; i < toResolve.length; i += RESOLVE_CONCURRENCY) {
     const batch = toResolve.slice(i, i + RESOLVE_CONCURRENCY);
-    const settled = await Promise.allSettled(batch.map((icao) => fetchAirportBackdrop(icao)));
+    const settled = await Promise.allSettled(
+      batch.map((icao) => fetchAirportBackdrop(icao, desiredCounts[ icao ]))
+    );
 
     await Promise.all(settled.map(async (result, j) => {
       const icao = batch[ j ];
@@ -229,8 +405,8 @@ export async function resolveBackdrops(icaos) {
 // of guessed at.
 export async function probeAirportBackdrop(icao) {
   const apiKey = process.env.PEXELS_API_KEY;
-  const place = airportPlace(icao);
-  if (!place) return { icao, place: null, error: 'ICAO not in airport-cities.json' };
+  const place = await resolveAirportPlace(icao);
+  if (!place) return { icao, place: null, error: 'ICAO not in airport-cities.json or OurAirports' };
   if (!apiKey) return { icao, place, error: 'PEXELS_API_KEY is not set' };
 
   let cached;
@@ -246,7 +422,12 @@ export async function probeAirportBackdrop(icao) {
     try {
       const result = await searchPexels(tier.query, apiKey, tier.orientation);
       rateLimitRemaining = result.rateLimitRemaining ?? rateLimitRemaining;
-      tiers.push({ ...tier, results: result.photos.length, picked: pickPhoto(result.photos, icao) });
+      tiers.push({
+        ...tier,
+        results: result.photos.length,
+        picked: pickPhoto(result.photos, icao),
+        pickedSet: pickPhotoSet(result.photos, icao, MAX_PHOTOS_PER_AIRPORT),
+      });
     } catch (err) {
       tiers.push({ ...tier, error: err.message });
     }
@@ -258,6 +439,6 @@ export async function probeAirportBackdrop(icao) {
     cached,
     tiers,
     rateLimitRemaining,
-    resolved: tiers.find((t) => t.picked)?.picked || null,
+    resolved: tiers.find((t) => t.pickedSet?.length)?.pickedSet || null,
   };
 }

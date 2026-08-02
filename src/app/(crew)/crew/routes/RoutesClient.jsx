@@ -345,7 +345,19 @@ function GalleryRouteCard({ route, backdrop }) {
   // The photo arrives after the card has already rendered on its gradient, so
   // it's faded in on load rather than popping in. Keyed on the URL below so a
   // changed backdrop starts from transparent again.
+  const selectedBackdrop = useMemo(() => {
+    const photos = Array.isArray(backdrop?.photos)
+      ? backdrop.photos.filter((photo) => photo?.url)
+      : (backdrop?.url ? [ backdrop ] : []);
+
+    if (photos.length <= 1) return photos[ 0 ] || null;
+    return photos[ Math.floor(Math.random() * photos.length) ];
+  }, [ backdrop ]);
   const [ photoLoaded, setPhotoLoaded ] = useState(false);
+
+  useEffect(() => {
+    setPhotoLoaded(false);
+  }, [ selectedBackdrop?.url ]);
 
   return (
     <Box
@@ -361,19 +373,19 @@ function GalleryRouteCard({ route, backdrop }) {
       // before a byte of the image has downloaded. The photo then fades in over
       // a background that already matches it, so the card settles instead of
       // flashing from a stock gradient to something unrelated.
-      bg={backdrop?.color || undefined}
-      bgImage={backdrop?.color ? undefined : BACKDROP_FALLBACK}
+      bg={selectedBackdrop?.color || undefined}
+      bgImage={selectedBackdrop?.color ? undefined : BACKDROP_FALLBACK}
       transition="background-color 0.3s ease-out"
     >
       {/* Backdrop: a photo of the arrival city. A plain <img> rather than
           next/image because Pexels already serves it at the size we asked for
           (see lib/pexels.js) — the optimizer would add a transform per photo for
           an identical result. It fades in so a slow photo doesn't pop. */}
-      {backdrop?.url && (
+      {selectedBackdrop?.url && (
         <Box
-          key={backdrop.url}
+          key={selectedBackdrop.url}
           as="img"
-          src={backdrop.url}
+          src={selectedBackdrop.url}
           alt=""
           aria-hidden="true"
           loading="lazy"
@@ -797,7 +809,7 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
   // each airport is asked for once per session — the server caches them per
   // ICAO for days on top of that, so this is usually a cache read.
   const [ backdrops, setBackdrops ] = useState({});
-  const requestedIcaos = useRef(new Set());
+  const requestedPhotoCounts = useRef({});
 
   // Which end of the route the photo shows. Normally the destination — that's
   // the place you're flying to. But filtering by arrival ICAO pins every card on
@@ -811,23 +823,41 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
     return arrivals.size === 1 && departures.size > 1 ? "departure_icao" : "arrival_icao";
   }, [ paginatedData ]);
 
-  const pageIcaos = useMemo(
-    () => [ ...new Set(paginatedData.map((r) => r[ backdropEnd ]).filter(Boolean)) ],
+  const pageBackdropIcaos = useMemo(
+    () => paginatedData.map((r) => r[ backdropEnd ]).filter(Boolean),
     [ paginatedData, backdropEnd ]
   );
-  const pageIcaoKey = pageIcaos.join(",");
+  const pageIcaoKey = pageBackdropIcaos.join(",");
+
+  const airportRouteCounts = useMemo(() => {
+    const counts = {};
+    for (const route of filtered) {
+      const icao = route[ backdropEnd ];
+      if (icao) counts[ icao ] = Math.min(6, (counts[ icao ] || 0) + 1);
+    }
+    return counts;
+  }, [ filtered, backdropEnd ]);
 
   useEffect(() => {
     if (view !== VIEW_GALLERY) return;
 
-    const needed = pageIcaos.filter((icao) => !requestedIcaos.current.has(icao));
-    if (!needed.length) return;
-    needed.forEach((icao) => requestedIcaos.current.add(icao));
+    const previousCounts = {};
+    const requestIcaos = [];
+    [ ...new Set(pageBackdropIcaos) ].forEach((icao) => {
+      const count = airportRouteCounts[ icao ] || 1;
+      const previous = requestedPhotoCounts.current[ icao ] || 0;
+      if (previous >= count) return;
+      previousCounts[ icao ] = previous;
+      requestedPhotoCounts.current[ icao ] = count;
+      for (let i = 0; i < count; i += 1) requestIcaos.push(icao);
+    });
+
+    if (!requestIcaos.length) return;
 
     const controller = new AbortController();
     (async () => {
       try {
-        const res = await fetch(`/api/routes/backdrops?icaos=${needed.join(",")}`, {
+        const res = await fetch(`/api/routes/backdrops?icaos=${requestIcaos.join(",")}`, {
           signal: controller.signal,
         });
         if (!res.ok) throw new Error(`Backdrop request failed (${res.status})`);
@@ -835,17 +865,21 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
         setBackdrops((prev) => ({ ...prev, ...resolved }));
       } catch (err) {
         if (err.name === "AbortError") return;
-        // Un-mark them so revisiting the page retries; the cards just keep the
-        // gradient in the meantime, which is a complete card either way.
-        needed.forEach((icao) => requestedIcaos.current.delete(icao));
+        // Restore the previous requested depth so revisiting the page retries;
+        // the cards just keep the gradient or smaller cached set in the meantime.
+        Object.entries(previousCounts).forEach(([ icao, count ]) => {
+          if (count) requestedPhotoCounts.current[ icao ] = count;
+          else delete requestedPhotoCounts.current[ icao ];
+        });
         console.error("Error fetching route backdrops:", err);
       }
     })();
 
     return () => controller.abort();
-    // pageIcaoKey is the value identity of pageIcaos — it's what actually changes.
+    // pageIcaoKey is the value identity of pageBackdropIcaos; airportRouteCounts
+    // carries the requested photo depth for visible airports.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ view, pageIcaoKey ]);
+  }, [ view, pageIcaoKey, airportRouteCounts ]);
 
   return (
     <VStack spacing={6} align="stretch">
@@ -1369,4 +1403,4 @@ export default function RoutesClient({ packedRoutes = "", fleet = [] }) {
       </Box>
     </VStack>
   );
-} 
+}

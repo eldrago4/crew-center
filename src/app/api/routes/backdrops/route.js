@@ -10,6 +10,8 @@ import { resolveBackdrops, probeAirportBackdrop } from '@/lib/pexels';
 //
 // Each airport is cached individually inside fetchAirportBackdrop, so a warm
 // ICAO costs no Pexels call at all and this handler collapses to a cache read.
+// Repeated ICAOs are intentional: they tell resolveBackdrops to keep a larger
+// photo pool for airports that appear many times on the current route page.
 
 const MAX_ICAOS = 24;
 
@@ -57,7 +59,9 @@ export async function GET(request) {
         .map(normalizeIcao)
         .filter((icao) => icao.length === 4);
 
-    const icaos = [ ...new Set(requested) ].slice(0, MAX_ICAOS);
+    const uniqueIcaos = [ ...new Set(requested) ].slice(0, MAX_ICAOS);
+    const allowedIcaos = new Set(uniqueIcaos);
+    const icaos = requested.filter((icao) => allowedIcaos.has(icao));
     if (!icaos.length) {
         return NextResponse.json({ error: 'icaos is required' }, { status: 400 });
     }
