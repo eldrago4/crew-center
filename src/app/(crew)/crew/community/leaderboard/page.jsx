@@ -16,8 +16,26 @@ import {
     SkeletonText,
 } from '@chakra-ui/react';
 import { FiAward, FiClock } from 'react-icons/fi';
+import NextLink from 'next/link';
 import { DiscordAvatar } from '@/components/DiscordAvatar';
 import PageTitle from '@/components/PageTitle';
+
+// A pilot's name anywhere on the board links through to their profile. Falls back
+// to plain text when the row has no callsign, so a partial record can't produce a
+// link to /crew/team/undefined.
+function PilotLink({ callsign, name, ...rest }) {
+    if (!callsign) return <Text as="span" {...rest}>{name}</Text>;
+    return (
+        <Text
+            as={NextLink}
+            href={`/crew/team/${callsign}`}
+            _hover={{ textDecoration: 'underline' }}
+            {...rest}
+        >
+            {name}
+        </Text>
+    );
+}
 
 export default function LeaderboardPage() {
     const [ leaderboard, setLeaderboard ] = useState([]);
@@ -230,7 +248,7 @@ export default function LeaderboardPage() {
                         >
                             <DiscordAvatar userId={leaderboard[ 1 ]?.discordId} size="lg" mb={2} />
                             <Text fontSize="sm" color="blue.500">{leaderboard[ 1 ]?.id}</Text>
-                            <Text fontSize="sm" color="fg">{leaderboard[ 1 ]?.ifcName}</Text>
+                            <PilotLink callsign={leaderboard[ 1 ]?.id} name={leaderboard[ 1 ]?.ifcName} fontSize="sm" color="fg" />
                             <Text fontSize="xs" fontFamily="mono" color="fg.muted">{formatFlightTime(leaderboard[ 1 ]?.flightTime)}</Text>
                         </Box>
 
@@ -247,7 +265,7 @@ export default function LeaderboardPage() {
                         >
                             <DiscordAvatar userId={leaderboard[ 0 ]?.discordId} size="xl" mb={2} />
                             <Text fontSize="sm" color="blue.500">{leaderboard[ 0 ]?.id}</Text>
-                            <Text fontSize="sm" color="fg">{leaderboard[ 0 ]?.ifcName}</Text>
+                            <PilotLink callsign={leaderboard[ 0 ]?.id} name={leaderboard[ 0 ]?.ifcName} fontSize="sm" color="fg" />
                             <Text fontSize="xs" fontFamily="mono" color="fg.muted">{formatFlightTime(leaderboard[ 0 ]?.flightTime)}</Text>
                         </Box>
 
@@ -263,7 +281,7 @@ export default function LeaderboardPage() {
                         >
                             <DiscordAvatar userId={leaderboard[ 2 ]?.discordId} size="md" mb={2} />
                             <Text fontSize="sm" color="blue.500">{leaderboard[ 2 ]?.id}</Text>
-                            <Text fontSize="sm" color="fg">{leaderboard[ 2 ]?.ifcName}</Text>
+                            <PilotLink callsign={leaderboard[ 2 ]?.id} name={leaderboard[ 2 ]?.ifcName} fontSize="sm" color="fg" />
                             <Text fontSize="xs" fontFamily="mono" color="fg.muted">{formatFlightTime(leaderboard[ 2 ]?.flightTime)}</Text>
                         </Box>
                     </Box>
@@ -314,7 +332,7 @@ export default function LeaderboardPage() {
                                     <Table.Cell fontWeight="semibold" color="blue.500">
                                         {pilot.id}
                                     </Table.Cell>
-                                    <Table.Cell color="fg">{pilot.ifcName}</Table.Cell>
+                                    <Table.Cell color="fg"><PilotLink callsign={pilot.id} name={pilot.ifcName} /></Table.Cell>
                                     <Table.Cell textAlign="center" fontFamily="mono" color="fg.muted">
                                         {formatFlightTime(pilot.flightTime)}
                                     </Table.Cell>
@@ -366,7 +384,7 @@ export default function LeaderboardPage() {
                                     <Table.Cell fontWeight="semibold" color="blue.500">
                                         {userRank.id}
                                     </Table.Cell>
-                                    <Table.Cell color="fg">{userRank.ifcName}</Table.Cell>
+                                    <Table.Cell color="fg"><PilotLink callsign={userRank.id} name={userRank.ifcName} /></Table.Cell>
                                     <Table.Cell textAlign="center" fontFamily="mono" color="fg.muted">
                                         {formatFlightTime(userRank.flightTime)}
                                     </Table.Cell>
