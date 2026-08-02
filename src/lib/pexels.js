@@ -15,11 +15,18 @@ import airportCities from '@/data/airport-cities.json';
 // -----------------------------
 // This used to be a per-ICAO `'use cache: remote'` function. Build ID is part of
 // a use-cache key, so every deploy discarded all ~346 resolved photos at once —
-// and re-warming the network costs at least one Pexels call per airport against
-// a 200/hour ceiling. The result was that after each deploy an arbitrary slice
-// of airports 429'd and fell back to the gradient, including well-covered cities
-// like Mumbai. A photo of a city is about as deploy-invariant as data gets, so it
-// belongs in a store that outlives the build.
+// and re-warming the network costs at least one Pexels call per airport. The
+// result was that after each deploy an arbitrary slice of airports 429'd and fell
+// back to the gradient, including well-covered cities like Mumbai. A photo of a
+// city is about as deploy-invariant as data gets, so it belongs in a store that
+// outlives the build.
+//
+// On the quota: the plan allows 25,000 requests and x-ratelimit-remaining barely
+// moves across a few hundred lookups, so the monthly ceiling is not the binding
+// constraint. What Pexels actually enforces is a short-window BURST limit — a
+// warm run at four-way concurrency drew 429s while the quota header sat at
+// ~24,950 — which is what MAX_RESOLVE_PER_REQUEST below is really protecting
+// against.
 
 const PEXELS_SEARCH = 'https://api.pexels.com/v1/search';
 
@@ -36,8 +43,8 @@ const MISS_TTL_SECONDS = 60 * 60 * 6;       // a miss may be a blip; retry soone
 // Ceilings for ONE request. Cloudflare Workers allows 50 subrequests per
 // invocation and each unresolved airport can spend up to one per tier, so the
 // budget is what keeps a page full of never-seen airports from blowing either
-// that limit or the hourly Pexels quota. Airports past the budget stay null and
-// get resolved the next time someone lands on that page.
+// that limit or Pexels' burst limit. Airports past the budget stay null and get
+// resolved the next time someone lands on that page.
 const MAX_RESOLVE_PER_REQUEST = 8;
 const RESOLVE_CONCURRENCY = 4;
 
@@ -52,8 +59,24 @@ function getRedis() {
   return _redis;
 }
 
+// routes.arrivalIcao is free text and ~20 rows carry a routing note rather than a
+// bare code: "EBBR VIA GBYD", "DIAP (VIA DGAA)", "ZSPD (VIA VIDP, VTBS)", plus a
+// few with stray whitespace or a trailing backtick. The destination is always the
+// leading token, and the via-points are deliberate information a pilot entered, so
+// they're read past here rather than scrubbed out of the table.
+//
+// Returns null when there's no 4-letter code to find, so a genuinely junk value
+// falls through to the gradient instead of searching Pexels for nonsense.
+export function normalizeIcao(value) {
+  // Anchored, so only a genuine leading code counts. An unanchored match would
+  // pick the first four letters found anywhere and happily turn "not-an-icao"
+  // into "ICAO".
+  const match = String(value ?? '').trim().toUpperCase().match(/^[A-Z]{4}/);
+  return match ? match[ 0 ] : null;
+}
+
 export function airportPlace(icao) {
-  const entry = airportCities[ icao ];
+  const entry = airportCities[ normalizeIcao(icao) ];
   if (!entry) return null;
   const [ city, region, country ] = entry.split('|');
   return { city, region: region || '', country: country || '' };
@@ -146,9 +169,11 @@ export async function fetchAirportBackdrop(icao) {
   return null;
 }
 
-// Resolve a batch, reading Redis first. One MGET covers the whole page, so a
-// fully warm page costs a single round trip rather than one per airport.
-export async function resolveBackdrops(icaos) {
+// Reads Redis first: one MGET covers the whole page, so a fully warm page costs a
+// single round trip rather than one call per airport.
+// Resolves a set of already-canonical ICAOs. Kept separate from the exported
+// entry point so the cache is only ever keyed by a clean code.
+async function resolveCanonical(icaos) {
   const redis = getRedis();
   const resolved = {};
   let unknown = [ ...icaos ];
@@ -205,6 +230,27 @@ export async function resolveBackdrops(icaos) {
     }));
   }
 
+  return resolved;
+}
+
+// Resolve a batch as the caller asked for it. Each requested value is reduced to
+// its canonical ICAO first, so a row like "EBBR VIA GBYD" shares one cache entry
+// and one Pexels lookup with a plain "EBBR" — before this, those rows matched
+// nothing in the city table and were permanently stuck on the gradient.
+//
+// Results come back keyed by exactly what was passed in, so the caller can look
+// them up with the same strings it holds.
+export async function resolveBackdrops(icaos) {
+  const canonicalOf = new Map(icaos.map((raw) => [ raw, normalizeIcao(raw) ]));
+  const unique = [ ...new Set([ ...canonicalOf.values() ].filter(Boolean)) ];
+
+  const byCanonical = unique.length ? await resolveCanonical(unique) : {};
+
+  const resolved = {};
+  for (const raw of icaos) {
+    const canonical = canonicalOf.get(raw);
+    resolved[ raw ] = canonical ? (byCanonical[ canonical ] ?? null) : null;
+  }
   return resolved;
 }
 
