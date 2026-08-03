@@ -37,8 +37,9 @@
     // every auth call on Workers fails with UntrustedHost and login bbreaks.
     "AUTH_TRUST_HOST": "true",
     // Base URL of the flight-recommender worker. The matching RECS_API_KEY is a
-    // secret (wrangler secret put RECS_API_KEY), not a var.
-    "RECS_API_URL": "https://api.indianvirtual.site"
+    // secret (wrangler secret put RECS_API_KEY), not a var. Keep the canonical
+    // .com API endpoint here so the backend can serve the migrated domain.
+    "RECS_API_URL": "https://api.indianvirtual.com"
   },
   // Workers AI binding — used by the AI.g assistant to query the AI Search
   // (AutoRAG) instance "soft-dew-c29d": env.AI.autorag("soft-dew-c29d").aiSearch(...).

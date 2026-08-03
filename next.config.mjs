@@ -21,12 +21,21 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: [ "@chakra-ui/react" ],
   },
+  // Allow only the canonical .com origin set for the Cloudflare Workers branch
+  // so server actions and proxied API traffic remain trusted on the live
+  // migrated domain family.
+  serverActions: {
+    allowedOrigins: [
+      'https://indianvirtual.com',
+      'https://www.indianvirtual.com',
+    ],
+  },
   // jose maps the workerd/worker/browser export conditions to dist/browser, but
   // Next traces the package under Node semantics and only copies dist/node, so
   // the Workers bundler can't resolve it. Force the whole dist in so every
   // export condition has a file to point at.
   outputFileTracingIncludes: {
-    '/api/**/*': ['./node_modules/jose/dist/**/*'],
+    '/api/**/*': [ './node_modules/jose/dist/**/*' ],
   },
   images: {
     // On Cloudflare Workers, next/image's optimizer (/_next/image?url=…) is
