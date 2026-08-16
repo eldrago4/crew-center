@@ -16,7 +16,7 @@ import {
 import { useState, useEffect, useRef } from 'react';
 import NoPrefetchLink from '@/components/NoPrefetchLink';
 import {
-  FiUser, FiBookOpen, FiFilePlus, FiMap, FiBriefcase, FiTrendingUp,
+  FiAirplay, FiUser, FiBookOpen, FiFilePlus, FiMap, FiBriefcase, FiTrendingUp,
   FiCalendar, FiStar, FiAward, FiGlobe, FiBook, FiDatabase, FiTruck,
   FiUserPlus, FiUsers, FiEdit, FiCheckSquare, FiBarChart2, FiServer, FiHeart
 } from 'react-icons/fi';
@@ -138,7 +138,9 @@ const SidebarComponent = ({ isAdmin = false, careerMode = false, ceo = false }) 
     plan: [
       { label: "Routes", href: "/crew/routes", icon: FiMap, isNew: true },
       { label: "Simbrief", href: "/crew/plan/simbrief", icon: FiBriefcase },
-      { label: "Career Mode", href: "/crew/career", disabled: !careerMode, icon: FiTrendingUp }
+      { label: "Career Mode", href: "/crew/career", disabled: !careerMode, icon: FiTrendingUp },
+      { label: "Wpt OS", href: "https://waypoint-live.app/os", icon: FiAirplay },
+
     ],
     community: [
       { label: "Events", href: "/crew/community/events", icon: FiCalendar, notifKey: 'events' },
