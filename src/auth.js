@@ -77,6 +77,15 @@ async function fetchPermissions(callsign) {
 const { handlers, signIn, signOut, auth: uncachedAuth, unstable_update } = NextAuth({
   providers: [
     Discord({
+      // Discord now advertises RFC 9207 issuer identification
+      // (authorization_response_iss_parameter_supported in the metadata it publishes at
+      // /.well-known/oauth-authorization-server) and appends iss=https://discord.com to
+      // the callback. @auth/core ships no `issuer` for its OAuth2 Discord provider, so it
+      // validated that against its own placeholder, "https://authjs.dev", and every
+      // sign-in died with CallbackRouteError. Naming the real issuer is what makes the
+      // check pass; it costs no discovery request, because the token and userinfo URLs
+      // the provider carries are already absolute.
+      issuer: "https://discord.com",
       authorization: {
         params: {
           scope: "identify guilds.join"
