@@ -6,6 +6,7 @@ export const LOTUS_MEMBER_LIMIT = 4;
 export const LOTUS_PRICE_RUPEES = 190;
 export const LOTUS_MEMBERS_KEY = 'chanda:lotus:members';
 export const LOTUS_SUBSCRIBERS_KEY = 'chanda:lotus:subscribers';
+export const LOTUS_DURATIONS = [ 1, 3, 6, 12 ];
 
 function istParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -25,6 +26,19 @@ function istParts(date = new Date()) {
 export function currentLotusMonth(date = new Date()) {
   const parts = istParts(date);
   return `${parts.year}-${parts.month}`;
+}
+
+// 'YYYY-MM' shifted by n months.
+export function addLotusMonths(month, n) {
+  const [ y, m ] = month.split('-').map(Number);
+  const total = y * 12 + (m - 1) + n;
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`;
+}
+
+// Last month a member's pledge covers. Members who joined before advance payments
+// only carry lastPaidMonth, which covered exactly that month.
+export function lotusPaidThrough(member) {
+  return member?.paidThroughMonth || member?.lastPaidMonth || null;
 }
 
 export function lotusGraceActive(date = new Date()) {
@@ -72,7 +86,8 @@ export async function reconcileLotusMembers(redis = Redis.fromEnv(), date = new 
   const revoked = [];
 
   for (const member of members) {
-    if (member.lastPaidMonth === month || inGrace) {
+    const paidThrough = lotusPaidThrough(member);
+    if ((paidThrough && paidThrough >= month) || inGrace) {
       active.push({ ...member, active: true });
       continue;
     }
@@ -90,8 +105,9 @@ export async function reconcileLotusMembers(redis = Redis.fromEnv(), date = new 
   return { members: active, revoked };
 }
 
-export async function activateLotusMember({ discordId, ifcName, paymentId }) {
+export async function activateLotusMember({ discordId, ifcName, paymentId, months = 1 }) {
   if (!discordId) throw new Error('Discord account is required');
+  if (!LOTUS_DURATIONS.includes(months)) throw new Error('Invalid membership duration');
 
   const redis = Redis.fromEnv();
   const month = currentLotusMonth();
@@ -108,6 +124,12 @@ export async function activateLotusMember({ discordId, ifcName, paymentId }) {
 
   const existing = existingIndex >= 0 ? members[existingIndex] : null;
   const avatarUrl = existing?.avatarUrl || await fetchDiscordAvatarUrl(discordId);
+  // Advance payments stack: a member already paid into a future month extends from
+  // the month after their current cover, everyone else starts from this month.
+  const prevPaidThrough = lotusPaidThrough(existing);
+  const coverStart = prevPaidThrough && prevPaidThrough >= month
+    ? addLotusMonths(prevPaidThrough, 1)
+    : month;
   const member = {
     ...(existing || {}),
     discordId: String(discordId),
@@ -116,6 +138,7 @@ export async function activateLotusMember({ discordId, ifcName, paymentId }) {
     joinedAt: existing?.joinedAt || Date.now(),
     lastPaidAt: Date.now(),
     lastPaidMonth: month,
+    paidThroughMonth: addLotusMonths(coverStart, months - 1),
     active: true,
   };
 
@@ -142,7 +165,8 @@ export async function getLotusStatus(discordId) {
   const members = await getLotusMembers(redis);
   const member = members.find(m => String(m.discordId) === String(discordId));
   const month = currentLotusMonth();
-  const needsPayment = !!member && member.lastPaidMonth !== month && lotusGraceActive();
+  const paidThroughMonth = lotusPaidThrough(member);
+  const needsPayment = !!member && (!paidThroughMonth || paidThroughMonth < month) && lotusGraceActive();
 
   return {
     member: member || null,
@@ -150,6 +174,7 @@ export async function getLotusStatus(discordId) {
     needsPayment,
     priceRupees: LOTUS_PRICE_RUPEES,
     month,
+    paidThroughMonth,
     slotsRemaining: Math.max(0, LOTUS_MEMBER_LIMIT - members.length),
   };
 }

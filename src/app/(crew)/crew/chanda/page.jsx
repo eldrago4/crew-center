@@ -18,6 +18,7 @@ const ALL_GRADIENT = 'linear-gradient(to right, #6366f1, #0ea5e9, #f59e0b, #10b9
 const AIR_INDIA_RED = '#c8102e';
 const AIR_INDIA_GRADIENT = 'linear-gradient(135deg,#c8102e,#ff4b5c)';
 const LOTUS_PRICE = 190;
+const LOTUS_DURATIONS = [ 1, 3, 6, 12 ];
 const UPI_PAYEE = 'tred38434-1@okhdfcbank';
 const UPI_NAME = 'Ved B';
 const UPI_AID = 'uGICAgIDjpaH5Aw';
@@ -32,6 +33,12 @@ function buildUpiLink(amount, note) {
   });
   if (note) params.set('tn', note);
   return `upi://pay?${params.toString()}`;
+}
+
+function formatLotusMonth(month) {
+  if (!month) return '';
+  const [ y, m ] = month.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleString('en-IN', { month: 'short', year: 'numeric' });
 }
 
 function timeAgo(ts) {
@@ -323,10 +330,13 @@ function LotusGlyph({ size = 52 }) {
   );
 }
 
-function LotusPriveSection({ subscribers, members = [], slotsRemaining = 4, onSubscribe }) {
+function LotusPriveSection({ subscribers, members = [], slotsRemaining = 4, discordId, onSubscribe }) {
   const [ subLoading, setSubLoading ] = useState(false);
   const [ subDone, setSubDone ] = useState(false);
-  const isFull = slotsRemaining <= 0;
+  const self = discordId ? members.find(m => String(m.discordId) === String(discordId)) : null;
+  const selfPaidThrough = self?.paidThroughMonth || self?.lastPaidMonth;
+  // A full house only blocks new members; existing ones can still pay ahead.
+  const isFull = slotsRemaining <= 0 && !self;
 
   const handleSubscribe = async () => {
     if (subLoading || subDone || isFull) return;
@@ -527,6 +537,11 @@ function LotusPriveSection({ subscribers, members = [], slotsRemaining = 4, onSu
             }}>
             {subDone ? (
               <>✦ Membership Active</>
+            ) : self ? (
+              <>
+                <LotusGlyph size={18} />
+                Extend Membership
+              </>
             ) : isFull ? (
               <>Lotus Privé Full</>
             ) : subLoading ? (
@@ -541,6 +556,11 @@ function LotusPriveSection({ subscribers, members = [], slotsRemaining = 4, onSu
               </>
             )}
           </Box>
+          {self && selfPaidThrough && !subDone && (
+            <Box style={{ fontSize: '12px', color: 'rgba(201,169,110,0.75)', letterSpacing: '0.04em' }}>
+              Paid through {formatLotusMonth(selfPaidThrough)}
+            </Box>
+          )}
           <HStack gap={2} align="center">
             <Box style={{ color: 'rgba(201,169,110,0.4)', fontSize: '10px' }}>✦</Box>
             <Box style={{ fontSize: '12px', color: 'rgba(255,255,255,0.38)', letterSpacing: '0.04em' }}>
@@ -599,9 +619,21 @@ function ThankYouOverlay({ goalLabel, amount, callsign, onClose }) {
   );
 }
 
-function UpiPaymentModal({ intent, onClose, onConfirm }) {
+function UpiPaymentModal({ intent: baseIntent, onClose, onConfirm }) {
   const [ confirming, setConfirming ] = useState(false);
-  if (!intent) return null;
+  const [ months, setMonths ] = useState(1);
+  const [ showDurations, setShowDurations ] = useState(false);
+  if (!baseIntent) return null;
+
+  const isLotus = baseIntent.type === 'lotus';
+  const intent = isLotus
+    ? {
+      ...baseIntent,
+      months,
+      amount: LOTUS_PRICE * months,
+      note: months > 1 ? `${baseIntent.note}|${months}m` : baseIntent.note,
+    }
+    : baseIntent;
 
   const upiLink = buildUpiLink(intent.amount, intent.note);
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(upiLink)}`;
@@ -640,12 +672,39 @@ function UpiPaymentModal({ intent, onClose, onConfirm }) {
             borderColor={{ base: 'gray.100', _dark: 'whiteAlpha.100' }} p={4} mb={5}>
             <HStack justify="space-between" mb={2}>
               <Text fontSize="sm" color={{ base: 'gray.600', _dark: 'gray.400' }}>Paying for</Text>
-              <Text fontSize="sm" fontWeight="700" color={{ base: 'gray.900', _dark: 'white' }}>{intent.title}</Text>
+              <Text fontSize="sm" fontWeight="700" color={{ base: 'gray.900', _dark: 'white' }}>
+                {intent.title}{isLotus && ` · ${months} month${months === 1 ? '' : 's'}`}
+              </Text>
             </HStack>
             <HStack justify="space-between">
               <Text fontSize="sm" color={{ base: 'gray.600', _dark: 'gray.400' }}>Amount</Text>
               <Text fontSize="2xl" fontWeight="900" color={intent.color || '#111827'}>₹{intent.amount.toLocaleString('en-IN')}</Text>
             </HStack>
+
+            {isLotus && (showDurations ? (
+              <Grid templateColumns="repeat(4, 1fr)" gap={2} mt={3}>
+                {LOTUS_DURATIONS.map(d => (
+                  <Box
+                    key={d} as="button" py={1.5} borderRadius="lg" fontSize="xs" fontWeight="700"
+                    border="1.5px solid" cursor="pointer" transition="all 0.15s"
+                    borderColor={months === d ? intent.color : { base: 'gray.200', _dark: 'whiteAlpha.150' }}
+                    bg={months === d ? `${intent.color}18` : 'transparent'}
+                    color={months === d ? intent.color : { base: 'gray.600', _dark: 'gray.400' }}
+                    _hover={{ borderColor: intent.color }}
+                    onClick={() => setMonths(d)}
+                  >
+                    {d} mo
+                  </Box>
+                ))}
+              </Grid>
+            ) : (
+              <Box as="button" mt={2} fontSize="xs" fontWeight="600" cursor="pointer"
+                color={{ base: 'gray.500', _dark: 'gray.400' }} textDecoration="underline"
+                textUnderlineOffset="3px" _hover={{ color: intent.color }}
+                onClick={() => setShowDurations(true)}>
+                Pay for more months
+              </Box>
+            ))}
           </Box>
 
           <Flex direction="column" align="center" gap={3} mb={5}>
@@ -778,7 +837,7 @@ export default function ChandaPage() {
         ? '/api/chanda/lotus/verify'
         : '/api/chanda/verify';
       const body = intent.type === 'lotus'
-        ? { discordId, ifcName: ifcName || callsign }
+        ? { discordId, ifcName: ifcName || callsign, months: intent.months || 1 }
         : { goalId: intent.goalId, amount: intent.amount, discordId, ifcName: ifcName || callsign };
 
       const res = await fetch(endpoint, {
@@ -794,7 +853,13 @@ export default function ChandaPage() {
       await fetchStats();
 
       if (intent.type === 'lotus') {
-        showToast('Welcome to Lotus Privé. Your membership is active for this month.', true);
+        const paidThrough = data.member?.paidThroughMonth;
+        showToast(
+          paidThrough
+            ? `Welcome to Lotus Privé. Your membership is paid through ${formatLotusMonth(paidThrough)}.`
+            : 'Welcome to Lotus Privé. Your membership is active.',
+          true
+        );
       } else {
         setThankYou({ goalId: intent.goalId, amount: intent.amount });
       }
@@ -938,6 +1003,7 @@ export default function ChandaPage() {
         subscribers={stats.lotus?.subscribers ?? 0}
         members={stats.lotus?.members ?? []}
         slotsRemaining={stats.lotus?.slotsRemaining ?? Math.max(0, 4 - (stats.lotus?.subscribers ?? 0))}
+        discordId={discordId}
         onSubscribe={handleLotusSubscribe}
       />
 

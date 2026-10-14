@@ -169,6 +169,7 @@ export default function TermsPage() {
             following in addition to Section 6:
           </P>
           <Li>Lotus Privé is limited to 4 active members and is renewed manually at ₹190 per month through UPI.</Li>
+          <Li>You may pay for up to 12 months in advance; each advance payment extends your membership from the end of its current paid period.</Li>
           <Li>Benefits such as a designated Discord role and appearance in the member showcase are active only while the current month's pledge is marked paid.</Li>
           <Li>Members get a first-week grace period each month. If the pledge remains unpaid after that window, the membership slot is freed and Discord roles may be revoked.</Li>
           <Li>You can stop participating simply by not renewing for the next month; no partial-month refunds are issued.</Li>

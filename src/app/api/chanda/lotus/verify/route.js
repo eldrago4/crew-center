@@ -10,7 +10,7 @@ export async function POST(req) {
   }
 
   try {
-    const { ifcName } = await req.json();
+    const { ifcName, months = 1 } = await req.json();
     const memberDiscordId = session.user.discordId || session.user.id;
     const memberName = ifcName || session.user.ifcName || session.user.callsign;
     const paymentId = `lotus_upi_${memberDiscordId}_${Date.now()}`;
@@ -19,12 +19,13 @@ export async function POST(req) {
       discordId: memberDiscordId,
       ifcName: memberName,
       paymentId,
+      months,
     });
 
     await processConfirmedPayment({
       paymentId: `${paymentId}_support`,
       goalId: 'all',
-      amountPaise: LOTUS_PRICE_RUPEES * 100,
+      amountPaise: LOTUS_PRICE_RUPEES * months * 100,
       ifcName: memberName,
       discordId: memberDiscordId,
     });
