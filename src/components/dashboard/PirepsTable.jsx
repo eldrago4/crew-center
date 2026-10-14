@@ -10,6 +10,15 @@ import {
     Stack
 } from '@chakra-ui/react'
 
+// Flight time as credited on approval: "HH:MM:SS" scaled by the PIREP's multiplier.
+function totalFlightTime(flightTime, multiplier) {
+    if (!flightTime) return '—'
+    const [ h = 0, m = 0, s = 0 ] = String(flightTime).split(':').map(Number)
+    const total = Math.round((h * 3600 + m * 60 + s) * (parseFloat(multiplier) || 1))
+    const pad = n => String(n).padStart(2, '0')
+    return `${pad(Math.floor(total / 3600))}:${pad(Math.floor(total / 60) % 60)}:${pad(total % 60)}`
+}
+
 export default function PirepsTable({ pireps }) {
     if (!pireps || pireps.length === 0) {
         return (
@@ -54,6 +63,7 @@ export default function PirepsTable({ pireps }) {
                                     <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center">Departure</Table.ColumnHeader>
                                     <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center">Arrival</Table.ColumnHeader>
                                     <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center">Flight Time</Table.ColumnHeader>
+                                    <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center" display={{ base: 'none', md: 'table-cell' }}>Total Flight Time</Table.ColumnHeader>
                                     <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center">Aircraft</Table.ColumnHeader>
                                     <Table.ColumnHeader color="fg" fontWeight="semibold" textAlign="center">Status</Table.ColumnHeader>
                                 </Table.Row>
@@ -68,6 +78,7 @@ export default function PirepsTable({ pireps }) {
                                         <Table.Cell color="fg.muted" textAlign="center">{pirep.departureIcao}</Table.Cell>
                                         <Table.Cell color="fg.muted" textAlign="center">{pirep.arrivalIcao}</Table.Cell>
                                         <Table.Cell color="fg.muted" textAlign="center">{pirep.flightTime}</Table.Cell>
+                                        <Table.Cell color="fg.muted" textAlign="center" display={{ base: 'none', md: 'table-cell' }}>{totalFlightTime(pirep.flightTime, pirep.multiplier)}</Table.Cell>
                                         <Table.Cell color="fg.muted" textAlign="center">{pirep.aircraft}</Table.Cell>
                                         <Table.Cell textAlign="center">
                                             <Badge

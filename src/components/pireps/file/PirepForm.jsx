@@ -43,6 +43,12 @@ function trailMessage(trail) {
 }
 
 // The component receives pre-fetched data and the session object as props from its parent Server Component.
+function MultiplierTag({ value }) {
+    const n = parseFloat(value);
+    if (!Number.isFinite(n)) return null;
+    return <Text as="span" fontSize="xs" fontWeight="normal" color="fg.muted" ms="2">x{n}</Text>;
+}
+
 export function PirepForm({ userId, session, initialAircraft, initialOperators, initialMultipliers, initialIfatcMultipliers, cacheTimestamp }) {
     // Debug logging to check what data is being received
     console.log('[PIREP FORM] Props received:', {
@@ -735,7 +741,8 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                                             <Select.Content>
                                                 {multiplierCollection.items.map((item, idx) => (
                                                     <Select.Item item={item} key={item.value + '-' + idx}>
-                                                        {item.label}
+                                                        <Box as="span" flex="1">{item.label}</Box>
+                                                        <MultiplierTag value={item.rawValue} />
                                                         <Select.ItemIndicator />
                                                     </Select.Item>
                                                 ))}
@@ -844,7 +851,8 @@ export function PirepForm({ userId, session, initialAircraft, initialOperators, 
                                             <Select.Content>
                                                 {ifatcMultiplierCollection.items.map((item, idx) => (
                                                     <Select.Item item={item} key={item.value + '-' + idx}>
-                                                        {item.label}
+                                                        <Box as="span" flex="1">{item.label}</Box>
+                                                        <MultiplierTag value={item.rawValue} />
                                                         <Select.ItemIndicator />
                                                     </Select.Item>
                                                 ))}
