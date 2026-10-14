@@ -14,8 +14,12 @@ import { Box } from "@chakra-ui/react"
 
 export default function LivePage() {
     return (
+        // The mobile navbar is fixed (needs the 59px offset), the desktop one is sticky
+        // and in flow (needs none). '705px' isn't a theme breakpoint, so a responsive
+        // object silently drops it and the 59px gap showed on desktop too — use the
+        // same raw width NavBar's hideFrom/hideBelow switch on.
         <Box
-            mt={{ base: '59px', '705px': '-1px' }}
+            css={{ marginTop: '59px', '@media screen and (min-width: 705px)': { marginTop: '-1px' } }}
             w="100%"
             minW={0}
             overflowX="hidden"
