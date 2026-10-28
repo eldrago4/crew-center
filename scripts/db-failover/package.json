@@ -1,0 +1,9 @@
+{
+  "name": "db-failover",
+  "private": true,
+  "type": "module",
+  "description": "Neon → Supabase standby jobs, run by .github/workflows/db-failover.yml. Kept separate so the job installs only pg.",
+  "dependencies": {
+    "pg": "8.16.0"
+  }
+}

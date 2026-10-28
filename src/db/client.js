@@ -2,6 +2,7 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import * as schema from './schema';
 import { raiseQuotaFlag } from '@/lib/maintenance-flag';
+import { backupConfigured, backupQuery, enterFailover, isNeonUnavailable, isOnBackup } from './failover';
 
 // Neon answers every query with this once the project's usage cap is hit.
 // Matched on the message deliberately narrowly: the Postgres code class for this
@@ -58,23 +59,27 @@ const rawSql = neon(process.env.DATABASE_URL, {
     createRetryIntervalMillis: 200, // Retry interval
 });
 
-// Observe-and-rethrow only. Every property other than the two the driver actually
-// calls through passes to the real client untouched, so this cannot change query
-// behaviour — it only gets a look at the errors on the way past.
-const sql = new Proxy(rawSql, {
-    apply(target, thisArg, args) {
-        return watched(target, thisArg)(...args);
-    },
-    get(target, prop, receiver) {
-        const value = Reflect.get(target, prop, receiver);
-        // drizzle's neon-http session reaches for client.transaction / client.query.
-        if ((prop === 'transaction' || prop === 'query') && typeof value === 'function') {
-            return watched(value, target);
+// drizzle's neon-http session only ever calls client.query (and client.transaction
+// for db.batch), so routing those two is enough to move every query in the app.
+async function query(text, params, options) {
+    if (await isOnBackup()) return backupQuery(text, params, options);
+    try {
+        return await rawSql.query(text, params, options);
+    } catch (error) {
+        // Replayed on Supabase in the same request, so the request that discovers
+        // the outage still succeeds — auth.js would otherwise swallow the failure
+        // and show the user as logged out.
+        if (backupConfigured && isNeonUnavailable(error)) {
+            await enterFailover(error);
+            return backupQuery(text, params, options);
         }
-        return value;
-    },
-});
+        throw noteQuotaFailure(error);
+    }
+}
 
-const db = drizzle(sql, { schema });
+// db.batch isn't used anywhere; if it ever is, it stays Neon-only.
+const client = { query, transaction: watched(rawSql.transaction, rawSql) };
+
+const db = drizzle({ client, schema });
 
 export default db;

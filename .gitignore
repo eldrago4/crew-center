@@ -5,6 +5,7 @@ scripts/service-account.json
 
 # dependencies
 /node_modules
+/scripts/db-failover/node_modules
 /.pnp
 .pnp.*
 .yarn/*

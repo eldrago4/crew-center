@@ -1,0 +1,87 @@
+name: Supabase Standby
+
+# Keeps Supabase as a hot standby for Neon and moves the app back to Neon after
+# an outage. See DB-FAILOVER.md. Each run decides what's needed: the hourly sync
+# only touches Neon when it's due, and a failback only when the app has failed over.
+#
+# This repo is public and so are these logs: the job prints counts and table
+# names only.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      command:
+        description: What to run
+        type: choice
+        options: [auto, sync, status, failover, failback]
+        default: auto
+
+# A failback sleeps mid-run while app instances switch over; a second run must
+# never start alongside it.
+concurrency:
+  group: db-failover
+  cancel-in-progress: false
+
+jobs:
+  standby:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+      SUPABASE_CA_CERT: ${{ secrets.SUPABASE_CA_CERT }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+      DISCORD_BACKUP_WEBHOOK: ${{ secrets.DISCORD_BACKUP_WEBHOOK }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/db-failover
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pg
+        run: npm ci --prefix scripts/db-failover --no-audit --no-fund
+
+      - name: Run
+        id: run
+        run: |
+          set +e
+          node scripts/db-failover/run.mjs "${{ inputs.command || 'auto' }}"
+          code=$?
+          # 3 = Neon's schema changed and the runner's pg_dump is too old to copy
+          # it; the next two steps install a current one and finish the job.
+          [ "$code" -eq 3 ] && exit 0
+          exit $code
+
+      - name: Install PostgreSQL 18 client
+        if: steps.run.outputs.needs_pg_client == 'true'
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18
+
+      - name: Rebuild schema and sync
+        if: steps.run.outputs.needs_pg_client == 'true'
+        env:
+          PG_BIN: /usr/lib/postgresql/18/bin
+        run: node scripts/db-failover/run.mjs sync
+
+      # A broken sync means a stale standby, which nobody notices until they need
+      # it. At most one ping per 6h window rather than one per 15-minute run.
+      - name: Notify failure
+        if: failure()
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            H=$(date -u +%-H); M=$(date -u +%-M)
+            if [ $((H % 6)) -ne 0 ] || [ "$M" -ge 15 ]; then exit 0; fi
+          fi
+          curl -sS -X POST "$DISCORD_BACKUP_WEBHOOK" -H "Content-Type: application/json" \
+            -d "{\"content\":\"⚠️ **Supabase standby job failing** — the backup may be going stale. ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
