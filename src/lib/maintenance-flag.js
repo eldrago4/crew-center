@@ -1,9 +1,14 @@
 import { Redis } from '@upstash/redis'
 
-// Shared by src/db/client.js (raises it) and src/proxy.js (reads it). Kept in its
-// own module with no db/drizzle imports so the proxy bundle stays small — pulling
-// db/client in here would drag drizzle into the middleware bundle.
+// Shared by src/db/client.js (raises the quota flag), src/proxy.js (reads both
+// flags) and the CEO server console (sets them). Kept in its own module with no
+// db/drizzle imports so the proxy bundle stays small — pulling db/client in here
+// would drag drizzle into the middleware bundle.
 export const QUOTA_FLAG_KEY = 'site:neon-quota-exceeded'
+
+// Manual maintenance, switched from /crew/admin/server-config. Holds
+// { message, until, by, at }; present means on. An auto-end is the key's TTL.
+export const MAINTENANCE_KEY = 'site:maintenance'
 
 // Long enough to ride out a real quota outage without hammering a dead database,
 // short enough that the crew app comes back on its own once quota resets — no
@@ -17,7 +22,7 @@ const QUOTA_FLAG_TTL_SECONDS = 300
 const READ_CACHE_MS = 15_000
 
 let redisClient
-function getRedis() {
+export function getRedis() {
     if (redisClient === undefined) {
         try {
             redisClient = Redis.fromEnv()
@@ -42,25 +47,31 @@ export function raiseQuotaFlag() {
     }
 }
 
-let cache = { value: false, at: 0 }
+const NO_FLAGS = { maintenance: null, quota: false }
+let cache = { value: NO_FLAGS, at: 0 }
 
 /**
- * Read the flag, cached per warm instance. Fails OPEN — if Redis is unreachable
- * we report "no maintenance" and let the app try to serve, because a Redis outage
- * must not be able to black out a perfectly healthy site.
+ * Both flags in one round trip, cached per warm instance. Fails OPEN — if Redis
+ * is unreachable we report "no maintenance" and let the app try to serve, because
+ * a Redis outage must not be able to black out a perfectly healthy site.
  */
-export async function isQuotaFlagRaised() {
+export async function getSiteFlags() {
     const now = Date.now()
     if (now - cache.at < READ_CACHE_MS) return cache.value
 
     const redis = getRedis()
-    if (!redis) return false
+    if (!redis) return NO_FLAGS
 
     try {
-        const raised = (await redis.get(QUOTA_FLAG_KEY)) != null
-        cache = { value: raised, at: now }
-        return raised
+        const [maintenance, quota] = await redis.mget(MAINTENANCE_KEY, QUOTA_FLAG_KEY)
+        cache = { value: { maintenance: maintenance ?? null, quota: quota != null }, at: now }
+        return cache.value
     } catch {
-        return false
+        return NO_FLAGS
     }
+}
+
+/** Drop this instance's cached flags so a change made here applies immediately. */
+export function forgetSiteFlags() {
+    cache = { value: NO_FLAGS, at: 0 }
 }

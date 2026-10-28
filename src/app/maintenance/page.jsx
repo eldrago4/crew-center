@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import {
     Box,
     Center,
@@ -10,7 +10,20 @@ import {
 } from '@chakra-ui/react'
 import NextImage from "next/image"
 
+const backAt = (iso) =>
+    new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+
 export default function MaintenancePage() {
+    // The note and expected end come from the server console. The page itself
+    // stays static; this is one CDN-cached request.
+    const [status, setStatus] = useState(null)
+    useEffect(() => {
+        fetch('/api/site-status')
+            .then((res) => (res.ok ? res.json() : null))
+            .then(setStatus)
+            .catch(() => {})
+    }, [])
+
     return (
         <Box position="relative" minH="100vh" bg="blackAlpha.700" color="white">
             <Box
@@ -51,6 +64,16 @@ export default function MaintenancePage() {
                         <Text fontSize="md" textAlign="center" color="whiteAlpha.800">
                             We're currently performing maintenance on our crew center. Please check back later.
                         </Text>
+                        {status?.message && (
+                            <Text fontSize="md" textAlign="center" whiteSpace="pre-wrap">
+                                {status.message}
+                            </Text>
+                        )}
+                        {status?.until && (
+                            <Text fontSize="sm" textAlign="center" color="whiteAlpha.800">
+                                Expected back by {backAt(status.until)}
+                            </Text>
+                        )}
                         <Box
                             as="pre"
                             fontFamily="monospace"
